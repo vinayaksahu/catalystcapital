@@ -54,7 +54,10 @@ app.get('/api/health', (req, res) => {
 });
 
 // Serve Frontend Static Assets
-const frontendPath = path.join(__dirname, '..', '..', 'frontend', 'public');
+const rootPublic = path.join(__dirname, '..', '..', 'public');
+const frontendPublic = path.join(__dirname, '..', '..', 'frontend', 'public');
+const frontendPath = require('node:fs').existsSync(rootPublic) ? rootPublic : frontendPublic;
+
 app.use(express.static(frontendPath));
 
 // Fallback to SPA index.html for frontend routing
