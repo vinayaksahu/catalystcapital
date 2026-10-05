@@ -343,9 +343,32 @@ function startCryptoTickerPulse() {
   }, 3500);
 }
 
-// BNV Guide Modal
+// Catalyst Guide Modal
+function openCatalystGuideModal() {
+  openModal('catalystGuideModal');
+}
 function openBnvGuideModal() {
-  openModal('bnvGuideModal');
+  openCatalystGuideModal();
+}
+
+// Lightbox image viewer for plan and legal certificates
+function openImageViewer(src, title) {
+  const img = document.getElementById('lightbox-img');
+  const titleEl = document.getElementById('lightbox-title');
+  if (img) img.src = src;
+  if (titleEl && title) titleEl.textContent = title;
+  openModal('imageViewerModal');
+}
+
+// Open Quotes tab and smoothly scroll to the Investment Packages ($25 - $350)
+function openInvestPackages() {
+  switchTab('quotes');
+  setTimeout(() => {
+    const el = document.getElementById('investment-packages-section');
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, 120);
 }
 
 // Red Envelope Lucky Draw
@@ -439,7 +462,7 @@ function openInviteModal() {
 }
 
 function openNoticeModal() {
-  showToast('BNV Trading: High Frequency AI Trading & 0% Fee Instant Payouts Active.', 'info');
+  showToast('Catalyst Capital: High Frequency AI Trading & 0% Fee Instant Payouts Active.', 'info');
 }
 
 function openDedicatedSupportModal(type) {

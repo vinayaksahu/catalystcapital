@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>BNV Trading Platform | Catalyst Capital</title>
+  <title>Catalyst Capital - Invest • Grow • Earn</title>
   
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -49,10 +49,10 @@
   <!-- ==================== MOBILE APP SHELL ==================== -->
   <div class="mobile-shell pb-24">
 
-    <!-- TOP GLOBAL APP BAR (Theme Toggle, Book Icon, Avatar) -->
-    <header class="sticky top-0 z-40 bg-white/95 dark:bg-[#0a0d14]/95 backdrop-blur-md border-b border-slate-200 dark:border-[#161c28] px-4 py-2.5 flex items-center justify-between text-xs">
+    <!-- TOP GLOBAL APP BAR (Theme Toggle, Book Icon, Official Logo, Avatar) -->
+    <header class="sticky top-0 z-40 bg-white/95 dark:bg-[#0a0d14]/95 backdrop-blur-md border-b border-slate-200 dark:border-[#161c28] px-3.5 py-2.5 flex items-center justify-between text-xs">
       
-      <!-- Left: Square Yellow Outlined Book / Ledger Icon (from Uploaded Image) -->
+      <!-- Left: Square Yellow Outlined Book / Ledger Icon + Official Logo (Replaces "BNV TRADING") -->
       <div class="flex items-center gap-2">
         <button onclick="navigate('history')" title="Transaction Ledger" class="top-ledger-btn">
           <svg class="w-5 h-5 text-amber-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -62,18 +62,17 @@
           </svg>
         </button>
 
-        <div onclick="navigate('home')" class="cursor-pointer">
-          <span class="font-extrabold text-sm tracking-tight text-slate-900 dark:text-white">BNV</span>
-          <span class="font-semibold text-xs text-[#ff4e91] ml-0.5">TRADING</span>
+        <!-- Official Catalyst Capital Logo -->
+        <div onclick="navigate('home')" class="cursor-pointer flex items-center">
+          <img src="logo.png" alt="Catalyst Capital" class="h-7 sm:h-8 max-w-[170px] w-auto object-contain drop-shadow">
         </div>
       </div>
 
-      <!-- Right: Dual Theme Toggle, Demo Selector & Avatar (from Uploaded Image) -->
+      <!-- Right: Dual Theme Toggle, Demo Selector & Avatar -->
       <div class="flex items-center gap-2">
         
         <!-- THEME TOGGLE BUTTON (Sun in Dark Mode / Moon in Light Mode) -->
         <button onclick="toggleThemeMode()" id="theme-toggle-btn" class="theme-toggle-btn" title="Toggle Light / Dark Mode">
-          <!-- Rendered via JS: Sun or Moon -->
           <i data-lucide="sun" id="theme-icon" class="w-4 h-4 text-amber-500"></i>
         </button>
 
@@ -106,7 +105,7 @@
           </div>
         </div>
 
-        <!-- User Golden Circle Avatar with Chevron (from Uploaded Image) -->
+        <!-- User Golden Circle Avatar with Chevron -->
         <div onclick="openModal('profileModal')" class="flex items-center gap-1 cursor-pointer">
           <div class="avatar-badge-btn" id="user-avatar-initial">
             A
@@ -119,18 +118,17 @@
 
 
     <!-- ========================================================
-         VIEW 1: HOME PAGE (Matches 2nd Image Layout + CryptoFinance Theme)
+         VIEW 1: HOME PAGE (Signal removed, Yield History -> Daily ROI, BNV -> Catalyst Capital)
          ======================================================== -->
     <main id="view-home" class="page-view flex-1 flex flex-col">
       <!-- TOP ATMOSPHERIC MESH & SECURITY ASSURANCE -->
       <section class="home-header-atmosphere pt-4 pb-2 px-3">
-        <!-- Security statement -->
         <p class="text-[11px] leading-relaxed text-slate-600 dark:text-slate-300 text-center font-normal px-2 mb-3">
           We know the importance of security, so we use layers of encryption and security measures to ensure that your account and assets are secure.
         </p>
 
-        <!-- 5 Circular Action Buttons (Image 2) -->
-        <div class="grid grid-cols-5 gap-1 text-center my-2">
+        <!-- 4 Circular Action Buttons (Signal removed as requested!) -->
+        <div class="grid grid-cols-4 gap-2 text-center my-2">
           <!-- 1. Recharge -->
           <div onclick="openRechargeModal()" class="flex flex-col items-center cursor-pointer group">
             <div class="circle-action-btn bg-gradient-to-tr from-[#ff4e91] to-[#ff7675] shadow-lg shadow-pink-500/30 group-hover:scale-105">
@@ -154,21 +152,7 @@
             <span class="text-[11px] font-semibold text-slate-800 dark:text-white mt-1.5">Withdrawal</span>
           </div>
 
-          <!-- 3. Signal -->
-          <div onclick="openSignalModal()" class="flex flex-col items-center cursor-pointer group">
-            <div class="circle-action-btn bg-gradient-to-tr from-[#6c5ce7] to-[#a29bfe] shadow-lg shadow-purple-500/30 group-hover:scale-105">
-              <svg class="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M4 10a7.5 7.5 0 0 0 10 10"/>
-                <path d="M4 14a3.5 3.5 0 0 0 4 4"/>
-                <circle cx="4" cy="20" r="1"/>
-                <path d="m14 4 6 6"/>
-                <path d="m17 7-3-3"/>
-              </svg>
-            </div>
-            <span class="text-[11px] font-semibold text-slate-800 dark:text-white mt-1.5">Signal</span>
-          </div>
-
-          <!-- 4. Service -->
+          <!-- 3. Service -->
           <div onclick="openServiceModal()" class="flex flex-col items-center cursor-pointer group">
             <div class="circle-action-btn bg-gradient-to-tr from-[#00b894] to-[#55efc4] shadow-lg shadow-teal-500/30 group-hover:scale-105">
               <svg class="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -178,7 +162,7 @@
             <span class="text-[11px] font-semibold text-slate-800 dark:text-white mt-1.5">Service</span>
           </div>
 
-          <!-- 5. Invite -->
+          <!-- 4. Invite -->
           <div onclick="openInviteModal()" class="flex flex-col items-center cursor-pointer group">
             <div class="circle-action-btn bg-gradient-to-tr from-[#fdcb6e] to-[#e17055] shadow-lg shadow-amber-500/30 group-hover:scale-105">
               <svg class="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -193,14 +177,14 @@
         </div>
       </section>
 
-      <!-- ANNOUNCEMENT TICKER CAPSULE -->
+      <!-- ANNOUNCEMENT TICKER CAPSULE (BNV replaced with Catalyst Capital) -->
       <section class="px-3 my-2">
         <div class="bg-slate-100 dark:bg-[#12141c] border border-slate-200 dark:border-[#222838] rounded-full px-3.5 py-2 flex items-center justify-between shadow-sm">
           <div class="flex items-center gap-2 overflow-hidden flex-1 mr-2">
             <i data-lucide="bell" class="w-4 h-4 text-amber-500 shrink-0"></i>
             <div class="ticker-wrap flex-1">
               <span class="ticker-content text-[11px] text-slate-700 dark:text-slate-200 font-semibold">
-                Welcome to the official BNV trading platform &bull; High Frequency AI Trading &bull; Instant 0% Withdrawal Payouts &bull; Daily ROI Active &bull;
+                Welcome to the official Catalyst Capital trading platform &bull; High Frequency AI Trading &bull; Instant 0% Withdrawal Payouts &bull; Daily ROI Active &bull;
               </span>
             </div>
           </div>
@@ -210,12 +194,12 @@
         </div>
       </section>
 
-      <!-- 2 PROMOTIONAL BANNERS SIDE-BY-SIDE (Image 2) -->
+      <!-- 2 PROMOTIONAL BANNERS SIDE-BY-SIDE (BNV Guide -> Catalyst Guide) -->
       <section class="px-3 my-2 grid grid-cols-2 gap-2.5">
-        <!-- Banner 1: BNV Guide -->
-        <div onclick="openBnvGuideModal()" class="banner-guide rounded-2xl p-3.5 relative overflow-hidden flex flex-col justify-between min-h-[145px] shadow-lg cursor-pointer group hover:brightness-105 transition">
+        <!-- Banner 1: Catalyst Guide -->
+        <div onclick="openCatalystGuideModal()" class="banner-guide rounded-2xl p-3.5 relative overflow-hidden flex flex-col justify-between min-h-[145px] shadow-lg cursor-pointer group hover:brightness-105 transition">
           <div class="relative z-10">
-            <h4 class="font-serif font-bold text-white text-[15px] tracking-wide drop-shadow-md">BNV Guide</h4>
+            <h4 class="font-serif font-bold text-white text-[15px] tracking-wide drop-shadow-md">Catalyst Guide</h4>
           </div>
           
           <div class="absolute right-1 bottom-3 w-20 h-20 opacity-90 pointer-events-none group-hover:scale-110 transition duration-300">
@@ -265,7 +249,7 @@
         </div>
       </section>
 
-      <!-- 3 MARKET TICKER CARDS (Image 2) -->
+      <!-- 3 MARKET TICKER CARDS -->
       <section class="px-3 my-2.5 grid grid-cols-3 gap-2">
         <!-- 1. BTC Card -->
         <div onclick="navigate('quotes')" class="bg-gradient-to-br from-[#ff5b79] via-[#ff6b6b] to-[#ff8c61] rounded-2xl p-2.5 text-white shadow-lg cursor-pointer transform active:scale-95 transition">
@@ -318,7 +302,7 @@
         </div>
       </section>
 
-      <!-- CRYPTOFINANCE 2x2 ACTION DASHBOARD TILES (Exact Match from Uploaded Screenshots) -->
+      <!-- ACCOUNT SERVICES 2x2 GRID (Yield History replaced with Daily ROI as requested!) -->
       <section class="px-3 my-3">
         <div class="flex items-center justify-between mb-2 px-1">
           <h3 class="font-cf-title text-sm">Account Services</h3>
@@ -326,14 +310,14 @@
         </div>
 
         <div class="grid grid-cols-2 gap-2.5">
-          <!-- 1. Yield History -->
-          <div onclick="navigate('quotes')" class="theme-card p-3 flex items-center gap-3 cursor-pointer hover:border-blue-500/40 transition">
+          <!-- 1. Daily ROI (Replaced Yield History) -->
+          <div onclick="filterHistory('daily_roi'); navigate('history');" class="theme-card p-3 flex items-center gap-3 cursor-pointer hover:border-blue-500/40 transition">
             <div class="squircle-icon-box squircle-blue shrink-0">
-              <i data-lucide="file-text" class="w-5 h-5"></i>
+              <i data-lucide="trending-up" class="w-5 h-5"></i>
             </div>
             <div>
-              <div class="font-cf-title text-[13px]">Yield History</div>
-              <div class="font-cf-subtitle text-[10.5px]">My daily contracts</div>
+              <div class="font-cf-title text-[13px]">Daily ROI</div>
+              <div class="font-cf-subtitle text-[10.5px]">My daily returns</div>
             </div>
           </div>
 
@@ -355,7 +339,7 @@
             </div>
             <div>
               <div class="font-cf-title text-[13px]">Deposit Log</div>
-              <div class="font-cf-subtitle text-[10.5px]">My deposit histo...</div>
+              <div class="font-cf-subtitle text-[10.5px]">My deposit history</div>
             </div>
           </div>
 
@@ -371,7 +355,7 @@
           </div>
         </div>
 
-        <!-- Notification & Gifts Rows (from Uploaded Screenshot) -->
+        <!-- Notification & Gifts Rows -->
         <div class="theme-card mt-2.5 overflow-hidden divide-y divide-slate-100 dark:divide-slate-800">
           <div onclick="openNoticeModal()" class="p-3 flex items-center justify-between cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/40 transition">
             <div class="flex items-center gap-3">
@@ -398,7 +382,7 @@
         </div>
       </section>
 
-      <!-- TRENDING STOCKS SECTION (Image 2) -->
+      <!-- TRENDING STOCKS SECTION -->
       <section class="px-3 my-3">
         <div class="flex items-center justify-between mb-2 px-1">
           <h3 class="font-cf-title text-sm">Trending Stocks</h3>
@@ -465,7 +449,7 @@
 
 
     <!-- ========================================================
-         VIEW 2: QUOTES PAGE (Requirement 2: Plan Presentation in UI)
+         VIEW 2: QUOTES PAGE (With cc_PLAN.png & catlystcapital_doc.jpeg Images!)
          ======================================================== -->
     <main id="view-quotes" class="page-view hidden flex-1 flex flex-col px-3 py-3 space-y-4">
       <!-- HERO BANNER -->
@@ -475,7 +459,7 @@
             OFFICIAL PRESENTATION
           </span>
           <span class="text-[10px] text-emerald-400 font-bold flex items-center gap-1">
-            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Active Plans
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Active Packages
           </span>
         </div>
         <h2 class="text-base font-extrabold text-white mt-1">
@@ -486,7 +470,48 @@
         </p>
       </div>
 
-      <!-- COMPANY PROFILE & REGULATORY CERTIFICATE -->
+      <!-- OFFICIAL PRESENTATION DOCUMENTS (cc_PLAN.png & catlystcapital_doc.jpeg as requested!) -->
+      <div class="theme-card p-3.5 space-y-3">
+        <div class="flex items-center justify-between px-1">
+          <div>
+            <h3 class="font-cf-title text-sm">Official Presentation Charts & Documents</h3>
+            <p class="font-cf-subtitle text-[10.5px]">Tap to inspect full official brochures</p>
+          </div>
+          <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-500">Verified</span>
+        </div>
+
+        <div class="space-y-3">
+          <!-- 1. cc_PLAN.png -->
+          <div onclick="openImageViewer('cc_PLAN.png', 'Catalyst Capital - Official Investment & Referral Plan Chart')" class="group relative rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-black cursor-pointer shadow-lg hover:border-amber-500/50 transition">
+            <img src="cc_PLAN.png" alt="Catalyst Capital Investment Plan" class="w-full h-auto object-cover group-hover:scale-[1.01] transition duration-300">
+            <div class="absolute inset-0 bg-gradient-to-t from-black/85 via-transparent to-transparent opacity-95 flex items-end justify-between p-3 pointer-events-none">
+              <div>
+                <span class="text-white font-bold text-xs block">Catalyst Capital Plan Presentation</span>
+                <span class="text-slate-300 text-[10px]">Daily ROI &bull; Referral Income &bull; Packages</span>
+              </div>
+              <span class="px-2.5 py-1 rounded-full bg-amber-500 text-black text-[10px] font-extrabold flex items-center gap-1 shadow-md">
+                <i data-lucide="maximize-2" class="w-3 h-3"></i> Zoom Chart
+              </span>
+            </div>
+          </div>
+
+          <!-- 2. catlystcapital_doc.jpeg -->
+          <div onclick="openImageViewer('catlystcapital_doc.jpeg', 'Catalyst Capital - Company Profile & Registration Details')" class="group relative rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-white cursor-pointer shadow-lg hover:border-cyan-500/50 transition">
+            <img src="catlystcapital_doc.jpeg" alt="Catalyst Capital Registration Document" class="w-full h-auto object-cover group-hover:scale-[1.01] transition duration-300">
+            <div class="absolute inset-0 bg-gradient-to-t from-black/85 via-transparent to-transparent opacity-95 flex items-end justify-between p-3 pointer-events-none">
+              <div>
+                <span class="text-white font-bold text-xs block">Official Registration Certificate</span>
+                <span class="text-slate-300 text-[10px]">CIN: U64990MH2023PTC400683 &bull; SEBI: INM00013129</span>
+              </div>
+              <span class="px-2.5 py-1 rounded-full bg-cyan-500 text-black text-[10px] font-extrabold flex items-center gap-1 shadow-md">
+                <i data-lucide="maximize-2" class="w-3 h-3"></i> Zoom Document
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- COMPANY PROFILE & REGULATORY CERTIFICATE DETAILS -->
       <div class="theme-card p-4 space-y-3">
         <div class="flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-2">
           <div class="w-7 h-7 rounded-xl bg-amber-500/20 text-amber-500 flex items-center justify-center">
@@ -525,8 +550,8 @@
         </div>
       </div>
 
-      <!-- OFFICIAL INVESTMENT PACKAGES (Plans 1 to 6 from brochure) -->
-      <div>
+      <!-- OFFICIAL INVESTMENT PACKAGES ($25 - $350) -->
+      <div id="investment-packages-section">
         <div class="flex items-center justify-between mb-2 px-1">
           <h3 class="font-cf-title text-sm">Investment Packages ($25 - $350)</h3>
           <span class="font-cf-subtitle text-[10px] text-cyan-500">0% Withdrawal Fee</span>
@@ -682,7 +707,7 @@
 
 
     <!-- ========================================================
-         VIEW 4: HISTORY PAGE (Requirement 1: Bonus replaces with History)
+         VIEW 4: HISTORY PAGE (Requirement 1: Bonus replaced with History)
          ======================================================== -->
     <main id="view-history" class="page-view hidden flex-1 flex flex-col px-3 py-3 space-y-3">
       <div class="theme-card p-4">
@@ -715,13 +740,13 @@
 
 
     <!-- ========================================================
-         VIEW 5: ASSETS PAGE (Requirement 4: Matches 3rd Image with USDT)
+         VIEW 5: ASSETS PAGE (My Task removed as requested!)
          ======================================================== -->
     <main id="view-assets" class="page-view hidden flex-1 flex flex-col px-3 py-3 space-y-3">
-      <!-- TOP 3 ACTION BUTTONS (Image 3) -->
-      <div class="grid grid-cols-3 gap-2">
+      <!-- TOP 2 ACTION BUTTONS (My Task removed, Recharge & Withdraw balanced in 2 cols!) -->
+      <div class="grid grid-cols-2 gap-2.5">
         <!-- 1. Recharge Button -->
-        <button onclick="openRechargeModal()" class="pill-btn-pink-orange rounded-xl py-2.5 px-2 flex items-center justify-center gap-1.5 text-xs font-bold cursor-pointer">
+        <button onclick="openRechargeModal()" class="pill-btn-pink-orange rounded-xl py-3 px-3 flex items-center justify-center gap-2 text-xs font-bold cursor-pointer">
           <svg class="w-4 h-4 text-white shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="12" cy="12" r="9"/>
             <path d="M12 8v8"/>
@@ -731,36 +756,26 @@
         </button>
 
         <!-- 2. Withdraw Button -->
-        <button onclick="openWithdrawModal()" class="pill-btn-blue rounded-xl py-2.5 px-2 flex items-center justify-center gap-1.5 text-xs font-bold cursor-pointer">
+        <button onclick="openWithdrawModal()" class="pill-btn-blue rounded-xl py-3 px-3 flex items-center justify-center gap-2 text-xs font-bold cursor-pointer">
           <svg class="w-4 h-4 text-white shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="12" cy="12" r="9"/>
             <path d="M8 12h8"/>
           </svg>
           <span>Withdraw</span>
         </button>
-
-        <!-- 3. My Task Button -->
-        <button onclick="openMyTaskModal()" class="pill-btn-teal rounded-xl py-2.5 px-2 flex items-center justify-center gap-1.5 text-xs font-bold cursor-pointer">
-          <svg class="w-4 h-4 text-white shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/>
-            <polygon points="12 7 13.5 10 17 10.5 14.5 13 15 16.5 12 15 9 16.5 9.5 13 7 10.5 10.5 10" fill="currentColor"/>
-          </svg>
-          <span>My Task</span>
-        </button>
       </div>
 
-      <!-- TOTAL ASSETS NEBULA CARD (Image 3) -->
+      <!-- TOTAL ASSETS NEBULA CARD -->
       <div class="assets-nebula-card rounded-2xl p-4 relative overflow-hidden">
         <div class="relative z-10 flex justify-between items-start">
           <div>
             <span class="text-xs font-medium opacity-80">Total Assets</span>
-            <!-- Requirement 4: RS replaces with USDT! -->
             <div id="asset-total-amount" class="text-2xl sm:text-3xl font-extrabold tracking-tight mt-1 mb-3 font-mono">
               0.00 USDT
             </div>
           </div>
 
-          <!-- 3D Floating Wallet graphic (Image 3) -->
+          <!-- 3D Floating Wallet graphic -->
           <div class="w-24 h-20 -mr-2 -mt-1 pointer-events-none animate-float">
             <svg viewBox="0 0 120 100" fill="none" class="w-full h-full drop-shadow-xl">
               <ellipse cx="98" cy="15" rx="7" ry="4" fill="#f1c40f" stroke="#e67e22" stroke-width="1"/>
@@ -774,13 +789,12 @@
               <rect x="25" y="40" width="75" height="42" rx="6" fill="#1e272e" stroke="#485460" stroke-width="2"/>
               <path d="M25 48 C 45 60, 80 60, 100 48" stroke="#485460" stroke-width="1.5" fill="none"/>
               <circle cx="42" cy="62" r="6" fill="#2ed573"/>
-              <path d="M39 63 Q 42 66 45 63" stroke="#1e272e" stroke-width="1" fill="none"/>
               <circle cx="85" cy="42" r="8" fill="#34495e"/>
             </svg>
           </div>
         </div>
 
-        <!-- Sub Stats inside Asset Card (Image 3) -->
+        <!-- Sub Stats inside Asset Card -->
         <div class="relative z-10 grid grid-cols-2 gap-2 pt-2 border-t border-current/20 text-xs">
           <div>
             <span class="opacity-75 block text-[10.5px]">Total Recharge</span>
@@ -793,52 +807,45 @@
         </div>
       </div>
 
-      <!-- 6-GRID STATS BOXES (Image 3) -->
+      <!-- 6-GRID STATS BOXES -->
       <div class="grid grid-cols-3 gap-2 text-left">
-        <!-- 1. Trading assets -->
         <div class="stat-box-card">
           <div class="font-cf-subtitle text-[10.5px] leading-tight">Trading assets</div>
           <div id="stat-trading-assets" class="font-cf-title text-sm mt-1.5 font-mono">0.00</div>
         </div>
 
-        <!-- 2. Bonus Assets -->
         <div class="stat-box-card">
           <div class="font-cf-subtitle text-[10.5px] leading-tight">Bonus Assets</div>
           <div id="stat-bonus-assets" class="font-cf-title text-sm mt-1.5 font-mono">0.00</div>
         </div>
 
-        <!-- 3. Accumulated Bonus -->
         <div class="stat-box-card">
           <div class="font-cf-subtitle text-[10.5px] leading-tight">Accumulated Bonus</div>
           <div id="stat-accumulated-bonus" class="font-cf-title text-sm mt-1.5 font-mono">0.00</div>
         </div>
 
-        <!-- 4. Yesterday's income -->
         <div class="stat-box-card">
           <div class="font-cf-subtitle text-[10.5px] leading-tight">Yesterday's income</div>
           <div id="stat-yesterday-income" class="font-cf-title text-xs mt-1.5 font-mono">0.00 USDT</div>
         </div>
 
-        <!-- 5. Today's income -->
         <div class="stat-box-card">
           <div class="font-cf-subtitle text-[10.5px] leading-tight">Today's income</div>
           <div id="stat-today-income" class="font-cf-title text-xs mt-1.5 font-mono">0.00 USDT</div>
         </div>
 
-        <!-- 6. Current Profit Margin -->
         <div class="stat-box-card">
           <div class="font-cf-subtitle text-[10.5px] leading-tight">Current Profit Margin</div>
           <div id="stat-profit-margin" class="font-cf-title text-sm mt-1.5 font-mono">4.00%</div>
         </div>
       </div>
 
-      <!-- OFFICIAL GUIDANCE SECTION (Image 3) -->
+      <!-- OFFICIAL GUIDANCE SECTION -->
       <div class="official-guidance-card rounded-2xl p-4 relative overflow-hidden">
         <div class="relative z-10 mb-3">
           <h3 class="font-cf-title text-sm tracking-wide">Official Guidance</h3>
         </div>
 
-        <!-- Guidance List Items -->
         <div class="relative z-10 space-y-2.5">
           <!-- Item 1: Customer Service -->
           <div class="flex items-center justify-between p-2.5 rounded-xl theme-card-subtle">
@@ -875,7 +882,7 @@
 
 
     <!-- ========================================================
-         VIEW 6: ADMIN CONTROL PANEL (For Admin User)
+         VIEW 6: ADMIN CONTROL PANEL
          ======================================================== -->
     <main id="view-admin" class="page-view hidden flex-1 flex flex-col px-3 py-3 space-y-4">
       <div class="theme-card p-4 space-y-3 border-amber-500/40">
@@ -913,8 +920,8 @@
 
 
   <!-- ========================================================
-       BOTTOM NAVIGATION BAR (Dual Theme & Center Glow)
-       1. Home | 2. Quotes | 3. Center Chip | 4. History | 5. Assets
+       BOTTOM NAVIGATION BAR (Center Chip is "Invest" leading to Investment Packages)
+       1. Home | 2. Quotes | 3. Center Chip: "Invest" | 4. History | 5. Assets
        ======================================================== -->
   <nav class="bottom-nav-bar grid grid-cols-5 items-center">
     <!-- 1. Home Tab -->
@@ -938,12 +945,12 @@
       <span>Quotes</span>
     </button>
 
-    <!-- 3. Center Highlight: Team & Bonus (matches "GO / Get $500" chip in uploaded image!) -->
-    <div onclick="openRedEnvelopeModal()" class="flex flex-col items-center justify-center cursor-pointer">
+    <!-- 3. Center Chip: "Invest" leading directly to Investment Packages ($25 - $350) as requested! -->
+    <div onclick="openInvestPackages()" class="flex flex-col items-center justify-center cursor-pointer group">
       <div class="center-floating-chip">
-        <span class="text-white font-extrabold text-[12px] leading-none">GO</span>
+        <i data-lucide="zap" class="w-5 h-5 text-white fill-white"></i>
       </div>
-      <span class="text-[9.5px] font-extrabold text-amber-500 -mt-2">Get Bonus</span>
+      <span class="text-[10px] font-extrabold text-amber-500 -mt-2">Invest</span>
     </div>
 
     <!-- 4. History Tab (Requirement 1: Bonus replaced with History) -->
@@ -957,7 +964,7 @@
       <span>History</span>
     </button>
 
-    <!-- 5. Assets Tab (Image 3) -->
+    <!-- 5. Assets Tab -->
     <button onclick="navigate('assets')" id="tab-assets" class="bottom-tab">
       <svg class="tab-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/>
@@ -970,6 +977,21 @@
 
 
   <!-- ==================== MODALS & POPUPS ==================== -->
+
+  <!-- IMAGE LIGHTBOX / DOCUMENT VIEWER MODAL (For cc_PLAN.png & catlystcapital_doc.jpeg) -->
+  <div id="imageViewerModal" class="modal fixed inset-0 z-50 bg-black/95 backdrop-blur-md hidden items-center justify-center p-2 sm:p-4">
+    <div class="relative max-w-lg w-full max-h-[92vh] flex flex-col items-center bg-[#0d1017] border border-slate-800 rounded-2xl overflow-hidden shadow-2xl">
+      <div class="w-full flex items-center justify-between p-3 border-b border-slate-800 bg-black/70">
+        <h4 id="lightbox-title" class="font-cf-title text-xs text-white">Document Preview</h4>
+        <button onclick="closeModal('imageViewerModal')" class="p-1 rounded-lg text-slate-400 hover:text-white bg-slate-800/80">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      <div class="overflow-auto max-h-[82vh] p-2 flex items-center justify-center w-full">
+        <img id="lightbox-img" src="" alt="Preview" class="max-w-full h-auto object-contain rounded-lg">
+      </div>
+    </div>
+  </div>
 
   <!-- RECHARGE / DEPOSIT MODAL -->
   <div id="rechargeModal" class="modal fixed inset-0 z-50 bg-black/85 backdrop-blur-sm hidden items-center justify-center p-4">
@@ -1064,52 +1086,6 @@
     </div>
   </div>
 
-  <!-- MY TASK MODAL -->
-  <div id="myTaskModal" class="modal fixed inset-0 z-50 bg-black/85 backdrop-blur-sm hidden items-center justify-center p-4">
-    <div class="theme-card max-w-sm w-full p-5 shadow-2xl relative">
-      <button onclick="closeModal('myTaskModal')" class="absolute right-4 top-4 text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
-      <div class="text-center mb-4">
-        <div class="w-10 h-10 rounded-full bg-gradient-to-tr from-[#11998e] to-[#38ef7d] flex items-center justify-center mx-auto mb-2 text-white shadow-lg">
-          <i data-lucide="sparkles" class="w-5 h-5"></i>
-        </div>
-        <h3 class="font-cf-title text-base">Daily Tasks & Missions</h3>
-        <p class="font-cf-subtitle text-xs">Complete tasks to earn bonus yields</p>
-      </div>
-
-      <div class="space-y-2.5 text-xs">
-        <div class="p-3 rounded-xl theme-card-subtle flex items-center justify-between">
-          <div>
-            <div class="font-cf-title text-xs">Daily Platform Check-in</div>
-            <div class="font-cf-subtitle text-[10px]">Earn +0.10 USDT bonus daily</div>
-          </div>
-          <button onclick="claimDailyCheckin()" id="btn-daily-checkin" class="px-3 py-1.5 rounded-xl bg-emerald-500 text-black font-bold text-[11px]">
-            Claim
-          </button>
-        </div>
-
-        <div class="p-3 rounded-xl theme-card-subtle flex items-center justify-between">
-          <div>
-            <div class="font-cf-title text-xs">Invite 1 New Friend</div>
-            <div class="font-cf-subtitle text-[10px]">Earn 6% team commission</div>
-          </div>
-          <button onclick="openInviteModal()" class="px-3 py-1.5 rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-300 font-bold text-[11px]">
-            Invite
-          </button>
-        </div>
-
-        <div class="p-3 rounded-xl theme-card-subtle flex items-center justify-between">
-          <div>
-            <div class="font-cf-title text-xs">Activate VIP Plan</div>
-            <div class="font-cf-subtitle text-[10px]">Start receiving automated daily ROI</div>
-          </div>
-          <button onclick="navigate('quotes'); closeModal('myTaskModal');" class="px-3 py-1.5 rounded-xl bg-[#ff4e91] text-white font-bold text-[11px]">
-            Explore
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-
   <!-- RED ENVELOPE LUCKY DRAW MODAL -->
   <div id="redEnvelopeModal" class="modal fixed inset-0 z-50 bg-black/90 backdrop-blur-md hidden items-center justify-center p-4">
     <div class="bg-gradient-to-b from-[#e74c3c] to-[#c0392b] border border-amber-400/40 rounded-3xl max-w-xs w-full p-6 text-center text-white shadow-[0_0_50px_rgba(231,76,60,0.6)] relative">
@@ -1131,11 +1107,11 @@
     </div>
   </div>
 
-  <!-- BNV GUIDE MODAL -->
-  <div id="bnvGuideModal" class="modal fixed inset-0 z-50 bg-black/85 backdrop-blur-sm hidden items-center justify-center p-4">
+  <!-- CATALYST GUIDE MODAL (Replaced BNV Guide) -->
+  <div id="catalystGuideModal" class="modal fixed inset-0 z-50 bg-black/85 backdrop-blur-sm hidden items-center justify-center p-4">
     <div class="theme-card max-w-sm w-full p-5 shadow-2xl relative">
-      <button onclick="closeModal('bnvGuideModal')" class="absolute right-4 top-4 text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
-      <h3 class="font-serif font-bold text-base mb-2">BNV Trading Beginner Guide</h3>
+      <button onclick="closeModal('catalystGuideModal')" class="absolute right-4 top-4 text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+      <h3 class="font-serif font-bold text-base mb-2">Catalyst Capital Beginner Guide</h3>
       <div class="space-y-2.5 text-xs font-cf-subtitle leading-relaxed">
         <div class="p-2.5 rounded-xl theme-card-subtle">
           <strong class="font-cf-title block mb-0.5">1. Recharge your balance:</strong>
@@ -1150,42 +1126,9 @@
           Daily ROI and 3-level Referral Income are credited directly every 24 hours.
         </div>
       </div>
-      <button onclick="navigate('quotes'); closeModal('bnvGuideModal');" class="w-full mt-4 py-2.5 rounded-xl font-bold bg-[#ff4e91] text-white">
-        View Investment Plans
+      <button onclick="openInvestPackages(); closeModal('catalystGuideModal');" class="w-full mt-4 py-2.5 rounded-xl font-bold bg-[#ff4e91] text-white">
+        View Investment Packages
       </button>
-    </div>
-  </div>
-
-  <!-- SIGNAL MODAL -->
-  <div id="signalModal" class="modal fixed inset-0 z-50 bg-black/85 backdrop-blur-sm hidden items-center justify-center p-4">
-    <div class="theme-card max-w-sm w-full p-5 shadow-2xl relative">
-      <button onclick="closeModal('signalModal')" class="absolute right-4 top-4 text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
-      <div class="flex items-center gap-2 mb-3">
-        <div class="w-8 h-8 rounded-xl bg-purple-500/20 text-purple-500 flex items-center justify-center">
-          <i data-lucide="radio" class="w-4 h-4"></i>
-        </div>
-        <div>
-          <h3 class="font-cf-title text-sm">VIP Trading Signals</h3>
-          <span class="text-[10px] text-emerald-500 font-bold">Accuracy: 94.8% &bull; AI Powered</span>
-        </div>
-      </div>
-
-      <div class="space-y-2 text-xs">
-        <div class="p-2.5 rounded-xl theme-card-subtle flex items-center justify-between">
-          <div>
-            <span class="font-cf-title text-xs">BTC / USDT</span>
-            <span class="block text-[10px] font-cf-subtitle">Target: $86,400 &bull; Stop: $84,200</span>
-          </div>
-          <span class="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-500 font-bold text-[10px]">BUY / LONG</span>
-        </div>
-        <div class="p-2.5 rounded-xl theme-card-subtle flex items-center justify-between">
-          <div>
-            <span class="font-cf-title text-xs">ETH / USDT</span>
-            <span class="block text-[10px] font-cf-subtitle">Target: $2,850 &bull; Stop: $2,650</span>
-          </div>
-          <span class="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-500 font-bold text-[10px]">BUY / LONG</span>
-        </div>
-      </div>
     </div>
   </div>
 
@@ -1292,7 +1235,7 @@
     <div class="theme-card max-w-sm w-full p-5 shadow-2xl relative">
       <button onclick="closeModal('loginModal')" class="absolute right-4 top-4 text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
       <div class="text-center mb-4">
-        <h3 class="font-cf-title text-base">Login to BNV Platform</h3>
+        <h3 class="font-cf-title text-base">Login to Catalyst Capital</h3>
         <p class="font-cf-subtitle text-xs">Enter your credentials or use demo accounts</p>
       </div>
 
@@ -1322,7 +1265,7 @@
     <div class="theme-card max-w-sm w-full p-5 shadow-2xl relative">
       <button onclick="closeModal('registerModal')" class="absolute right-4 top-4 text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
       <div class="text-center mb-3">
-        <h3 class="font-cf-title text-base">Create BNV Account</h3>
+        <h3 class="font-cf-title text-base">Create Catalyst Capital Account</h3>
         <p class="font-cf-subtitle text-xs">Register under official Catalyst Capital network</p>
       </div>
 
