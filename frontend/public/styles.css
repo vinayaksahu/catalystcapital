@@ -1,59 +1,262 @@
-/* Catalyst Capital Custom Theme Styles */
+/* ==========================================================
+   Catalyst Capital / BNV Mobile UI - Stylesheet
+   Matches exact UI, colors, typography, and layout from mobile screenshots
+   ========================================================== */
 
 :root {
-  --brand-cyan: #00d2ff;
-  --brand-gold: #f59e0b;
+  --bg-black: #000000;
+  --bg-surface: #10131a;
+  --bg-card: #151922;
+  --border-card: #1f2533;
+  --color-pink: #ff4e91;
+  --color-pink-glow: rgba(255, 78, 145, 0.35);
+  --color-cyan: #00d2ff;
+  --color-gold: #f59e0b;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
 }
 
 body {
-  background-color: #050c18;
-  background-image: 
-    radial-gradient(at 0% 0%, rgba(0, 210, 255, 0.05) 0px, transparent 50%),
-    radial-gradient(at 100% 100%, rgba(245, 158, 11, 0.04) 0px, transparent 50%);
-  background-attachment: fixed;
+  background-color: #000000;
+  color: #ffffff;
+  font-family: 'Outfit', sans-serif;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+  min-height: 100vh;
+}
+
+/* Mobile Frame Shell */
+.mobile-shell {
+  width: 100%;
+  max-width: 440px;
+  margin: 0 auto;
+  min-height: 100vh;
+  background-color: #000000;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 0 50px rgba(0, 0, 0, 0.85);
+  border-left: 1px solid rgba(255, 255, 255, 0.05);
+  border-right: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+@media (max-width: 440px) {
+  .mobile-shell {
+    border-left: none;
+    border-right: none;
+    box-shadow: none;
+  }
 }
 
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 4px;
+  height: 4px;
 }
 ::-webkit-scrollbar-track {
-  background: #081224;
+  background: #000000;
 }
 ::-webkit-scrollbar-thumb {
-  background: #172a45;
+  background: #232a3b;
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #00d2ff;
+  background: #ff4e91;
 }
 
-/* Nav Item Styling */
-.nav-item {
-  color: #94a3b8;
-  transition: all 0.2s ease-in-out;
+/* Header Atmospheric Mesh */
+.home-header-atmosphere {
+  background: radial-gradient(circle at 50% 0%, rgba(255, 78, 145, 0.4) 0%, rgba(132, 94, 194, 0.25) 45%, rgba(10, 12, 18, 0.9) 85%, #000000 100%);
 }
-.nav-item:hover {
-  color: #ffffff;
-  background-color: rgba(255, 255, 255, 0.05);
+
+/* Bottom Navigation Bar (Image 1) */
+.bottom-nav-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  background: #000000;
+  border-top: 1px solid #171a22;
+  max-width: 440px;
+  margin: 0 auto;
 }
-.nav-item.active {
-  color: #00d2ff;
-  background-color: rgba(0, 210, 255, 0.1);
-  border: 1px solid rgba(0, 210, 255, 0.25);
+
+.bottom-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 4px 6px;
+  color: #cccccc;
+  font-size: 11px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.bottom-tab svg {
+  width: 22px;
+  height: 22px;
+  margin-bottom: 3px;
+  transition: all 0.2s ease;
+  stroke: #ffffff;
+  fill: none;
+}
+
+.bottom-tab.active {
+  color: #ff4e91;
   font-weight: 700;
 }
 
-/* Card Glows */
-.glow-cyan {
-  box-shadow: 0 0 25px -5px rgba(0, 210, 255, 0.15);
-}
-.glow-gold {
-  box-shadow: 0 0 25px -5px rgba(245, 158, 11, 0.15);
+.bottom-tab.active svg {
+  stroke: #ff4e91;
+  filter: drop-shadow(0 0 6px rgba(255, 78, 145, 0.6));
 }
 
-/* MLM Genealogy Tree Styling */
+.bottom-tab.active .tab-icon-filled {
+  fill: #ff4e91;
+}
+
+/* Total Assets Nebula Glow (Image 3) */
+.assets-nebula-card {
+  background: 
+    radial-gradient(circle at 85% 20%, rgba(147, 51, 234, 0.45) 0%, transparent 55%),
+    radial-gradient(circle at 20% 80%, rgba(255, 78, 145, 0.3) 0%, transparent 50%),
+    radial-gradient(circle at 50% 50%, rgba(245, 158, 11, 0.15) 0%, transparent 60%),
+    #0c0f17;
+  border: 1px solid #1e2433;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.6), inset 0 0 20px rgba(147, 51, 234, 0.1);
+}
+
+/* Official Guidance Section (Image 3) */
+.official-guidance-card {
+  background: 
+    radial-gradient(circle at 50% 60%, rgba(120, 50, 180, 0.2) 0%, transparent 70%),
+    linear-gradient(180deg, #12151e 0%, #0c0e14 100%);
+  border: 1px solid #1f2535;
+}
+
+/* 6-Grid Stats Card (Image 3) */
+.stat-box-card {
+  background: #11141c;
+  border: 1px solid #1a202d;
+  border-radius: 12px;
+  padding: 12px 10px;
+  transition: all 0.2s ease;
+}
+.stat-box-card:hover {
+  border-color: #2a3449;
+  transform: translateY(-1px);
+}
+
+/* Action Buttons & Pills */
+.pill-btn-pink-orange {
+  background: linear-gradient(90deg, #ff758c 0%, #ff7eb3 50%, #ff9a8b 100%);
+  color: #ffffff;
+  box-shadow: 0 4px 15px rgba(255, 117, 140, 0.35);
+  border: none;
+  font-weight: 700;
+  transition: all 0.2s ease;
+}
+.pill-btn-pink-orange:hover {
+  filter: brightness(1.08);
+  box-shadow: 0 6px 20px rgba(255, 117, 140, 0.5);
+}
+
+.pill-btn-blue {
+  background: linear-gradient(90deg, #36d1dc 0%, #5b86e5 100%);
+  color: #ffffff;
+  box-shadow: 0 4px 15px rgba(54, 209, 220, 0.35);
+  border: none;
+  font-weight: 700;
+  transition: all 0.2s ease;
+}
+.pill-btn-blue:hover {
+  filter: brightness(1.08);
+  box-shadow: 0 6px 20px rgba(54, 209, 220, 0.5);
+}
+
+.pill-btn-teal {
+  background: linear-gradient(90deg, #11998e 0%, #38ef7d 100%);
+  color: #ffffff;
+  box-shadow: 0 4px 15px rgba(17, 153, 142, 0.35);
+  border: none;
+  font-weight: 700;
+  transition: all 0.2s ease;
+}
+.pill-btn-teal:hover {
+  filter: brightness(1.08);
+  box-shadow: 0 6px 20px rgba(17, 153, 142, 0.5);
+}
+
+.pill-btn-contact {
+  background: linear-gradient(90deg, #ff758c 0%, #ff7eb3 100%);
+  color: #ffffff;
+  font-weight: 700;
+  border-radius: 9999px;
+  padding: 6px 18px;
+  font-size: 12px;
+  box-shadow: 0 4px 12px rgba(255, 117, 140, 0.3);
+  transition: all 0.2s ease;
+}
+.pill-btn-contact:hover {
+  filter: brightness(1.1);
+  transform: scale(1.02);
+}
+
+/* Home Quick Circles (Image 2) */
+.circle-action-btn {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto;
+  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  cursor: pointer;
+}
+.circle-action-btn:active {
+  transform: scale(0.92);
+}
+
+/* Home Promotional Banners (Image 2) */
+.banner-guide {
+  background: linear-gradient(135deg, #f59e0b 0%, #f97316 50%, #ea580c 100%);
+}
+.banner-envelope {
+  background: linear-gradient(135deg, #f97316 0%, #ef4444 50%, #dc2626 100%);
+}
+
+/* Ticker Text Animation */
+.ticker-wrap {
+  overflow: hidden;
+  white-space: nowrap;
+}
+.ticker-content {
+  display: inline-block;
+  animation: tickerSlide 22s linear infinite;
+}
+@keyframes tickerSlide {
+  0% { transform: translateX(100%); }
+  100% { transform: translateX(-100%); }
+}
+
+/* Floating animation */
+.animate-float {
+  animation: floating 3s ease-in-out infinite;
+}
+@keyframes floating {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+
+/* Genealogy Tree Styling */
 .tree-node {
   display: flex;
   flex-direction: column;
@@ -61,83 +264,66 @@ body {
   position: relative;
   padding: 10px 5px;
 }
-
 .tree-card {
-  background: #0a172a;
-  border: 1px solid #1e3a5f;
+  background: #0d111a;
+  border: 1px solid #1f2738;
   border-radius: 12px;
-  padding: 10px 14px;
-  min-width: 140px;
+  padding: 8px 12px;
+  min-width: 120px;
   text-align: center;
   transition: all 0.2s ease;
   position: relative;
   z-index: 2;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
 }
-
 .tree-card:hover {
-  border-color: #00d2ff;
+  border-color: #ff4e91;
   transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(0, 210, 255, 0.2);
 }
-
 .tree-children {
   display: flex;
   justify-content: center;
   position: relative;
-  padding-top: 24px;
-  gap: 16px;
+  padding-top: 20px;
+  gap: 12px;
 }
-
-/* Connector lines */
 .tree-children::before {
   content: '';
   position: absolute;
   top: 0;
   left: 50%;
-  border-left: 2px solid #1e3a5f;
-  height: 24px;
+  border-left: 2px solid #232c40;
+  height: 20px;
   transform: translateX(-50%);
 }
-
 .tree-node-branch {
   position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
 }
-
 .tree-node-branch::before {
   content: '';
   position: absolute;
-  top: -24px;
-  height: 24px;
-  border-left: 2px solid #1e3a5f;
-}
-
-.tree-branch-bar {
-  position: absolute;
-  top: 0;
-  height: 2px;
-  background: #1e3a5f;
+  top: -20px;
+  height: 20px;
+  border-left: 2px solid #232c40;
 }
 
 /* Modals */
 .modal.flex {
-  animation: fadeIn 0.15s ease-out;
+  animation: modalFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: scale(0.97); }
+@keyframes modalFadeIn {
+  from { opacity: 0; transform: scale(0.95); }
   to { opacity: 1; transform: scale(1); }
 }
 
-/* Toast */
+/* Toast Notification */
 .toast {
-  animation: slideIn 0.2s ease-out forwards;
+  animation: toastSlide 0.25s ease-out forwards;
 }
-
-@keyframes slideIn {
-  from { transform: translateX(100%); opacity: 0; }
-  to { transform: translateX(0); opacity: 1; }
+@keyframes toastSlide {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
 }

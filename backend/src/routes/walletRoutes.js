@@ -12,11 +12,48 @@ router.get('/overview', authenticateToken, async (req, res) => {
       FROM users WHERE id = ?
     `, [req.user.id]);
 
-    const totalEarnedRes = await db.get(`
+    const totalDepositedRes = await db.get(`
       SELECT COALESCE(SUM(amount), 0) as total
+      FROM deposits
+      WHERE user_id = ? AND status = 'completed'
+    `, [req.user.id]);
+    const totalRecharge = totalDepositedRes ? (parseFloat(totalDepositedRes.total) || 0) : 0;
+
+    const activeInvestRes = await db.get(`
+      SELECT COALESCE(SUM(amount), 0) as total
+      FROM investments
+      WHERE user_id = ? AND status = 'active'
+    `, [req.user.id]);
+    const tradingAssets = activeInvestRes ? (parseFloat(activeInvestRes.total) || 0) : 0;
+
+    const earningsRows = await db.all(`
+      SELECT amount, type, created_at
       FROM transactions
       WHERE user_id = ? AND type IN ('daily_roi', 'referral_roi', 'team_commission') AND status = 'completed'
     `, [req.user.id]);
+
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const yest = new Date(Date.now() - 86400000);
+    const yestStr = yest.toISOString().slice(0, 10);
+
+    let todayIncome = 0;
+    let yesterdayIncome = 0;
+    let accumulatedBonus = 0;
+    let totalEarned = 0;
+
+    for (const tx of earningsRows) {
+      const txDate = new Date(tx.created_at).toISOString().slice(0, 10);
+      const amt = parseFloat(tx.amount) || 0;
+      totalEarned += amt;
+      if (tx.type === 'referral_roi' || tx.type === 'team_commission') {
+        accumulatedBonus += amt;
+      }
+      if (txDate === todayStr) {
+        todayIncome += amt;
+      } else if (txDate === yestStr) {
+        yesterdayIncome += amt;
+      }
+    }
 
     const totalWithdrawnRes = await db.get(`
       SELECT COALESCE(SUM(amount), 0) as total
@@ -36,16 +73,26 @@ router.get('/overview', authenticateToken, async (req, res) => {
       return acc;
     }, {});
 
+    const totalAssets = (user.wallet_balance || 0) + (user.roi_balance || 0) + (user.commission_balance || 0) + tradingAssets;
+
     res.json({
       success: true,
       wallets: {
+        totalAssets,
+        totalRecharge,
+        totalWithdrawn: totalWithdrawnRes ? (parseFloat(totalWithdrawnRes.total) || 0) : 0,
+        tradingAssets,
+        bonusAssets: user.commission_balance || 0,
+        accumulatedBonus,
+        yesterdayIncome,
+        todayIncome,
+        profitMargin: '4.00%',
         depositWallet: user.wallet_balance || 0,
         roiWallet: user.roi_balance || 0,
         commissionWallet: user.commission_balance || 0,
         totalWithdrawable: (user.roi_balance || 0) + (user.commission_balance || 0),
-        totalEarned: totalEarnedRes ? totalEarnedRes.total : 0,
-        totalWithdrawn: totalWithdrawnRes ? totalWithdrawnRes.total : 0,
-        pendingWithdrawn: pendingWithdrawnRes ? pendingWithdrawnRes.total : 0,
+        totalEarned,
+        pendingWithdrawn: pendingWithdrawnRes ? (parseFloat(pendingWithdrawnRes.total) || 0) : 0,
         savedUsdtAddress: user.usdt_address
       },
       rules: {

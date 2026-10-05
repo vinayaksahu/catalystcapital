@@ -2,15 +2,15 @@
 <html lang="en" class="dark">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Catalyst Capital - Invest • Grow • Earn | MLM & ROI Platform</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>BNV Trading Platform | Catalyst Capital</title>
   
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Google Fonts: Syne & Outfit -->
+  <!-- Google Fonts: Outfit & Syne -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Syne:wght@600;700;800&family=Cinzel:wght@600;700&display=swap" rel="stylesheet">
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
   <!-- Chart.js -->
@@ -24,16 +24,17 @@
           fontFamily: {
             sans: ['Outfit', 'sans-serif'],
             heading: ['Syne', 'sans-serif'],
+            serif: ['Cinzel', 'Georgia', 'serif']
           },
           colors: {
-            brand: {
-              dark: '#050c18',
-              card: '#0a172a',
-              border: '#172a45',
+            app: {
+              black: '#000000',
+              surface: '#0f121a',
+              card: '#141824',
+              border: '#1e2434',
+              pink: '#ff4e91',
               cyan: '#00d2ff',
               gold: '#f59e0b',
-              goldlight: '#fbbf24',
-              accent: '#38bdf8',
             }
           }
         }
@@ -43,996 +44,1393 @@
 
   <link rel="stylesheet" href="styles.css">
 </head>
-<body class="bg-brand-dark text-slate-100 min-h-screen flex flex-col font-sans antialiased selection:bg-brand-cyan selection:text-black">
+<body class="bg-black text-white antialiased selection:bg-[#ff4e91] selection:text-white">
 
-  <!-- TOP NOTIFICATION BANNER -->
-  <div class="bg-gradient-to-r from-amber-600/30 via-cyan-600/30 to-blue-600/30 border-b border-brand-border/60 py-2 px-4 text-xs font-medium text-center flex items-center justify-between">
-    <div class="flex items-center gap-2 mx-auto">
-      <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
-        <i data-lucide="zap" class="w-3 h-3 mr-1 inline"></i> JOINING: $25 TO $5000
-      </span>
-      <span class="hidden md:inline text-slate-300">• Daily ROI Income • Referral Income (ROI of ROI) • 0% Withdrawal Fee • 0-24h Payouts</span>
-    </div>
-    <!-- Quick Demo Account Switcher -->
-    <div class="relative hidden lg:flex items-center gap-2">
-      <span class="text-xs text-slate-400">Quick Login:</span>
-      <button onclick="quickLogin('admin')" class="px-2 py-0.5 rounded bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 text-xs font-semibold border border-amber-500/40">Admin</button>
-      <button onclick="quickLogin('rahul')" class="px-2 py-0.5 rounded bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-400 text-xs font-semibold border border-cyan-500/40">Rahul (L1)</button>
-      <button onclick="quickLogin('priya')" class="px-2 py-0.5 rounded bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 text-xs font-semibold border border-emerald-500/40">Priya (L2)</button>
-      <button onclick="quickLogin('amit')" class="px-2 py-0.5 rounded bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 text-xs font-semibold border border-purple-500/40">Amit (L3)</button>
-    </div>
-  </div>
+  <!-- ==================== MOBILE APP SHELL ==================== -->
+  <div class="mobile-shell pb-20">
 
-  <!-- NAVIGATION BAR -->
-  <nav class="sticky top-0 z-40 bg-brand-dark/90 backdrop-blur-md border-b border-brand-border">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="flex items-center justify-between h-16">
-        <!-- Logo -->
-        <div class="flex items-center gap-3 cursor-pointer" onclick="navigate('dashboard')">
-          <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 to-cyan-400 flex items-center justify-center p-0.5 shadow-lg shadow-cyan-500/20">
-            <div class="w-full h-full bg-brand-dark rounded-[10px] flex items-center justify-center">
-              <i data-lucide="trending-up" class="w-6 h-6 text-brand-gold"></i>
-            </div>
-          </div>
-          <div>
-            <div class="font-heading font-extrabold text-xl tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-amber-200 to-cyan-400">
-              CATALYST <span class="text-white">CAPITAL</span>
-            </div>
-            <p class="text-[10px] uppercase tracking-widest text-slate-400 -mt-1 font-semibold">Invest • Grow • Earn</p>
+    <!-- TOP GLOBAL APP BAR (Profile, Demo Switcher, Admin Button) -->
+    <header class="sticky top-0 z-40 bg-black/90 backdrop-blur-md border-b border-[#181c26] px-4 py-2 flex items-center justify-between text-xs">
+      <div class="flex items-center gap-2 cursor-pointer" onclick="navigate('home')">
+        <div class="w-7 h-7 rounded-lg bg-gradient-to-tr from-[#ff4e91] to-[#ff7675] flex items-center justify-center shadow-md shadow-pink-500/30">
+          <i data-lucide="trending-up" class="w-4 h-4 text-white"></i>
+        </div>
+        <div class="font-bold tracking-wider text-sm">
+          <span class="text-white">BNV</span> <span class="text-[#ff4e91] font-semibold text-xs tracking-normal">TRADING</span>
+        </div>
+      </div>
+
+      <!-- User State & Quick Actions -->
+      <div class="flex items-center gap-2">
+        <!-- Demo Accounts Quick Dropdown / Switcher -->
+        <div class="relative">
+          <button onclick="toggleDemoDropdown()" class="px-2 py-1 rounded bg-[#171b26] border border-[#262c3e] text-[10px] text-slate-300 font-semibold flex items-center gap-1 hover:text-white transition">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span id="active-user-badge">Demo</span>
+            <i data-lucide="chevron-down" class="w-3 h-3 text-slate-400"></i>
+          </button>
+          
+          <div id="demo-dropdown" class="hidden absolute right-0 mt-1.5 w-44 rounded-xl bg-[#121620] border border-[#23293a] shadow-2xl p-1.5 z-50 text-[11px]">
+            <div class="px-2 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-800 mb-1">Switch Demo Account</div>
+            <button onclick="quickLogin('rahul')" class="w-full text-left px-2 py-1.5 rounded hover:bg-[#1e2436] flex items-center justify-between text-cyan-400 font-medium">
+              <span>Rahul (Level 1)</span>
+              <span class="text-[9px] text-slate-500 font-mono">$350</span>
+            </button>
+            <button onclick="quickLogin('priya')" class="w-full text-left px-2 py-1.5 rounded hover:bg-[#1e2436] flex items-center justify-between text-emerald-400 font-medium">
+              <span>Priya (Level 2)</span>
+              <span class="text-[9px] text-slate-500 font-mono">$225</span>
+            </button>
+            <button onclick="quickLogin('amit')" class="w-full text-left px-2 py-1.5 rounded hover:bg-[#1e2436] flex items-center justify-between text-purple-400 font-medium">
+              <span>Amit (Level 3)</span>
+              <span class="text-[9px] text-slate-500 font-mono">$115</span>
+            </button>
+            <button onclick="quickLogin('admin')" class="w-full text-left px-2 py-1.5 rounded hover:bg-[#1e2436] flex items-center justify-between text-amber-400 font-medium">
+              <span>Admin (Control)</span>
+              <span class="text-[9px] text-amber-500 font-bold uppercase">Master</span>
+            </button>
           </div>
         </div>
 
-        <!-- Desktop Navigation Links -->
-        <div id="nav-links" class="hidden md:flex items-center space-x-1">
-          <button onclick="navigate('dashboard')" class="nav-item active px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-2">
-            <i data-lucide="layout-dashboard" class="w-4 h-4"></i> Dashboard
+        <!-- Auth Button -->
+        <div id="top-auth-buttons">
+          <button id="btn-login-modal" onclick="openModal('loginModal')" class="px-2.5 py-1 rounded-lg bg-[#ff4e91]/20 border border-[#ff4e91]/40 text-[#ff4e91] font-bold text-[11px]">
+            Login
           </button>
-          <button onclick="navigate('plans')" class="nav-item px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-2">
-            <i data-lucide="layers" class="w-4 h-4"></i> Plans ($25-$350)
-          </button>
-          <button onclick="navigate('network')" class="nav-item px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-2">
-            <i data-lucide="users" class="w-4 h-4"></i> Network & Tree
-          </button>
-          <button onclick="navigate('wallet')" class="nav-item px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-2">
-            <i data-lucide="wallet" class="w-4 h-4"></i> Deposit & Withdraw
-          </button>
-          <button onclick="navigate('calculator')" class="nav-item px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-2">
-            <i data-lucide="calculator" class="w-4 h-4"></i> ROI Calculator
-          </button>
-          <button id="admin-nav-btn" onclick="navigate('admin')" class="nav-item hidden px-3 py-2 rounded-lg text-sm font-medium text-amber-400 bg-amber-500/10 border border-amber-500/30 flex items-center gap-2">
-            <i data-lucide="shield-alert" class="w-4 h-4 text-amber-400"></i> Admin Panel
+          <button id="btn-user-profile" onclick="openModal('profileModal')" class="hidden w-7 h-7 rounded-full bg-gradient-to-tr from-purple-500 to-indigo-500 flex items-center justify-center text-white font-bold text-xs shadow-md">
+            <span id="user-avatar-initial">U</span>
           </button>
         </div>
+      </div>
+    </header>
 
-        <!-- User Controls / Auth Buttons -->
-        <div class="flex items-center gap-3">
-          <!-- When Logged Out -->
-          <div id="auth-buttons-logged-out" class="flex items-center gap-2">
-            <button onclick="openModal('loginModal')" class="px-4 py-2 rounded-lg text-sm font-semibold text-slate-300 hover:text-white transition">Login</button>
-            <button onclick="openModal('registerModal')" class="px-4 py-2 rounded-lg text-sm font-bold bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 shadow-md shadow-amber-500/20 transition">Register</button>
+
+    <!-- ========================================================
+         VIEW 1: HOME PAGE (Matches 2nd Uploaded Image)
+         ======================================================== -->
+    <main id="view-home" class="page-view flex-1 flex flex-col">
+      <!-- TOP ATMOSPHERIC MESH & SECURITY ASSURANCE -->
+      <section class="home-header-atmosphere pt-4 pb-2 px-3">
+        <!-- Security statement (from Image 2) -->
+        <p class="text-[11px] leading-relaxed text-slate-200/90 text-center font-normal px-2 mb-4">
+          We know the importance of security, so we use layers of encryption and security measures to ensure that your account and assets are secure.
+        </p>
+
+        <!-- 5 Circular Action Buttons (Image 2) -->
+        <div class="grid grid-cols-5 gap-1.5 text-center my-2">
+          <!-- 1. Recharge -->
+          <div onclick="openRechargeModal()" class="flex flex-col items-center cursor-pointer group">
+            <div class="circle-action-btn bg-gradient-to-tr from-[#ff4e91] to-[#ff7675] shadow-lg shadow-pink-500/30 group-hover:scale-105">
+              <!-- Coins + icon -->
+              <svg class="w-6 h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="9"/>
+                <path d="M12 8v8"/>
+                <path d="M8 12h8"/>
+              </svg>
+            </div>
+            <span class="text-[11px] font-medium text-white mt-1.5">Recharge</span>
           </div>
 
-          <!-- When Logged In -->
-          <div id="auth-buttons-logged-in" class="hidden flex items-center gap-3">
-            <div class="text-right hidden sm:block">
-              <div id="user-display-name" class="text-sm font-bold text-slate-200">User</div>
-              <div class="flex items-center gap-1.5 justify-end">
-                <span id="user-display-role" class="text-[10px] px-1.5 py-0.5 rounded bg-brand-cyan/20 text-brand-cyan font-bold uppercase">User</span>
-                <span id="user-ref-code" class="text-[11px] text-slate-400 font-mono">CAT000</span>
+          <!-- 2. Withdrawal -->
+          <div onclick="openWithdrawModal()" class="flex flex-col items-center cursor-pointer group">
+            <div class="circle-action-btn bg-gradient-to-tr from-[#0984e3] to-[#00cec9] shadow-lg shadow-cyan-500/30 group-hover:scale-105">
+              <!-- Coins - icon -->
+              <svg class="w-6 h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="9"/>
+                <path d="M8 12h8"/>
+              </svg>
+            </div>
+            <span class="text-[11px] font-medium text-white mt-1.5">Withdrawal</span>
+          </div>
+
+          <!-- 3. Signal -->
+          <div onclick="openSignalModal()" class="flex flex-col items-center cursor-pointer group">
+            <div class="circle-action-btn bg-gradient-to-tr from-[#6c5ce7] to-[#a29bfe] shadow-lg shadow-purple-500/30 group-hover:scale-105">
+              <!-- Satellite dish / signal icon -->
+              <svg class="w-6 h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 10a7.5 7.5 0 0 0 10 10"/>
+                <path d="M4 14a3.5 3.5 0 0 0 4 4"/>
+                <circle cx="4" cy="20" r="1"/>
+                <path d="m14 4 6 6"/>
+                <path d="m17 7-3-3"/>
+              </svg>
+            </div>
+            <span class="text-[11px] font-medium text-white mt-1.5">Signal</span>
+          </div>
+
+          <!-- 4. Service -->
+          <div onclick="openServiceModal()" class="flex flex-col items-center cursor-pointer group">
+            <div class="circle-action-btn bg-gradient-to-tr from-[#00b894] to-[#55efc4] shadow-lg shadow-teal-500/30 group-hover:scale-105">
+              <!-- Phone / customer service icon -->
+              <svg class="w-6 h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+              </svg>
+            </div>
+            <span class="text-[11px] font-medium text-white mt-1.5">Service</span>
+          </div>
+
+          <!-- 5. Invite -->
+          <div onclick="openInviteModal()" class="flex flex-col items-center cursor-pointer group">
+            <div class="circle-action-btn bg-gradient-to-tr from-[#fdcb6e] to-[#e17055] shadow-lg shadow-amber-500/30 group-hover:scale-105">
+              <!-- User + icon -->
+              <svg class="w-6 h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                <circle cx="9" cy="7" r="4"/>
+                <line x1="19" y1="8" x2="19" y2="14"/>
+                <line x1="22" y1="11" x2="16" y2="11"/>
+              </svg>
+            </div>
+            <span class="text-[11px] font-medium text-white mt-1.5">Invite</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ANNOUNCEMENT TICKER CAPSULE (Image 2) -->
+      <section class="px-3 my-2">
+        <div class="bg-[#12141c] border border-[#222838] rounded-full px-3.5 py-2 flex items-center justify-between shadow-inner">
+          <div class="flex items-center gap-2 overflow-hidden flex-1 mr-2">
+            <i data-lucide="bell" class="w-4 h-4 text-amber-400 shrink-0"></i>
+            <div class="ticker-wrap flex-1">
+              <span class="ticker-content text-[11px] text-slate-200 font-medium">
+                Welcome to the official BNV trading platform &bull; High Frequency AI Trading &bull; Instant 0% Withdrawal Payouts &bull; Daily ROI Active &bull;
+              </span>
+            </div>
+          </div>
+          <button onclick="openNoticeModal()" class="text-slate-400 hover:text-white shrink-0">
+            <i data-lucide="menu" class="w-4 h-4"></i>
+          </button>
+        </div>
+      </section>
+
+      <!-- 2 PROMOTIONAL BANNERS SIDE-BY-SIDE (Image 2) -->
+      <section class="px-3 my-2 grid grid-cols-2 gap-2.5">
+        <!-- Banner 1: BNV Guide -->
+        <div onclick="openBnvGuideModal()" class="banner-guide rounded-2xl p-3.5 relative overflow-hidden flex flex-col justify-between min-h-[145px] shadow-lg cursor-pointer group hover:brightness-105 transition">
+          <div class="relative z-10">
+            <h4 class="font-serif font-bold text-white text-[15px] tracking-wide drop-shadow-md">BNV Guide</h4>
+          </div>
+          
+          <!-- 3D Graphic Graphic Area -->
+          <div class="absolute right-1 bottom-3 w-20 h-20 opacity-90 pointer-events-none group-hover:scale-110 transition duration-300">
+            <svg viewBox="0 0 100 100" fill="none" class="w-full h-full drop-shadow-xl">
+              <!-- Laptop / Browser screen -->
+              <rect x="25" y="20" width="60" height="42" rx="4" fill="#ffffff" stroke="#ff4500" stroke-width="2"/>
+              <rect x="25" y="20" width="60" height="10" fill="#ff4500"/>
+              <circle cx="32" cy="25" r="2" fill="#ffffff"/>
+              <circle cx="38" cy="25" r="2" fill="#ffffff"/>
+              <rect x="30" y="36" width="30" height="4" rx="2" fill="#ff7675"/>
+              <rect x="30" y="44" width="40" height="4" rx="2" fill="#fab1a0"/>
+              <!-- Megaphone / Speaker -->
+              <path d="M10 50 L35 38 L35 62 L10 50 Z" fill="#ffeaa7" stroke="#d63031" stroke-width="2"/>
+              <ellipse cx="35" cy="50" rx="3" ry="12" fill="#ff7675"/>
+              <!-- Pointing Hand -->
+              <ellipse cx="65" cy="72" rx="8" ry="12" fill="#ffeaa7" transform="rotate(-20 65 72)"/>
+              <rect x="58" y="60" width="6" height="15" rx="3" fill="#ffeaa7"/>
+            </svg>
+          </div>
+
+          <div class="relative z-10 mt-auto">
+            <span class="inline-flex items-center px-3 py-1 rounded-full bg-gradient-to-r from-red-600 to-orange-500 text-[10px] font-bold text-white shadow-md">
+              Go &gt;&gt;
+            </span>
+          </div>
+        </div>
+
+        <!-- Banner 2: Receive red envelope -->
+        <div onclick="openRedEnvelopeModal()" class="banner-envelope rounded-2xl p-3.5 relative overflow-hidden flex flex-col justify-between min-h-[145px] shadow-lg cursor-pointer group hover:brightness-105 transition">
+          <div class="relative z-10">
+            <h4 class="font-serif font-bold text-white text-[15px] tracking-wide drop-shadow-md">Receive red envelope</h4>
+          </div>
+
+          <!-- 3D Graphic Graphic Area -->
+          <div class="absolute right-0 bottom-2 w-24 h-22 opacity-95 pointer-events-none group-hover:scale-110 transition duration-300">
+            <svg viewBox="0 0 110 100" fill="none" class="w-full h-full drop-shadow-2xl">
+              <!-- Treasure box / box base -->
+              <rect x="25" y="55" width="65" height="35" rx="5" fill="#d63031" stroke="#ff7675" stroke-width="1.5"/>
+              <!-- Gold Coins inside -->
+              <circle cx="55" cy="52" r="7" fill="#f1c40f" stroke="#e67e22" stroke-width="1.5"/>
+              <circle cx="68" cy="54" r="6" fill="#f39c12"/>
+              <circle cx="43" cy="55" r="6" fill="#f1c40f"/>
+              <!-- Red Envelopes standing -->
+              <g transform="rotate(-15 45 40)">
+                <rect x="30" y="20" width="30" height="42" rx="4" fill="#e74c3c" stroke="#ffeaa7" stroke-width="1"/>
+                <circle cx="45" cy="38" r="5" fill="#f1c40f"/>
+              </g>
+              <g transform="rotate(15 70 38)">
+                <rect x="55" y="18" width="28" height="40" rx="4" fill="#c0392b" stroke="#ffeaa7" stroke-width="1"/>
+                <circle cx="69" cy="35" r="5" fill="#f1c40f"/>
+              </g>
+              <!-- Flying coin -->
+              <circle cx="35" cy="30" r="4" fill="#ffd700" stroke="#f39c12" stroke-width="1"/>
+            </svg>
+          </div>
+
+          <div class="relative z-10 mt-auto">
+            <span class="inline-flex items-center px-3 py-1 rounded-full bg-gradient-to-r from-red-700 to-orange-600 text-[10px] font-bold text-white shadow-md">
+              Go &gt;&gt;
+            </span>
+          </div>
+        </div>
+      </section>
+
+      <!-- 3 MARKET TICKER CARDS (Image 2) -->
+      <section class="px-3 my-2.5 grid grid-cols-3 gap-2">
+        <!-- 1. BTC Card -->
+        <div onclick="navigate('quotes')" class="bg-gradient-to-br from-[#ff5b79] via-[#ff6b6b] to-[#ff8c61] rounded-2xl p-2.5 text-white shadow-lg cursor-pointer transform active:scale-95 transition">
+          <div class="flex items-center gap-1.5">
+            <div class="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center font-bold text-[10px]">
+              <i data-lucide="bitcoin" class="w-3.5 h-3.5 text-white"></i>
+            </div>
+            <span class="font-bold text-xs">BTC</span>
+          </div>
+          <div id="home-btc-price" class="font-bold text-sm tracking-tight mt-1.5 mb-1">$85129.4</div>
+          <div class="flex items-center justify-between">
+            <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#14532d]/80 text-[#4ade80]">+0.35%</span>
+            <span class="text-xs">🔥</span>
+          </div>
+        </div>
+
+        <!-- 2. ETH Card -->
+        <div onclick="navigate('quotes')" class="bg-gradient-to-br from-[#2b70f7] via-[#3b82f6] to-[#60a5fa] rounded-2xl p-2.5 text-white shadow-lg cursor-pointer transform active:scale-95 transition">
+          <div class="flex items-center gap-1.5">
+            <div class="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center font-bold text-[10px]">
+              <svg class="w-3 h-3 text-white" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 1.5l7 11.5-7 4-7-4 7-11.5z"/>
+                <path d="M12 17.5l7-4-7 10-7-10 7 4z"/>
+              </svg>
+            </div>
+            <span class="font-bold text-xs">ETH</span>
+          </div>
+          <div id="home-eth-price" class="font-bold text-sm tracking-tight mt-1.5 mb-1">$2700.71</div>
+          <div class="flex items-center justify-between">
+            <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#14532d]/80 text-[#4ade80]">+0.75%</span>
+            <span class="text-xs">🔥</span>
+          </div>
+        </div>
+
+        <!-- 3. ETC Card -->
+        <div onclick="navigate('quotes')" class="bg-gradient-to-br from-[#0ba38f] via-[#10b981] to-[#34d399] rounded-2xl p-2.5 text-white shadow-lg cursor-pointer transform active:scale-95 transition">
+          <div class="flex items-center gap-1.5">
+            <div class="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center font-bold text-[10px]">
+              <svg class="w-3 h-3 text-white" viewBox="0 0 24 24" fill="currentColor">
+                <polygon points="12,2 22,8.5 22,15.5 12,22 2,15.5 2,8.5"/>
+              </svg>
+            </div>
+            <span class="font-bold text-xs">ETC</span>
+          </div>
+          <div id="home-etc-price" class="font-bold text-sm tracking-tight mt-1.5 mb-1">$8.8362</div>
+          <div class="flex items-center justify-between">
+            <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#7f1d1d]/80 text-[#f87171]">-0.22%</span>
+            <span class="text-xs">🔥</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- TRENDING STOCKS SECTION (Image 2) -->
+      <section class="px-3 my-3">
+        <div class="flex items-center justify-between mb-2">
+          <h3 class="text-sm font-bold text-white tracking-wide">Trending Stocks</h3>
+          <span class="text-[10px] text-slate-400">Realtime Feed</span>
+        </div>
+
+        <!-- Crypto List Items -->
+        <div class="space-y-2">
+          <!-- Item 1: BTC -->
+          <div class="bg-[#12141c] border border-[#1e2332] rounded-xl p-3 flex items-center justify-between hover:border-slate-700 transition">
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center">
+                <i data-lucide="bitcoin" class="w-5 h-5"></i>
+              </div>
+              <div>
+                <div class="font-bold text-white text-xs">BTC</div>
+                <div class="text-[10px] text-slate-500 font-mono">24H amount 299011.569</div>
               </div>
             </div>
-            <button onclick="logout()" title="Logout" class="p-2 rounded-lg bg-slate-800/80 hover:bg-rose-500/20 hover:text-rose-400 border border-slate-700 transition">
-              <i data-lucide="log-out" class="w-4 h-4"></i>
+            <div class="text-right">
+              <div class="font-bold text-xs text-white" id="list-btc-price">$85,129.40</div>
+              <span class="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">+0.35%</span>
+            </div>
+          </div>
+
+          <!-- Item 2: ETH -->
+          <div class="bg-[#12141c] border border-[#1e2332] rounded-xl p-3 flex items-center justify-between hover:border-slate-700 transition">
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center">
+                <svg class="w-4 h-4 text-blue-400" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 1.5l7 11.5-7 4-7-4 7-11.5z"/>
+                  <path d="M12 17.5l7-4-7 10-7-10 7 4z"/>
+                </svg>
+              </div>
+              <div>
+                <div class="font-bold text-white text-xs">ETH</div>
+                <div class="text-[10px] text-slate-500 font-mono">24H amount 209610.005</div>
+              </div>
+            </div>
+            <div class="text-right">
+              <div class="font-bold text-xs text-white" id="list-eth-price">$2,700.71</div>
+              <span class="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">+0.75%</span>
+            </div>
+          </div>
+
+          <!-- Item 3: SOL -->
+          <div class="bg-[#12141c] border border-[#1e2332] rounded-xl p-3 flex items-center justify-between hover:border-slate-700 transition">
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 rounded-full bg-purple-500/20 text-purple-400 flex items-center justify-center">
+                <i data-lucide="zap" class="w-4 h-4 text-purple-400"></i>
+              </div>
+              <div>
+                <div class="font-bold text-white text-xs">SOL</div>
+                <div class="text-[10px] text-slate-500 font-mono">24H amount 152840.800</div>
+              </div>
+            </div>
+            <div class="text-right">
+              <div class="font-bold text-xs text-white">$182.45</div>
+              <span class="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">+2.84%</span>
+            </div>
+          </div>
+
+          <!-- Item 4: BNB -->
+          <div class="bg-[#12141c] border border-[#1e2332] rounded-xl p-3 flex items-center justify-between hover:border-slate-700 transition">
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 rounded-full bg-yellow-500/20 text-yellow-400 flex items-center justify-center font-bold text-[10px]">
+                BNB
+              </div>
+              <div>
+                <div class="font-bold text-white text-xs">BNB</div>
+                <div class="text-[10px] text-slate-500 font-mono">24H amount 98200.450</div>
+              </div>
+            </div>
+            <div class="text-right">
+              <div class="font-bold text-xs text-white">$592.50</div>
+              <span class="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">+1.12%</span>
+            </div>
+          </div>
+
+          <!-- Item 5: DOGE -->
+          <div class="bg-[#12141c] border border-[#1e2332] rounded-xl p-3 flex items-center justify-between hover:border-slate-700 transition">
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 rounded-full bg-amber-500/20 text-amber-300 flex items-center justify-center font-bold text-[10px]">
+                Ð
+              </div>
+              <div>
+                <div class="font-bold text-white text-xs">DOGE</div>
+                <div class="text-[10px] text-slate-500 font-mono">24H amount 670410.200</div>
+              </div>
+            </div>
+            <div class="text-right">
+              <div class="font-bold text-xs text-white">$0.1480</div>
+              <span class="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">+4.12%</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Quick Platform Stats Footer -->
+      <section class="px-3 my-3">
+        <div class="bg-gradient-to-r from-[#151922] via-[#1a1f2c] to-[#151922] border border-[#232a3b] rounded-xl p-3 text-center">
+          <div class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Trading Security & Guarantee</div>
+          <div class="text-xs text-slate-200 mt-1">256-Bit SSL &bull; Cold Wallet Reserves &bull; 0% Fee Withdrawals</div>
+        </div>
+      </section>
+    </main>
+
+
+    <!-- ========================================================
+         VIEW 2: QUOTES PAGE (Requirement 2: Plan Presentation in UI)
+         ======================================================== -->
+    <main id="view-quotes" class="page-view hidden flex-1 flex flex-col px-3 py-3 space-y-4">
+      <!-- HERO BANNER -->
+      <div class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#121624] via-[#182033] to-[#0d1017] border border-[#232c42] p-4 shadow-xl">
+        <div class="flex items-center justify-between mb-1">
+          <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#ff4e91]/20 text-[#ff4e91] border border-[#ff4e91]/30">
+            OFFICIAL PRESENTATION
+          </span>
+          <span class="text-[10px] text-emerald-400 font-bold flex items-center gap-1">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Active Plans
+          </span>
+        </div>
+        <h2 class="text-lg font-heading font-extrabold text-white mt-1">
+          Catalyst Capital Plan Presentation
+        </h2>
+        <p class="text-xs text-slate-300 mt-0.5">
+          High-Yield Daily ROI, Multi-Tier Referral Income & Instant Team Commissions.
+        </p>
+      </div>
+
+      <!-- COMPANY PROFILE & REGULATORY CERTIFICATE -->
+      <div class="bg-[#10131b] border border-[#1d2332] rounded-2xl p-4 space-y-3">
+        <div class="flex items-center gap-2 border-b border-slate-800 pb-2">
+          <div class="w-6 h-6 rounded bg-amber-500/20 text-amber-400 flex items-center justify-center">
+            <i data-lucide="shield-check" class="w-4 h-4"></i>
+          </div>
+          <div>
+            <h3 class="text-xs font-bold text-white">Company Profile & Registration</h3>
+            <p class="text-[10px] text-slate-400">Catalyst Capital Partners Private Limited</p>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2 text-[11px]">
+          <div class="bg-black/50 p-2 rounded-lg border border-slate-800/80">
+            <span class="text-slate-400 block text-[9px] uppercase">Corporate ID (CIN)</span>
+            <span class="font-mono text-cyan-300 font-bold text-[10px]">U64990MH2023PTC400683</span>
+          </div>
+          <div class="bg-black/50 p-2 rounded-lg border border-slate-800/80">
+            <span class="text-slate-400 block text-[9px] uppercase">SEBI Reg No.</span>
+            <span class="font-mono text-amber-300 font-bold text-[10px]">INM00013129</span>
+          </div>
+          <div class="bg-black/50 p-2 rounded-lg border border-slate-800/80">
+            <span class="text-slate-400 block text-[9px] uppercase">Incorporation</span>
+            <span class="text-white font-medium">12 April 2023</span>
+          </div>
+          <div class="bg-black/50 p-2 rounded-lg border border-slate-800/80">
+            <span class="text-slate-400 block text-[9px] uppercase">Authorized Capital</span>
+            <span class="text-emerald-400 font-bold">INR 7.50 Crore</span>
+          </div>
+        </div>
+
+        <div class="text-[10px] text-slate-400 bg-slate-900/60 p-2.5 rounded-lg border border-slate-800 leading-relaxed">
+          <strong class="text-slate-300 block mb-1">Core Business Verticals:</strong>
+          &bull; <strong>Capital Markets Advisory:</strong> IPO/FPO Management, SME Platform Listings.<br>
+          &bull; <strong>Corporate Finance:</strong> Debt Syndication, Financial Restructuring.<br>
+          &bull; <strong>Strategic Advisors:</strong> Mergers & Acquisitions (M&A), Buybacks.
+        </div>
+      </div>
+
+      <!-- OFFICIAL INVESTMENT PACKAGES (Plans 1 to 6 from brochure) -->
+      <div>
+        <div class="flex items-center justify-between mb-2 px-1">
+          <h3 class="text-sm font-bold text-white">Investment Packages ($25 - $350)</h3>
+          <span class="text-[10px] text-cyan-400 font-medium">0% Withdrawal Fee</span>
+        </div>
+
+        <!-- Dynamic Plans Container -->
+        <div id="presentation-plans-grid" class="space-y-3">
+          <!-- Rendered via JS -->
+        </div>
+      </div>
+
+      <!-- 3 INCOME STREAMS COMPENSATION ARCHITECTURE -->
+      <div class="bg-[#10131b] border border-[#1d2332] rounded-2xl p-4 space-y-3">
+        <h3 class="text-xs font-bold text-white flex items-center gap-1.5">
+          <i data-lucide="layers" class="w-4 h-4 text-[#ff4e91]"></i> 3 Powerful Income Streams
+        </h3>
+
+        <!-- Stream 1 -->
+        <div class="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800 text-[11px] space-y-1">
+          <div class="flex items-center justify-between font-bold text-emerald-400">
+            <span>1. Daily ROI Income</span>
+            <span class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400">Every 24 Hours</span>
+          </div>
+          <p class="text-[10px] text-slate-300">
+            Returns calculated daily based on your chosen package duration. Credited straight to your ROI Wallet.
+          </p>
+        </div>
+
+        <!-- Stream 2 -->
+        <div class="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800 text-[11px] space-y-1">
+          <div class="flex items-center justify-between font-bold text-cyan-400">
+            <span>2. Referral Income (ROI of ROI)</span>
+            <span class="text-[10px] px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-400">Continuous Daily</span>
+          </div>
+          <div class="grid grid-cols-3 gap-1 text-[10px] text-center pt-1">
+            <div class="p-1 rounded bg-black/40 border border-cyan-500/30">
+              <span class="text-slate-400 block text-[9px]">Level 1</span>
+              <span class="font-bold text-cyan-300">10% Daily</span>
+            </div>
+            <div class="p-1 rounded bg-black/40 border border-cyan-500/30">
+              <span class="text-slate-400 block text-[9px]">Level 2</span>
+              <span class="font-bold text-cyan-300">4% Daily</span>
+            </div>
+            <div class="p-1 rounded bg-black/40 border border-cyan-500/30">
+              <span class="text-slate-400 block text-[9px]">Level 3</span>
+              <span class="font-bold text-cyan-300">2% Daily</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Stream 3 -->
+        <div class="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800 text-[11px] space-y-1">
+          <div class="flex items-center justify-between font-bold text-amber-400">
+            <span>3. Team Commission (One-Time)</span>
+            <span class="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400">Instant Cash</span>
+          </div>
+          <div class="grid grid-cols-3 gap-1 text-[10px] text-center pt-1">
+            <div class="p-1 rounded bg-black/40 border border-amber-500/30">
+              <span class="text-slate-400 block text-[9px]">Level 1</span>
+              <span class="font-bold text-amber-300">6% Price</span>
+            </div>
+            <div class="p-1 rounded bg-black/40 border border-amber-500/30">
+              <span class="text-slate-400 block text-[9px]">Level 2</span>
+              <span class="font-bold text-amber-300">2% Price</span>
+            </div>
+            <div class="p-1 rounded bg-black/40 border border-amber-500/30">
+              <span class="text-slate-400 block text-[9px]">Level 3</span>
+              <span class="font-bold text-amber-300">1% Price</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- WITHDRAWAL POLICY TERMS -->
+      <div class="bg-[#10131b] border border-[#1d2332] rounded-2xl p-4 text-[11px] space-y-2">
+        <h4 class="font-bold text-white text-xs">Official Platform Rules</h4>
+        <div class="grid grid-cols-2 gap-2 text-[10px]">
+          <div class="p-2 rounded bg-black/40 border border-slate-800">
+            <span class="text-slate-400">Min Withdrawal:</span>
+            <span class="font-bold text-white block">15 USDT</span>
+          </div>
+          <div class="p-2 rounded bg-black/40 border border-slate-800">
+            <span class="text-slate-400">Withdrawal Fee:</span>
+            <span class="font-bold text-emerald-400 block">0% (Zero Fee)</span>
+          </div>
+          <div class="p-2 rounded bg-black/40 border border-slate-800">
+            <span class="text-slate-400">Payout Time:</span>
+            <span class="font-bold text-cyan-300 block">0 - 24 Hours</span>
+          </div>
+          <div class="p-2 rounded bg-black/40 border border-slate-800">
+            <span class="text-slate-400">Joining Range:</span>
+            <span class="font-bold text-amber-300 block">$25 - $5000 USDT</span>
+          </div>
+        </div>
+      </div>
+    </main>
+
+
+    <!-- ========================================================
+         VIEW 3: TEAM PAGE (Network, Downline & Directs)
+         ======================================================== -->
+    <main id="view-team" class="page-view hidden flex-1 flex flex-col px-3 py-3 space-y-4">
+      <!-- Downline Stats Summary -->
+      <div class="bg-[#11141c] border border-[#1e2433] rounded-2xl p-4 space-y-3">
+        <div class="flex items-center justify-between">
+          <h3 class="text-sm font-bold text-white">My Community & Team</h3>
+          <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-[#ff4e91]/20 text-[#ff4e91]">3 Levels Active</span>
+        </div>
+
+        <div class="grid grid-cols-3 gap-2 text-center">
+          <div class="bg-black/50 p-2.5 rounded-xl border border-slate-800">
+            <span class="text-[10px] text-slate-400 block">Total Team</span>
+            <span id="team-total-count" class="text-lg font-extrabold text-white font-mono">0</span>
+          </div>
+          <div class="bg-black/50 p-2.5 rounded-xl border border-slate-800">
+            <span class="text-[10px] text-slate-400 block">Direct Members</span>
+            <span id="team-directs-count" class="text-lg font-extrabold text-cyan-400 font-mono">0</span>
+          </div>
+          <div class="bg-black/50 p-2.5 rounded-xl border border-slate-800">
+            <span class="text-[10px] text-slate-400 block">Team Volume</span>
+            <span id="team-volume-total" class="text-base font-extrabold text-amber-400 font-mono">$0.00</span>
+          </div>
+        </div>
+
+        <!-- 3 Levels Breakdown -->
+        <div class="grid grid-cols-3 gap-1.5 text-[10px] text-center pt-1">
+          <div class="p-2 rounded-lg bg-slate-900 border border-cyan-500/20">
+            <span class="text-cyan-400 font-bold block">Level 1 (Direct)</span>
+            <span id="team-l1-info" class="text-slate-300 font-mono">0 Users ($0)</span>
+          </div>
+          <div class="p-2 rounded-lg bg-slate-900 border border-purple-500/20">
+            <span class="text-purple-400 font-bold block">Level 2</span>
+            <span id="team-l2-info" class="text-slate-300 font-mono">0 Users ($0)</span>
+          </div>
+          <div class="p-2 rounded-lg bg-slate-900 border border-emerald-500/20">
+            <span class="text-emerald-400 font-bold block">Level 3</span>
+            <span id="team-l3-info" class="text-slate-300 font-mono">0 Users ($0)</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Referral Link & Invitation Card -->
+      <div class="bg-gradient-to-r from-[#171b26] to-[#12151e] border border-[#22293b] rounded-2xl p-4 space-y-3">
+        <h4 class="text-xs font-bold text-white flex items-center gap-1.5">
+          <i data-lucide="share-2" class="w-4 h-4 text-cyan-400"></i> My Referral Link
+        </h4>
+        <div class="flex items-center gap-2">
+          <input type="text" id="team-referral-input" readonly value="https://catalystcapital.com/?ref=CAT1001" class="bg-black/70 border border-slate-700 rounded-lg px-2.5 py-1.5 text-[11px] font-mono text-cyan-300 flex-1 truncate focus:outline-none">
+          <button onclick="copyTeamReferral()" class="px-3 py-1.5 rounded-lg bg-[#ff4e91] hover:bg-[#ff327e] text-white text-xs font-bold shrink-0 transition">
+            Copy
+          </button>
+        </div>
+        <p class="text-[10px] text-slate-400">Share your link to earn 6% instant commission + 10% daily ROI of ROI!</p>
+      </div>
+
+      <!-- Direct Referrals List -->
+      <div class="bg-[#11141c] border border-[#1e2433] rounded-2xl p-4 space-y-2">
+        <h4 class="text-xs font-bold text-white mb-2">Direct Team Members</h4>
+        <div id="team-members-list" class="space-y-2 text-xs">
+          <!-- Rendered via JS -->
+          <div class="text-center py-4 text-slate-500 text-xs">Loading team records...</div>
+        </div>
+      </div>
+
+      <!-- Interactive Genealogy Tree Toggle -->
+      <div class="bg-[#11141c] border border-[#1e2433] rounded-2xl p-4 space-y-3">
+        <div class="flex items-center justify-between">
+          <h4 class="text-xs font-bold text-white">Genealogy Tree View</h4>
+          <button onclick="toggleGenealogyTree()" id="tree-toggle-btn" class="px-2.5 py-1 rounded bg-slate-800 text-[10px] font-semibold text-slate-300">
+            Show Tree
+          </button>
+        </div>
+        <div id="team-tree-container" class="hidden overflow-x-auto py-3">
+          <div id="team-genealogy-tree"></div>
+        </div>
+      </div>
+    </main>
+
+
+    <!-- ========================================================
+         VIEW 4: HISTORY PAGE (Requirement 1: Bonus replaces with History)
+         ======================================================== -->
+    <main id="view-history" class="page-view hidden flex-1 flex flex-col px-3 py-3 space-y-3">
+      <!-- History Header -->
+      <div class="bg-[#11141c] border border-[#1e2433] rounded-2xl p-4">
+        <div class="flex items-center justify-between">
+          <div>
+            <h2 class="text-sm font-bold text-white">Transaction History</h2>
+            <p class="text-[10px] text-slate-400">Realtime ledger of earnings, deposits & withdrawals</p>
+          </div>
+          <button onclick="loadHistoryData()" class="p-2 rounded-lg bg-slate-800/80 text-slate-300 hover:text-white transition">
+            <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+          </button>
+        </div>
+
+        <!-- Filter Tabs -->
+        <div class="flex items-center gap-1.5 overflow-x-auto py-2.5 mt-2 scrollbar-none text-[10px]">
+          <button onclick="filterHistory('all')" class="history-filter-btn active px-3 py-1 rounded-full bg-[#ff4e91] text-white font-bold whitespace-nowrap">All</button>
+          <button onclick="filterHistory('daily_roi')" class="history-filter-btn px-3 py-1 rounded-full bg-slate-800 text-slate-400 hover:text-white font-medium whitespace-nowrap">Daily ROI</button>
+          <button onclick="filterHistory('referral_roi')" class="history-filter-btn px-3 py-1 rounded-full bg-slate-800 text-slate-400 hover:text-white font-medium whitespace-nowrap">Referral ROI</button>
+          <button onclick="filterHistory('team_commission')" class="history-filter-btn px-3 py-1 rounded-full bg-slate-800 text-slate-400 hover:text-white font-medium whitespace-nowrap">Team Bonus</button>
+          <button onclick="filterHistory('deposit')" class="history-filter-btn px-3 py-1 rounded-full bg-slate-800 text-slate-400 hover:text-white font-medium whitespace-nowrap">Recharge</button>
+          <button onclick="filterHistory('withdrawal')" class="history-filter-btn px-3 py-1 rounded-full bg-slate-800 text-slate-400 hover:text-white font-medium whitespace-nowrap">Withdrawal</button>
+        </div>
+      </div>
+
+      <!-- History List Items -->
+      <div id="history-items-container" class="space-y-2">
+        <div class="text-center py-10 text-slate-500 text-xs">Loading history records...</div>
+      </div>
+    </main>
+
+
+    <!-- ========================================================
+         VIEW 5: ASSETS PAGE (Requirement 4: Matches 3rd Uploaded Image)
+         ======================================================== -->
+    <main id="view-assets" class="page-view hidden flex-1 flex flex-col px-3 py-3 space-y-3">
+      <!-- TOP 3 ACTION BUTTONS (Image 3) -->
+      <div class="grid grid-cols-3 gap-2">
+        <!-- 1. Recharge Button -->
+        <button onclick="openRechargeModal()" class="pill-btn-pink-orange rounded-xl py-2.5 px-2 flex items-center justify-center gap-1.5 text-xs font-bold cursor-pointer">
+          <!-- Stack of coins + -->
+          <svg class="w-4 h-4 text-white shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="9"/>
+            <path d="M12 8v8"/>
+            <path d="M8 12h8"/>
+          </svg>
+          <span>Recharge</span>
+        </button>
+
+        <!-- 2. Withdraw Button -->
+        <button onclick="openWithdrawModal()" class="pill-btn-blue rounded-xl py-2.5 px-2 flex items-center justify-center gap-1.5 text-xs font-bold cursor-pointer">
+          <!-- Stack of coins - -->
+          <svg class="w-4 h-4 text-white shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="9"/>
+            <path d="M8 12h8"/>
+          </svg>
+          <span>Withdraw</span>
+        </button>
+
+        <!-- 3. My Task Button -->
+        <button onclick="openMyTaskModal()" class="pill-btn-teal rounded-xl py-2.5 px-2 flex items-center justify-center gap-1.5 text-xs font-bold cursor-pointer">
+          <!-- Bookmark / Star ribbon -->
+          <svg class="w-4 h-4 text-white shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/>
+            <polygon points="12 7 13.5 10 17 10.5 14.5 13 15 16.5 12 15 9 16.5 9.5 13 7 10.5 10.5 10" fill="currentColor"/>
+          </svg>
+          <span>My Task</span>
+        </button>
+      </div>
+
+      <!-- TOTAL ASSETS NEBULA CARD (Image 3) -->
+      <div class="assets-nebula-card rounded-2xl p-4 relative overflow-hidden">
+        <div class="relative z-10 flex justify-between items-start">
+          <div>
+            <span class="text-xs text-slate-300 font-normal">Total Assets</span>
+            <!-- Requirement 4: RS replaces with USDT! -->
+            <div id="asset-total-amount" class="text-3xl font-extrabold text-white tracking-tight mt-1 mb-4 font-mono">
+              0.00 USDT
+            </div>
+          </div>
+
+          <!-- 3D Floating Wallet graphic (Image 3) -->
+          <div class="w-24 h-20 -mr-2 -mt-1 pointer-events-none animate-float">
+            <svg viewBox="0 0 120 100" fill="none" class="w-full h-full drop-shadow-2xl">
+              <!-- Falling gold coin -->
+              <ellipse cx="98" cy="15" rx="7" ry="4" fill="#f1c40f" stroke="#e67e22" stroke-width="1"/>
+              <ellipse cx="106" cy="24" rx="6" ry="3.5" fill="#f39c12"/>
+              <!-- Cards in wallet -->
+              <g transform="rotate(8 75 40)">
+                <rect x="45" y="24" width="55" height="32" rx="4" fill="#9b59b6" stroke="#8e44ad" stroke-width="1"/>
+              </g>
+              <g transform="rotate(-6 65 45)">
+                <rect x="35" y="26" width="55" height="32" rx="4" fill="#e67e22" stroke="#d35400" stroke-width="1"/>
+              </g>
+              <!-- Front Wallet Pocket -->
+              <rect x="25" y="40" width="75" height="42" rx="6" fill="#1e272e" stroke="#485460" stroke-width="2"/>
+              <path d="M25 48 C 45 60, 80 60, 100 48" stroke="#485460" stroke-width="1.5" fill="none"/>
+              <!-- Cute smile sticker on wallet -->
+              <circle cx="42" cy="62" r="6" fill="#2ed573"/>
+              <path d="M39 63 Q 42 66 45 63" stroke="#1e272e" stroke-width="1" fill="none"/>
+              <!-- Open wallet flap badge -->
+              <circle cx="85" cy="42" r="8" fill="#34495e"/>
+              <path d="M82 40 L85 43 L88 40" stroke="#ffffff" stroke-width="1.5" fill="none"/>
+            </svg>
+          </div>
+        </div>
+
+        <!-- Sub Stats inside Asset Card (Image 3) -->
+        <div class="relative z-10 grid grid-cols-2 gap-2 pt-2 border-t border-slate-700/60 text-xs">
+          <div>
+            <span class="text-slate-400 block text-[11px]">Total Recharge</span>
+            <span id="asset-total-recharge" class="font-bold text-white text-xs font-mono">0.00 USDT</span>
+          </div>
+          <div class="text-right">
+            <span class="text-slate-400 block text-[11px]">Total withdrawal</span>
+            <span id="asset-total-withdrawal" class="font-bold text-white text-xs font-mono">0.00 USDT</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 6-GRID STATS BOXES (Image 3) -->
+      <div class="grid grid-cols-3 gap-2 text-left">
+        <!-- 1. Trading assets -->
+        <div class="stat-box-card">
+          <div class="text-[11px] text-slate-400 leading-tight">Trading assets</div>
+          <div id="stat-trading-assets" class="text-sm font-bold text-white mt-1.5 font-mono">0.00</div>
+        </div>
+
+        <!-- 2. Bonus Assets -->
+        <div class="stat-box-card">
+          <div class="text-[11px] text-slate-400 leading-tight">Bonus Assets</div>
+          <div id="stat-bonus-assets" class="text-sm font-bold text-white mt-1.5 font-mono">0.00</div>
+        </div>
+
+        <!-- 3. Accumulated Bonus -->
+        <div class="stat-box-card">
+          <div class="text-[11px] text-slate-400 leading-tight">Accumulated Bonus</div>
+          <div id="stat-accumulated-bonus" class="text-sm font-bold text-white mt-1.5 font-mono">0.00</div>
+        </div>
+
+        <!-- 4. Yesterday's income -->
+        <div class="stat-box-card">
+          <div class="text-[11px] text-slate-400 leading-tight">Yesterday's income</div>
+          <div id="stat-yesterday-income" class="text-xs font-bold text-white mt-1.5 font-mono">0.00 USDT</div>
+        </div>
+
+        <!-- 5. Today's income -->
+        <div class="stat-box-card">
+          <div class="text-[11px] text-slate-400 leading-tight">Today's income</div>
+          <div id="stat-today-income" class="text-xs font-bold text-white mt-1.5 font-mono">0.00 USDT</div>
+        </div>
+
+        <!-- 6. Current Profit Margin -->
+        <div class="stat-box-card">
+          <div class="text-[11px] text-slate-400 leading-tight">Current Profit Margin</div>
+          <div id="stat-profit-margin" class="text-sm font-bold text-white mt-1.5 font-mono">4.00%</div>
+        </div>
+      </div>
+
+      <!-- OFFICIAL GUIDANCE SECTION (Image 3) -->
+      <div class="official-guidance-card rounded-2xl p-4 relative overflow-hidden">
+        <div class="relative z-10 mb-3">
+          <h3 class="text-sm font-bold text-white tracking-wide">Official Guidance</h3>
+        </div>
+
+        <!-- Background 3D Pyramid graphic -->
+        <div class="absolute inset-0 flex items-center justify-center opacity-15 pointer-events-none">
+          <svg viewBox="0 0 200 200" fill="none" class="w-48 h-48">
+            <polygon points="100,20 180,160 20,160" fill="url(#pyramid-grad)" stroke="#ff4e91" stroke-width="1"/>
+            <line x1="100" y1="20" x2="100" y2="160" stroke="#ff4e91" stroke-width="1.5"/>
+            <defs>
+              <linearGradient id="pyramid-grad" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#ff4e91"/>
+                <stop offset="100%" stop-color="#3b82f6"/>
+              </linearGradient>
+            </defs>
+          </svg>
+        </div>
+
+        <!-- Guidance List Items -->
+        <div class="relative z-10 space-y-2.5">
+          <!-- Item 1: My Dedicated Customer Service -->
+          <div class="flex items-center justify-between p-2.5 rounded-xl bg-black/60 border border-slate-800">
+            <div class="flex items-center gap-2.5">
+              <!-- Golden Medal badge -->
+              <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-amber-400 to-yellow-600 p-0.5 shadow-md flex items-center justify-center shrink-0">
+                <div class="w-full h-full rounded-full bg-black flex items-center justify-center">
+                  <i data-lucide="headphones" class="w-4 h-4 text-amber-400"></i>
+                </div>
+              </div>
+              <span class="text-xs font-semibold text-slate-200">My Dedicated Customer Service</span>
+            </div>
+            <button onclick="openDedicatedSupportModal('Customer Service')" class="pill-btn-contact">
+              Contact
+            </button>
+          </div>
+
+          <!-- Item 2: My Business Manager -->
+          <div class="flex items-center justify-between p-2.5 rounded-xl bg-black/60 border border-slate-800">
+            <div class="flex items-center gap-2.5">
+              <!-- Golden Medal badge -->
+              <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-amber-400 to-yellow-600 p-0.5 shadow-md flex items-center justify-center shrink-0">
+                <div class="w-full h-full rounded-full bg-black flex items-center justify-center">
+                  <i data-lucide="award" class="w-4 h-4 text-amber-400"></i>
+                </div>
+              </div>
+              <span class="text-xs font-semibold text-slate-200">My Business Manager</span>
+            </div>
+            <button onclick="openDedicatedSupportModal('Business Manager')" class="pill-btn-contact">
+              Contact
             </button>
           </div>
         </div>
       </div>
-    </div>
+    </main>
+
+
+    <!-- ========================================================
+         VIEW 6: ADMIN CONTROL PANEL (For Admin User)
+         ======================================================== -->
+    <main id="view-admin" class="page-view hidden flex-1 flex flex-col px-3 py-3 space-y-4">
+      <div class="bg-gradient-to-r from-amber-950/60 to-slate-900 border border-amber-500/40 rounded-2xl p-4 space-y-3">
+        <div class="flex items-center justify-between">
+          <h2 class="text-sm font-bold text-amber-400 flex items-center gap-1.5">
+            <i data-lucide="shield-alert" class="w-4 h-4 text-amber-400"></i> Admin Master Control
+          </h2>
+          <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300">MASTER</span>
+        </div>
+        <p class="text-xs text-slate-300">System overview, withdrawal approvals, member balance adjustment & ROI cycles.</p>
+
+        <button onclick="triggerAdminDailyRoi()" class="w-full py-2.5 rounded-xl font-bold bg-amber-400 text-black hover:bg-amber-300 transition text-xs shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2">
+          <i data-lucide="play" class="w-4 h-4"></i> Trigger Daily ROI Cycle Now
+        </button>
+      </div>
+
+      <!-- Pending Withdrawals -->
+      <div class="bg-[#11141c] border border-[#1e2433] rounded-2xl p-4 space-y-3">
+        <h3 class="text-xs font-bold text-white">Pending Withdrawals (0% Fee)</h3>
+        <div id="admin-withdrawals-list" class="space-y-2 text-xs">
+          <!-- Rendered via JS -->
+          <div class="text-center py-4 text-slate-500 text-xs">No pending requests</div>
+        </div>
+      </div>
+
+      <!-- Users Management -->
+      <div class="bg-[#11141c] border border-[#1e2433] rounded-2xl p-4 space-y-3">
+        <h3 class="text-xs font-bold text-white">Platform Members</h3>
+        <div id="admin-users-list" class="space-y-2 text-xs">
+          <!-- Rendered via JS -->
+          <div class="text-center py-4 text-slate-500 text-xs">Loading members...</div>
+        </div>
+      </div>
+    </main>
+
+  </div> <!-- End Mobile Shell -->
+
+
+  <!-- ========================================================
+       BOTTOM NAVIGATION BAR (Matches Image 1 Exactly!)
+       1. Home | 2. Quotes | 3. Team | 4. History | 5. Assets
+       ======================================================== -->
+  <nav class="bottom-nav-bar grid grid-cols-5">
+    <!-- 1. Home Tab -->
+    <button onclick="navigate('home')" id="tab-home" class="bottom-tab active">
+      <svg class="tab-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+        <polyline points="9 22 9 12 15 12 15 22"/>
+      </svg>
+      <span>Home</span>
+    </button>
+
+    <!-- 2. Quotes Tab (Plan presentation in UI) -->
+    <button onclick="navigate('quotes')" id="tab-quotes" class="bottom-tab">
+      <svg class="tab-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="4" y="5" width="6" height="15" rx="1"/>
+        <path d="M7 11V8"/>
+        <path d="m5 10 2-2 2 2"/>
+        <rect x="14" y="8" width="6" height="12" rx="1"/>
+        <circle cx="17" cy="14" r="2"/>
+      </svg>
+      <span>Quotes</span>
+    </button>
+
+    <!-- 3. Team Tab -->
+    <button onclick="navigate('team')" id="tab-team" class="bottom-tab">
+      <svg class="tab-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+        <circle cx="9" cy="7" r="4"/>
+        <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+        <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+      </svg>
+      <span>Team</span>
+    </button>
+
+    <!-- 4. History Tab (Requirement 1: Bonus replaced with History) -->
+    <button onclick="navigate('history')" id="tab-history" class="bottom-tab">
+      <svg class="tab-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+        <polyline points="14 2 14 8 20 8"/>
+        <line x1="16" y1="13" x2="8" y2="13"/>
+        <line x1="16" y1="17" x2="8" y2="17"/>
+        <polyline points="10 9 9 9 8 9"/>
+      </svg>
+      <span>History</span>
+    </button>
+
+    <!-- 5. Assets Tab (Image 3) -->
+    <button onclick="navigate('assets')" id="tab-assets" class="bottom-tab">
+      <svg class="tab-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/>
+        <path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/>
+        <path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/>
+      </svg>
+      <span>Assets</span>
+    </button>
   </nav>
 
-  <!-- MAIN CONTAINER -->
-  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
 
-    <!-- ==================== DASHBOARD VIEW ==================== -->
-    <section id="view-dashboard" class="page-view space-y-6">
-      <!-- HERO WELCOME & REFERRAL LINK BAR -->
-      <div class="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#0c1f38] via-[#0d274c] to-[#0a192f] border border-brand-border p-6 shadow-xl">
-        <div class="absolute right-0 top-0 bottom-0 w-1/3 opacity-10 bg-no-repeat bg-right bg-contain" style="background-image: radial-gradient(circle at 100% 50%, #00d2ff 0%, transparent 60%);"></div>
-        <div class="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <div class="flex items-center gap-2">
-              <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse mr-1.5"></span> Live Platform
-              </span>
-              <span id="sponsor-badge" class="text-xs text-slate-400">Sponsor: <span class="font-mono text-brand-cyan" id="sponsor-name">None</span></span>
-            </div>
-            <h1 class="text-2xl sm:text-3xl font-heading font-extrabold text-white mt-1">
-              Welcome back, <span id="welcome-username" class="text-brand-cyan">Investor</span>!
-            </h1>
-            <p class="text-sm text-slate-400">Catalyst Capital automated daily ROI and 3-Tier Multi-Level wealth acceleration platform.</p>
-          </div>
+  <!-- ==================== MODALS & POPUPS ==================== -->
 
-          <!-- Referral Link Box -->
-          <div class="bg-brand-dark/80 backdrop-blur-sm border border-brand-border rounded-xl p-3 sm:max-w-md w-full">
-            <div class="text-xs text-slate-400 mb-1 flex items-center justify-between">
-              <span class="font-semibold text-amber-400 flex items-center gap-1">
-                <i data-lucide="share-2" class="w-3.5 h-3.5"></i> Your Referral Link
-              </span>
-              <span class="text-[10px] text-slate-500">Earn 10% ROI of ROI + 6% Team Comm</span>
-            </div>
-            <div class="flex items-center gap-2">
-              <input id="referral-link-input" type="text" readonly class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-cyan-300 font-mono focus:outline-none" value="...">
-              <button onclick="copyReferralLink()" class="px-3 py-1.5 bg-brand-cyan/20 hover:bg-brand-cyan/30 text-brand-cyan border border-brand-cyan/40 rounded-lg text-xs font-bold transition flex items-center gap-1 shrink-0">
-                <i data-lucide="copy" class="w-3.5 h-3.5"></i> Copy
-              </button>
-            </div>
-          </div>
+  <!-- RECHARGE / DEPOSIT MODAL -->
+  <div id="rechargeModal" class="modal fixed inset-0 z-50 bg-black/85 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-[#12151e] border border-[#23293a] rounded-2xl max-w-sm w-full p-5 shadow-2xl relative">
+      <button onclick="closeModal('rechargeModal')" class="absolute right-4 top-4 text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+      <div class="text-center mb-4">
+        <div class="w-10 h-10 rounded-full bg-gradient-to-tr from-[#ff4e91] to-[#ff7675] flex items-center justify-center mx-auto mb-2 text-white shadow-lg shadow-pink-500/30">
+          <i data-lucide="arrow-down-to-dot" class="w-5 h-5"></i>
+        </div>
+        <h3 class="text-base font-bold text-white">Recharge Balance (USDT)</h3>
+        <p class="text-xs text-slate-400">Scan QR or transfer to official TRC20 address</p>
+      </div>
+
+      <!-- Deposit Address & QR -->
+      <div class="bg-black/60 border border-slate-800 rounded-xl p-3 text-center my-3">
+        <div class="w-32 h-32 mx-auto bg-white p-2 rounded-lg flex items-center justify-center mb-2">
+          <!-- QR Code Image -->
+          <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=TYDzsXDvGgT3vXkX7q5sK8y1jN9pLmQ6wZ" alt="USDT TRC20 QR Code" class="w-full h-full object-contain">
+        </div>
+        <span class="text-[10px] text-slate-400 uppercase tracking-wider block mb-1">Official TRC20 Address</span>
+        <div class="flex items-center justify-between bg-slate-900 px-2 py-1.5 rounded text-[11px] font-mono text-cyan-300">
+          <span class="truncate mr-1" id="recharge-address-display">TYDzsXDvGgT3vXkX7q5sK8y1jN9pLmQ6wZ</span>
+          <button onclick="copyToClipboard('TYDzsXDvGgT3vXkX7q5sK8y1jN9pLmQ6wZ')" class="text-slate-300 hover:text-white font-sans text-[10px] bg-slate-800 px-2 py-0.5 rounded">Copy</button>
         </div>
       </div>
 
-      <!-- WALLET & EARNINGS KPI STATS GRID -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <!-- Deposit Balance -->
-        <div class="bg-brand-card border border-brand-border rounded-xl p-5 relative overflow-hidden group hover:border-brand-cyan/50 transition">
-          <div class="flex items-center justify-between">
-            <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Deposit Wallet</span>
-            <div class="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center border border-blue-500/20">
-              <i data-lucide="arrow-down-circle" class="w-4 h-4"></i>
-            </div>
-          </div>
-          <div class="mt-3 flex items-baseline gap-2">
-            <span class="text-2xl sm:text-3xl font-heading font-extrabold text-white" id="stat-deposit-bal">$0.00</span>
-            <span class="text-xs text-slate-400">USDT</span>
-          </div>
-          <div class="mt-3 flex items-center justify-between text-xs pt-3 border-t border-slate-800">
-            <button onclick="navigate('wallet')" class="text-brand-cyan hover:underline font-semibold flex items-center gap-1">
-              + Deposit Funds <i data-lucide="chevron-right" class="w-3 h-3"></i>
-            </button>
-            <span class="text-[11px] text-slate-500">For package activation</span>
-          </div>
-        </div>
-
-        <!-- Daily ROI Income -->
-        <div class="bg-brand-card border border-brand-border rounded-xl p-5 relative overflow-hidden group hover:border-emerald-500/50 transition">
-          <div class="flex items-center justify-between">
-            <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Daily ROI Wallet</span>
-            <div class="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20">
-              <i data-lucide="trending-up" class="w-4 h-4"></i>
-            </div>
-          </div>
-          <div class="mt-3 flex items-baseline gap-2">
-            <span class="text-2xl sm:text-3xl font-heading font-extrabold text-emerald-400" id="stat-roi-bal">$0.00</span>
-            <span class="text-xs text-slate-400">USDT</span>
-          </div>
-          <div class="mt-3 flex items-center justify-between text-xs pt-3 border-t border-slate-800">
-            <span class="text-slate-400">Expected Daily:</span>
-            <span class="font-bold text-emerald-400" id="stat-daily-expected">+$0.00 / day</span>
-          </div>
-        </div>
-
-        <!-- Commission Wallet (ROI of ROI + Team Commission) -->
-        <div class="bg-brand-card border border-brand-border rounded-xl p-5 relative overflow-hidden group hover:border-brand-gold/50 transition">
-          <div class="flex items-center justify-between">
-            <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Commission Wallet</span>
-            <div class="w-8 h-8 rounded-lg bg-amber-500/10 text-brand-gold flex items-center justify-center border border-amber-500/20">
-              <i data-lucide="award" class="w-4 h-4"></i>
-            </div>
-          </div>
-          <div class="mt-3 flex items-baseline gap-2">
-            <span class="text-2xl sm:text-3xl font-heading font-extrabold text-brand-gold" id="stat-commission-bal">$0.00</span>
-            <span class="text-xs text-slate-400">USDT</span>
-          </div>
-          <div class="mt-3 flex items-center justify-between text-xs pt-3 border-t border-slate-800">
-            <span class="text-slate-400">Team & Referral:</span>
-            <span class="font-bold text-amber-300">3 Levels Active</span>
-          </div>
-        </div>
-
-        <!-- Total Withdrawable / Withdrawn -->
-        <div class="bg-brand-card border border-brand-border rounded-xl p-5 relative overflow-hidden group hover:border-purple-500/50 transition">
-          <div class="flex items-center justify-between">
-            <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Total Withdrawable</span>
-            <div class="w-8 h-8 rounded-lg bg-purple-500/10 text-purple-400 flex items-center justify-center border border-purple-500/20">
-              <i data-lucide="arrow-up-right" class="w-4 h-4"></i>
-            </div>
-          </div>
-          <div class="mt-3 flex items-baseline gap-2">
-            <span class="text-2xl sm:text-3xl font-heading font-extrabold text-cyan-300" id="stat-total-withdrawable">$0.00</span>
-            <span class="text-xs text-slate-400">USDT</span>
-          </div>
-          <div class="mt-3 flex items-center justify-between text-xs pt-3 border-t border-slate-800">
-            <span class="text-slate-400">Min: 15 USDT (0% fee)</span>
-            <button onclick="navigate('wallet')" class="text-purple-400 hover:underline font-semibold">Withdraw</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- CATALYST CAPITAL 3-TIER MLM REWARD STRUCTURE BANNER -->
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <!-- Referral Income (ROI of ROI) Card -->
-        <div class="bg-gradient-to-br from-[#07172b] to-[#0c2242] border border-cyan-500/30 rounded-2xl p-5 shadow-lg relative">
-          <div class="flex items-center justify-between mb-3">
-            <div class="flex items-center gap-2">
-              <div class="w-8 h-8 rounded-lg bg-cyan-500/20 flex items-center justify-center text-cyan-400">
-                <i data-lucide="repeat" class="w-4 h-4"></i>
-              </div>
-              <div>
-                <h3 class="font-heading font-bold text-white text-base">Referral Income (ROI of ROI)</h3>
-                <p class="text-xs text-slate-400">Daily commission whenever your team receives daily ROI</p>
-              </div>
-            </div>
-            <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">DAILY</span>
-          </div>
-
-          <div class="grid grid-cols-3 gap-3 text-center mt-4">
-            <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-3">
-              <span class="text-amber-400 font-bold text-xs uppercase block">Level 1</span>
-              <span class="text-2xl font-heading font-extrabold text-white mt-1 block">10%</span>
-              <span class="text-[10px] text-slate-400">of downline daily ROI</span>
-            </div>
-            <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-3">
-              <span class="text-cyan-400 font-bold text-xs uppercase block">Level 2</span>
-              <span class="text-2xl font-heading font-extrabold text-white mt-1 block">4%</span>
-              <span class="text-[10px] text-slate-400">of downline daily ROI</span>
-            </div>
-            <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-3">
-              <span class="text-blue-400 font-bold text-xs uppercase block">Level 3</span>
-              <span class="text-2xl font-heading font-extrabold text-white mt-1 block">2%</span>
-              <span class="text-[10px] text-slate-400">of downline daily ROI</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Team Commission (One-Time) Card -->
-        <div class="bg-gradient-to-br from-[#1c1705] to-[#261f05] border border-amber-500/30 rounded-2xl p-5 shadow-lg relative">
-          <div class="flex items-center justify-between mb-3">
-            <div class="flex items-center gap-2">
-              <div class="w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center text-amber-400">
-                <i data-lucide="sparkles" class="w-4 h-4"></i>
-              </div>
-              <div>
-                <h3 class="font-heading font-bold text-white text-base">Team Commission (One-Time)</h3>
-                <p class="text-xs text-slate-400">Instant commission on every downline plan activation</p>
-              </div>
-            </div>
-            <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">INSTANT</span>
-          </div>
-
-          <div class="grid grid-cols-3 gap-3 text-center mt-4">
-            <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-3">
-              <span class="text-amber-400 font-bold text-xs uppercase block">Level 1</span>
-              <span class="text-2xl font-heading font-extrabold text-amber-400 mt-1 block">6%</span>
-              <span class="text-[10px] text-slate-400">of package price</span>
-            </div>
-            <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-3">
-              <span class="text-cyan-400 font-bold text-xs uppercase block">Level 2</span>
-              <span class="text-2xl font-heading font-extrabold text-amber-400 mt-1 block">2%</span>
-              <span class="text-[10px] text-slate-400">of package price</span>
-            </div>
-            <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-3">
-              <span class="text-blue-400 font-bold text-xs uppercase block">Level 3</span>
-              <span class="text-2xl font-heading font-extrabold text-amber-400 mt-1 block">1%</span>
-              <span class="text-[10px] text-slate-400">of package price</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- ACTIVE INVESTMENTS & RECENT TRANSACTIONS ROW -->
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <!-- My Active Packages -->
-        <div class="lg:col-span-2 bg-brand-card border border-brand-border rounded-2xl p-5 shadow-lg">
-          <div class="flex items-center justify-between mb-4">
-            <div class="flex items-center gap-2">
-              <i data-lucide="layers" class="w-5 h-5 text-brand-cyan"></i>
-              <h3 class="font-heading font-bold text-white text-lg">My Active Investments</h3>
-            </div>
-            <button onclick="navigate('plans')" class="text-xs font-semibold text-brand-cyan hover:underline flex items-center gap-1">
-              Explore All Plans <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
-            </button>
-          </div>
-          <div id="dashboard-investments-list" class="space-y-3">
-            <!-- Rendered dynamically -->
-            <div class="text-center py-8 text-slate-400 text-sm">Loading your investments...</div>
-          </div>
-        </div>
-
-        <!-- Recent Income Activity -->
-        <div class="bg-brand-card border border-brand-border rounded-2xl p-5 shadow-lg">
-          <div class="flex items-center justify-between mb-4">
-            <div class="flex items-center gap-2">
-              <i data-lucide="activity" class="w-5 h-5 text-brand-gold"></i>
-              <h3 class="font-heading font-bold text-white text-lg">Recent Transactions</h3>
-            </div>
-            <button onclick="navigate('wallet')" class="text-xs font-semibold text-slate-400 hover:text-white">View All</button>
-          </div>
-          <div id="dashboard-transactions-list" class="space-y-2.5 max-h-96 overflow-y-auto pr-1">
-            <!-- Rendered dynamically -->
-            <div class="text-center py-8 text-slate-400 text-sm">Loading transactions...</div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- ==================== INVESTMENT PLANS VIEW ==================== -->
-    <section id="view-plans" class="page-view hidden space-y-6">
-      <div class="text-center max-w-2xl mx-auto space-y-2">
-        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
-          <i data-lucide="sparkles" class="w-3.5 h-3.5 mr-1.5 inline"></i> OFFICIAL CATALYST CAPITAL PLANS
-        </span>
-        <h2 class="text-3xl font-heading font-black text-white">Choose Your Growth Plan</h2>
-        <p class="text-sm text-slate-400">Joining from $25 to $5000. Daily ROI credited every 24 hours directly to your wallet with 0% withdrawal fee.</p>
-      </div>
-
-      <!-- 6 Investment Plans Cards Grid -->
-      <div id="plans-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <!-- Rendered dynamically from backend plans -->
-      </div>
-    </section>
-
-    <!-- ==================== NETWORK & TREE VIEW ==================== -->
-    <section id="view-network" class="page-view hidden space-y-6">
-      <!-- Network Header Stats -->
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div class="bg-brand-card border border-brand-border rounded-xl p-5">
-          <div class="text-xs font-bold uppercase text-slate-400">Total Team Size</div>
-          <div class="text-3xl font-heading font-black text-white mt-2" id="net-stat-total">0</div>
-          <div class="text-xs text-slate-500 mt-1">Across 3 MLM Levels</div>
-        </div>
-        <div class="bg-brand-card border border-brand-border rounded-xl p-5">
-          <div class="text-xs font-bold uppercase text-slate-400">Direct Referrals (Level 1)</div>
-          <div class="text-3xl font-heading font-black text-brand-cyan mt-2" id="net-stat-directs">0</div>
-          <div class="text-xs text-slate-500 mt-1">Earn 10% ROI of ROI + 6% Comm</div>
-        </div>
-        <div class="bg-brand-card border border-brand-border rounded-xl p-5">
-          <div class="text-xs font-bold uppercase text-slate-400">Total Team Investment Volume</div>
-          <div class="text-3xl font-heading font-black text-brand-gold mt-2" id="net-stat-volume">$0.00</div>
-          <div class="text-xs text-slate-500 mt-1">Active downline capital</div>
-        </div>
-      </div>
-
-      <!-- Level 1, 2, 3 Breakdown Cards -->
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <!-- Level 1 -->
-        <div class="bg-slate-900/80 border border-amber-500/40 rounded-xl p-4">
-          <div class="flex items-center justify-between border-b border-slate-800 pb-3">
-            <div>
-              <span class="text-xs font-extrabold text-amber-400 uppercase tracking-wider">Level 1 (Directs)</span>
-              <div class="text-sm font-bold text-white mt-0.5"><span id="l1-count">0</span> Members</div>
-            </div>
-            <div class="text-right">
-              <span class="text-xs text-slate-400 block">Commission</span>
-              <span class="text-xs font-bold text-amber-400">10% ROI | 6% Team</span>
-            </div>
-          </div>
-          <div class="mt-3 text-xs flex justify-between text-slate-300">
-            <span>Total Volume:</span>
-            <span class="font-bold text-white" id="l1-vol">$0.00</span>
-          </div>
-        </div>
-
-        <!-- Level 2 -->
-        <div class="bg-slate-900/80 border border-cyan-500/40 rounded-xl p-4">
-          <div class="flex items-center justify-between border-b border-slate-800 pb-3">
-            <div>
-              <span class="text-xs font-extrabold text-cyan-400 uppercase tracking-wider">Level 2</span>
-              <div class="text-sm font-bold text-white mt-0.5"><span id="l2-count">0</span> Members</div>
-            </div>
-            <div class="text-right">
-              <span class="text-xs text-slate-400 block">Commission</span>
-              <span class="text-xs font-bold text-cyan-400">4% ROI | 2% Team</span>
-            </div>
-          </div>
-          <div class="mt-3 text-xs flex justify-between text-slate-300">
-            <span>Total Volume:</span>
-            <span class="font-bold text-white" id="l2-vol">$0.00</span>
-          </div>
-        </div>
-
-        <!-- Level 3 -->
-        <div class="bg-slate-900/80 border border-blue-500/40 rounded-xl p-4">
-          <div class="flex items-center justify-between border-b border-slate-800 pb-3">
-            <div>
-              <span class="text-xs font-extrabold text-blue-400 uppercase tracking-wider">Level 3</span>
-              <div class="text-sm font-bold text-white mt-0.5"><span id="l3-count">0</span> Members</div>
-            </div>
-            <div class="text-right">
-              <span class="text-xs text-slate-400 block">Commission</span>
-              <span class="text-xs font-bold text-blue-400">2% ROI | 1% Team</span>
-            </div>
-          </div>
-          <div class="mt-3 text-xs flex justify-between text-slate-300">
-            <span>Total Volume:</span>
-            <span class="font-bold text-white" id="l3-vol">$0.00</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Interactive Tree & Direct Downlines Tabbed Section -->
-      <div class="bg-brand-card border border-brand-border rounded-2xl p-6 shadow-xl">
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 border-b border-slate-800 pb-4">
-          <div class="flex items-center gap-3">
-            <button onclick="setNetworkTab('tree')" id="tab-btn-tree" class="px-4 py-2 rounded-lg text-sm font-bold bg-brand-cyan/20 text-brand-cyan border border-brand-cyan/40">Visual Hierarchy Tree</button>
-            <button onclick="setNetworkTab('list')" id="tab-btn-list" class="px-4 py-2 rounded-lg text-sm font-semibold text-slate-400 hover:text-white">Direct Downline Members</button>
-          </div>
-          <div class="text-xs text-slate-400">
-            Click nodes to explore team branches
-          </div>
-        </div>
-
-        <!-- Tree View Container -->
-        <div id="tree-container" class="overflow-x-auto p-4 bg-slate-950/60 rounded-xl border border-slate-800/80">
-          <div id="genealogy-tree" class="min-w-[600px] flex justify-center">
-            <!-- Tree dynamically rendered -->
-          </div>
-        </div>
-
-        <!-- List View Container -->
-        <div id="list-container" class="hidden overflow-x-auto">
-          <table class="w-full text-left text-sm text-slate-300">
-            <thead class="bg-slate-900 text-xs uppercase text-slate-400">
-              <tr>
-                <th class="p-3">User</th>
-                <th class="p-3">Email / Contact</th>
-                <th class="p-3">Active Investment</th>
-                <th class="p-3">Commission Generated</th>
-                <th class="p-3">Joined Date</th>
-                <th class="p-3">Status</th>
-              </tr>
-            </thead>
-            <tbody id="direct-referrals-tbody" class="divide-y divide-slate-800">
-              <!-- Dynamically populated -->
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </section>
-
-    <!-- ==================== WALLET & FINANCIALS VIEW ==================== -->
-    <section id="view-wallet" class="page-view hidden space-y-6">
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <!-- Deposit USDT Card -->
-        <div class="bg-brand-card border border-brand-border rounded-2xl p-6 shadow-xl flex flex-col justify-between">
-          <div>
-            <div class="flex items-center gap-2 mb-2 text-brand-cyan">
-              <i data-lucide="arrow-down-circle" class="w-5 h-5"></i>
-              <h3 class="font-heading font-bold text-white text-lg">Deposit USDT</h3>
-            </div>
-            <p class="text-xs text-slate-400 mb-4">Transfer USDT via TRC20 or BEP20 to your Catalyst Capital account.</p>
-
-            <!-- Company QR Code / Deposit Address -->
-            <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 text-center mb-4">
-              <div class="w-32 h-32 mx-auto bg-white rounded-lg p-2 flex items-center justify-center shadow-md mb-3">
-                <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=TYDzsXDvGgT3vXkX7q5sK8y1jN9pLmQ6wZ" alt="USDT QR Code" class="w-full h-full">
-              </div>
-              <div class="text-[11px] text-slate-400 uppercase font-semibold">Official Company Deposit Address (TRC20)</div>
-              <div class="mt-1 flex items-center justify-center gap-2">
-                <span id="company-usdt-addr" class="text-xs font-mono text-cyan-300 break-all">TYDzsXDvGgT3vXkX7q5sK8y1jN9pLmQ6wZ</span>
-                <button onclick="copyToClipboard('TYDzsXDvGgT3vXkX7q5sK8y1jN9pLmQ6wZ')" class="text-slate-400 hover:text-white p-1" title="Copy"><i data-lucide="copy" class="w-3.5 h-3.5"></i></button>
-              </div>
-            </div>
-
-            <!-- Deposit Form -->
-            <form id="deposit-form" onsubmit="handleDeposit(event)" class="space-y-3">
-              <div>
-                <label class="block text-xs font-semibold text-slate-300 mb-1">Amount (USDT)</label>
-                <div class="relative">
-                  <span class="absolute left-3 top-2.5 text-slate-500 font-bold">$</span>
-                  <input type="number" id="deposit-amount" min="25" max="5000" step="any" placeholder="25 to 5000" required class="w-full bg-slate-900 border border-slate-700 rounded-lg pl-7 pr-3 py-2 text-sm text-white focus:border-brand-cyan focus:outline-none">
-                </div>
-              </div>
-              <div>
-                <label class="block text-xs font-semibold text-slate-300 mb-1">Network</label>
-                <select id="deposit-network" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-brand-cyan focus:outline-none">
-                  <option value="USDT-TRC20">USDT (TRC20 / Tron)</option>
-                  <option value="USDT-BEP20">USDT (BEP20 / BSC)</option>
-                </select>
-              </div>
-              <div>
-                <label class="block text-xs font-semibold text-slate-300 mb-1">Transaction Hash / Proof (Optional)</label>
-                <input type="text" id="deposit-txhash" placeholder="Auto-generated if blank" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs font-mono text-white focus:border-brand-cyan focus:outline-none">
-              </div>
-              <button type="submit" class="w-full py-2.5 rounded-lg font-bold text-slate-950 bg-gradient-to-r from-cyan-400 to-blue-500 hover:from-cyan-300 hover:to-blue-400 shadow-lg shadow-cyan-500/20 transition mt-2">
-                Deposit Funds
-              </button>
-            </form>
-          </div>
-        </div>
-
-        <!-- Withdraw USDT Card (0% Fee, Min 15 USDT, 0-24h) -->
-        <div class="bg-brand-card border border-brand-border rounded-2xl p-6 shadow-xl flex flex-col justify-between">
-          <div>
-            <div class="flex items-center gap-2 mb-2 text-brand-gold">
-              <i data-lucide="arrow-up-right" class="w-5 h-5"></i>
-              <h3 class="font-heading font-bold text-white text-lg">Withdraw USDT</h3>
-            </div>
-            
-            <!-- Terms Badges from PDF -->
-            <div class="grid grid-cols-2 gap-2 mb-4">
-              <div class="bg-slate-900 border border-slate-800 rounded-lg p-2 text-center">
-                <span class="text-[10px] text-slate-400 uppercase block">Withdrawal Fee</span>
-                <span class="text-sm font-extrabold text-emerald-400">0% ZERO FEE</span>
-              </div>
-              <div class="bg-slate-900 border border-slate-800 rounded-lg p-2 text-center">
-                <span class="text-[10px] text-slate-400 uppercase block">Processing Time</span>
-                <span class="text-sm font-extrabold text-cyan-400">0 - 24 Hours</span>
-              </div>
-            </div>
-
-            <!-- Balances info -->
-            <div class="bg-slate-900/80 border border-slate-800 rounded-lg p-3 text-xs space-y-1 mb-4">
-              <div class="flex justify-between">
-                <span class="text-slate-400">ROI Earnings:</span>
-                <span class="font-bold text-emerald-400" id="withdraw-roi-avail">$0.00</span>
-              </div>
-              <div class="flex justify-between">
-                <span class="text-slate-400">Commission Earnings:</span>
-                <span class="font-bold text-amber-400" id="withdraw-comm-avail">$0.00</span>
-              </div>
-              <div class="flex justify-between border-t border-slate-800 pt-1 text-white font-bold">
-                <span>Total Withdrawable:</span>
-                <span class="text-cyan-300" id="withdraw-total-avail">$0.00</span>
-              </div>
-            </div>
-
-            <!-- Withdrawal Form -->
-            <form id="withdraw-form" onsubmit="handleWithdraw(event)" class="space-y-3">
-              <div>
-                <label class="block text-xs font-semibold text-slate-300 mb-1">Source Wallet</label>
-                <select id="withdraw-source" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-brand-gold focus:outline-none">
-                  <option value="all">All Available Earnings (ROI + Commission)</option>
-                  <option value="roi_balance">ROI Wallet Only</option>
-                  <option value="commission_balance">Commission Wallet Only</option>
-                </select>
-              </div>
-              <div>
-                <div class="flex justify-between text-xs mb-1">
-                  <span class="font-semibold text-slate-300">Amount (Min 15 USDT)</span>
-                  <button type="button" onclick="setMaxWithdraw()" class="text-brand-cyan hover:underline text-[11px] font-bold">MAX</button>
-                </div>
-                <div class="relative">
-                  <span class="absolute left-3 top-2.5 text-slate-500 font-bold">$</span>
-                  <input type="number" id="withdraw-amount" min="15" step="any" placeholder="Minimum 15 USDT" required class="w-full bg-slate-900 border border-slate-700 rounded-lg pl-7 pr-3 py-2 text-sm text-white focus:border-brand-gold focus:outline-none">
-                </div>
-              </div>
-              <div>
-                <label class="block text-xs font-semibold text-slate-300 mb-1">Your USDT Address (TRC20 / BEP20)</label>
-                <input type="text" id="withdraw-address" placeholder="T... or 0x..." required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs font-mono text-white focus:border-brand-gold focus:outline-none">
-              </div>
-              <div class="text-[11px] text-slate-400 flex justify-between px-1">
-                <span>Fee: <strong class="text-emerald-400">0% (0.00 USDT)</strong></span>
-                <span>You will receive: <strong class="text-white" id="withdraw-preview-net">$0.00 USDT</strong></span>
-              </div>
-              <button type="submit" class="w-full py-2.5 rounded-lg font-bold text-slate-950 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 shadow-lg shadow-amber-500/20 transition mt-2">
-                Submit Withdrawal Request
-              </button>
-            </form>
-          </div>
-        </div>
-
-        <!-- Reinvest / Transfer Card -->
-        <div class="bg-brand-card border border-brand-border rounded-2xl p-6 shadow-xl flex flex-col justify-between">
-          <div>
-            <div class="flex items-center gap-2 mb-2 text-purple-400">
-              <i data-lucide="refresh-cw" class="w-5 h-5"></i>
-              <h3 class="font-heading font-bold text-white text-lg">Reinvest Earnings</h3>
-            </div>
-            <p class="text-xs text-slate-400 mb-4">Transfer your ROI or Commission earnings directly to your Deposit Wallet to purchase higher plans.</p>
-
-            <form id="reinvest-form" onsubmit="handleReinvest(event)" class="space-y-4">
-              <div>
-                <label class="block text-xs font-semibold text-slate-300 mb-1">From Wallet</label>
-                <select id="reinvest-from" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-purple-400 focus:outline-none">
-                  <option value="roi_balance">ROI Earnings Wallet</option>
-                  <option value="commission_balance">Commission Wallet</option>
-                </select>
-              </div>
-              <div>
-                <label class="block text-xs font-semibold text-slate-300 mb-1">Amount to Transfer</label>
-                <div class="relative">
-                  <span class="absolute left-3 top-2.5 text-slate-500 font-bold">$</span>
-                  <input type="number" id="reinvest-amount" min="1" step="any" placeholder="Enter amount" required class="w-full bg-slate-900 border border-slate-700 rounded-lg pl-7 pr-3 py-2 text-sm text-white focus:border-purple-400 focus:outline-none">
-                </div>
-              </div>
-              <div class="bg-purple-950/30 border border-purple-800/40 rounded-lg p-3 text-xs text-purple-200">
-                <i data-lucide="check-circle" class="w-3.5 h-3.5 inline mr-1 text-purple-400"></i>
-                Instant transfer with zero fees. Funds will be ready to buy new plans.
-              </div>
-              <button type="submit" class="w-full py-2.5 rounded-lg font-bold text-white bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 shadow-lg shadow-purple-600/20 transition">
-                Transfer to Deposit Wallet
-              </button>
-            </form>
-          </div>
-
-          <!-- Withdrawal History Link -->
-          <div class="mt-6 pt-4 border-t border-slate-800">
-            <h4 class="text-xs font-bold uppercase text-slate-400 mb-2">My Withdrawals</h4>
-            <div id="user-withdrawals-list" class="space-y-2 max-h-40 overflow-y-auto pr-1 text-xs">
-              <!-- Dynamically populated -->
-              <span class="text-slate-500 text-xs">No withdrawal requests yet.</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- FULL TRANSACTION LEDGER -->
-      <div class="bg-brand-card border border-brand-border rounded-2xl p-6 shadow-xl">
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
-          <div class="flex items-center gap-2">
-            <i data-lucide="receipt" class="w-5 h-5 text-brand-cyan"></i>
-            <h3 class="font-heading font-bold text-white text-lg">Transaction Ledger</h3>
-          </div>
-          <div class="flex items-center gap-2">
-            <select id="tx-filter-type" onchange="loadTransactions()" class="bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-300 focus:outline-none">
-              <option value="all">All Transactions</option>
-              <option value="daily_roi">Daily ROI Only</option>
-              <option value="referral_roi">Referral ROI (ROI of ROI)</option>
-              <option value="team_commission">Team Commission (One-Time)</option>
-              <option value="deposit">Deposits</option>
-              <option value="withdrawal">Withdrawals</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="overflow-x-auto">
-          <table class="w-full text-left text-xs text-slate-300">
-            <thead class="bg-slate-900 uppercase text-slate-400">
-              <tr>
-                <th class="p-3">Date</th>
-                <th class="p-3">Type</th>
-                <th class="p-3">Description</th>
-                <th class="p-3">Wallet</th>
-                <th class="p-3 text-right">Amount</th>
-                <th class="p-3 text-center">Status</th>
-              </tr>
-            </thead>
-            <tbody id="transactions-full-tbody" class="divide-y divide-slate-800">
-              <!-- Rendered dynamically -->
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </section>
-
-    <!-- ==================== ROI CALCULATOR VIEW ==================== -->
-    <section id="view-calculator" class="page-view hidden space-y-6">
-      <div class="max-w-3xl mx-auto bg-brand-card border border-brand-border rounded-2xl p-6 sm:p-8 shadow-2xl">
-        <div class="text-center max-w-xl mx-auto mb-8">
-          <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 mb-2">
-            <i data-lucide="calculator" class="w-3.5 h-3.5 mr-1.5 inline"></i> PROFIT SIMULATOR
-          </span>
-          <h2 class="text-2xl sm:text-3xl font-heading font-black text-white">Catalyst ROI Calculator</h2>
-          <p class="text-xs sm:text-sm text-slate-400">Select any Catalyst Capital investment plan to preview daily profit and total return.</p>
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
-          <div class="space-y-4">
-            <div>
-              <label class="block text-xs font-bold uppercase text-slate-300 mb-2">Select Investment Package</label>
-              <div class="grid grid-cols-3 gap-2" id="calc-plan-buttons">
-                <!-- Buttons rendered dynamically -->
-              </div>
-            </div>
-
-            <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-2">
-              <div class="flex justify-between text-xs text-slate-400">
-                <span>Investment Amount:</span>
-                <span class="font-bold text-white" id="calc-display-amount">$25 USDT</span>
-              </div>
-              <div class="flex justify-between text-xs text-slate-400">
-                <span>Plan Duration:</span>
-                <span class="font-bold text-cyan-400" id="calc-display-days">25 Days</span>
-              </div>
-              <div class="flex justify-between text-xs text-slate-400">
-                <span>Daily Payout:</span>
-                <span class="font-bold text-emerald-400" id="calc-display-daily">$0.50 USDT / day</span>
-              </div>
-              <div class="flex justify-between text-xs text-slate-400 border-t border-slate-800 pt-2 font-bold text-white">
-                <span>Total Expected ROI:</span>
-                <span class="text-brand-gold text-sm" id="calc-display-total">$12.50 USDT</span>
-              </div>
-            </div>
-
-            <!-- Downline Referral ROI Earning Projection -->
-            <div class="bg-amber-950/20 border border-amber-500/30 rounded-xl p-3 text-xs text-amber-200">
-              <div class="font-bold mb-1 flex items-center gap-1 text-amber-400">
-                <i data-lucide="users" class="w-3.5 h-3.5"></i> Referral Multiplier:
-              </div>
-              If 5 directs join on this plan, you earn an extra <strong class="text-white" id="calc-ref-extra">$0.25/day</strong> in Referral ROI (10%) plus <strong class="text-white" id="calc-team-extra">$7.50</strong> instant team commission (6%)!
-            </div>
-          </div>
-
-          <div class="bg-gradient-to-br from-slate-900 to-[#08172c] border border-cyan-500/30 rounded-2xl p-6 text-center space-y-4">
-            <span class="text-xs uppercase tracking-wider text-slate-400 font-bold">Total Expected Profit</span>
-            <div class="text-4xl sm:text-5xl font-heading font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-cyan-300" id="calc-big-profit">
-              $12.50
-            </div>
-            <p class="text-xs text-slate-400">
-              ROI is credited every 24 hours. Withdraw anytime with 0% fees!
-            </p>
-            <button onclick="navigate('plans')" class="w-full py-3 rounded-xl font-extrabold text-slate-950 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 shadow-xl shadow-amber-500/20 transition">
-              Activate This Package Now
-            </button>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- ==================== ADMIN CONTROL CENTER VIEW ==================== -->
-    <section id="view-admin" class="page-view hidden space-y-6">
-      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gradient-to-r from-amber-950/40 via-slate-900 to-brand-card border border-amber-500/40 rounded-2xl p-6">
+      <form onsubmit="handleDepositSubmit(event)" class="space-y-3 text-xs">
         <div>
-          <div class="flex items-center gap-2">
-            <span class="px-2.5 py-0.5 rounded text-xs font-extrabold bg-amber-500/20 text-amber-400 border border-amber-500/30">ADMIN MASTER CONTROL</span>
-            <span class="text-xs text-slate-400">Catalyst Capital Backend Engine</span>
-          </div>
-          <h2 class="text-2xl font-heading font-black text-white mt-1">Platform Administration</h2>
-          <p class="text-xs text-slate-400">Trigger daily ROI payouts, approve withdrawals, inspect MLM genealogy, and manage user balances.</p>
-        </div>
-
-        <!-- Manual Daily ROI Cycle Trigger Button -->
-        <div class="flex items-center gap-3">
-          <button onclick="triggerAdminDailyRoi()" class="px-4 py-2.5 rounded-xl font-bold text-slate-950 bg-gradient-to-r from-emerald-400 to-emerald-500 hover:from-emerald-300 hover:to-emerald-400 shadow-lg shadow-emerald-500/20 flex items-center gap-2 transition">
-            <i data-lucide="play" class="w-4 h-4 fill-slate-950"></i> Run Today's ROI Cycle Now
-          </button>
-        </div>
-      </div>
-
-      <!-- Admin Platform KPIs -->
-      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4" id="admin-stats-grid">
-        <div class="bg-brand-card border border-brand-border rounded-xl p-4">
-          <span class="text-[11px] font-bold uppercase text-slate-400">Total Registered Members</span>
-          <div class="text-2xl font-heading font-extrabold text-white mt-1" id="adm-stat-users">0</div>
-        </div>
-        <div class="bg-brand-card border border-brand-border rounded-xl p-4">
-          <span class="text-[11px] font-bold uppercase text-slate-400">Active Investment Capital</span>
-          <div class="text-2xl font-heading font-extrabold text-brand-cyan mt-1" id="adm-stat-volume">$0.00</div>
-        </div>
-        <div class="bg-brand-card border border-brand-border rounded-xl p-4">
-          <span class="text-[11px] font-bold uppercase text-slate-400">Total ROI Distributed</span>
-          <div class="text-2xl font-heading font-extrabold text-emerald-400 mt-1" id="adm-stat-roi">$0.00</div>
-        </div>
-        <div class="bg-brand-card border border-brand-border rounded-xl p-4">
-          <span class="text-[11px] font-bold uppercase text-slate-400">Total Commissions Paid</span>
-          <div class="text-2xl font-heading font-extrabold text-brand-gold mt-1" id="adm-stat-comm">$0.00</div>
-        </div>
-      </div>
-
-      <!-- Admin Section: Pending Withdrawals -->
-      <div class="bg-brand-card border border-brand-border rounded-2xl p-6 shadow-xl">
-        <div class="flex items-center justify-between mb-4">
-          <div class="flex items-center gap-2">
-            <i data-lucide="clock" class="w-5 h-5 text-amber-400"></i>
-            <h3 class="font-heading font-bold text-white text-lg">Withdrawal Requests (0% Fee, 0-24h Processing)</h3>
-          </div>
-          <button onclick="loadAdminData()" class="text-xs text-brand-cyan hover:underline flex items-center gap-1">
-            <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> Refresh
-          </button>
-        </div>
-
-        <div class="overflow-x-auto">
-          <table class="w-full text-left text-xs text-slate-300">
-            <thead class="bg-slate-900 uppercase text-slate-400">
-              <tr>
-                <th class="p-3">ID</th>
-                <th class="p-3">User</th>
-                <th class="p-3">Amount</th>
-                <th class="p-3">Fee</th>
-                <th class="p-3">Net Payout</th>
-                <th class="p-3">Destination Address</th>
-                <th class="p-3">Status</th>
-                <th class="p-3 text-right">Action</th>
-              </tr>
-            </thead>
-            <tbody id="admin-withdrawals-tbody" class="divide-y divide-slate-800">
-              <!-- Rendered dynamically -->
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <!-- Admin Section: All Users & Balance Adjustment -->
-      <div class="bg-brand-card border border-brand-border rounded-2xl p-6 shadow-xl">
-        <div class="flex items-center justify-between mb-4">
-          <div class="flex items-center gap-2">
-            <i data-lucide="users" class="w-5 h-5 text-brand-cyan"></i>
-            <h3 class="font-heading font-bold text-white text-lg">Manage Members & Balances</h3>
-          </div>
-        </div>
-
-        <div class="overflow-x-auto">
-          <table class="w-full text-left text-xs text-slate-300">
-            <thead class="bg-slate-900 uppercase text-slate-400">
-              <tr>
-                <th class="p-3">User</th>
-                <th class="p-3">Referral Code</th>
-                <th class="p-3">Sponsor</th>
-                <th class="p-3">Deposit Bal</th>
-                <th class="p-3">ROI Bal</th>
-                <th class="p-3">Comm Bal</th>
-                <th class="p-3">Active Invested</th>
-                <th class="p-3 text-right">Quick Action</th>
-              </tr>
-            </thead>
-            <tbody id="admin-users-tbody" class="divide-y divide-slate-800">
-              <!-- Rendered dynamically -->
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </section>
-
-  </main>
-
-  <!-- FOOTER -->
-  <footer class="bg-brand-dark/95 border-t border-brand-border/60 py-6 text-xs text-slate-500">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-4">
-      <div>
-        <p class="font-bold text-slate-300">Catalyst Capital Partners Private Limited</p>
-        <p class="text-[11px] text-slate-500">CIN: U64990MH2023PTC400683 | SEBI Reg: INM000013129 | Mumbai, India</p>
-      </div>
-      <div class="flex items-center gap-4 text-slate-400">
-        <span class="flex items-center gap-1"><i data-lucide="shield-check" class="w-3.5 h-3.5 text-emerald-400"></i> 100% Secure</span>
-        <span class="flex items-center gap-1"><i data-lucide="clock" class="w-3.5 h-3.5 text-cyan-400"></i> 0-24h Withdrawals</span>
-        <span class="flex items-center gap-1"><i data-lucide="percent" class="w-3.5 h-3.5 text-amber-400"></i> 0% Fee</span>
-      </div>
-    </div>
-  </footer>
-
-  <!-- ==================== MODALS ==================== -->
-
-  <!-- LOGIN MODAL -->
-  <div id="loginModal" class="modal fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4">
-    <div class="bg-brand-card border border-brand-border rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
-      <button onclick="closeModal('loginModal')" class="absolute right-4 top-4 text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
-      <div class="text-center mb-6">
-        <h3 class="text-2xl font-heading font-black text-white">Investor Login</h3>
-        <p class="text-xs text-slate-400 mt-1">Access your Catalyst Capital dashboard</p>
-      </div>
-      <form onsubmit="handleLogin(event)" class="space-y-4">
-        <div>
-          <label class="block text-xs font-semibold text-slate-300 mb-1">Username or Email</label>
-          <input type="text" id="login-id" required placeholder="admin or username" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-brand-cyan focus:outline-none">
+          <label class="block text-slate-300 font-semibold mb-1">Deposit Amount (USDT)</label>
+          <input type="number" id="deposit-amount" min="10" step="any" required placeholder="e.g. 100" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white font-mono focus:outline-none focus:border-[#ff4e91]">
         </div>
         <div>
-          <label class="block text-xs font-semibold text-slate-300 mb-1">Password</label>
-          <input type="password" id="login-password" required placeholder="Password" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-brand-cyan focus:outline-none">
+          <label class="block text-slate-300 font-semibold mb-1">Transaction Hash / TXID (Optional)</label>
+          <input type="text" id="deposit-txhash" placeholder="Enter blockchain hash if available" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white font-mono focus:outline-none focus:border-[#ff4e91]">
         </div>
-        <button type="submit" class="w-full py-2.5 rounded-lg font-bold text-slate-950 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 shadow-lg shadow-amber-500/20 transition">
-          Sign In
+        <button type="submit" class="w-full py-2.5 rounded-xl font-bold bg-gradient-to-r from-[#ff4e91] to-[#ff7675] text-white shadow-lg shadow-pink-500/25 transition">
+          Confirm Recharge
         </button>
       </form>
-      <div class="mt-4 text-center text-xs text-slate-400">
-        Don't have an account? <button onclick="closeModal('loginModal'); openModal('registerModal');" class="text-brand-cyan hover:underline font-semibold">Register now</button>
-      </div>
     </div>
   </div>
 
-  <!-- REGISTER MODAL -->
-  <div id="registerModal" class="modal fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4">
-    <div class="bg-brand-card border border-brand-border rounded-2xl max-w-md w-full p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto">
-      <button onclick="closeModal('registerModal')" class="absolute right-4 top-4 text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
-      <div class="text-center mb-6">
-        <h3 class="text-2xl font-heading font-black text-white">Join Catalyst Capital</h3>
-        <p class="text-xs text-slate-400 mt-1">Start growing with daily ROI and referral rewards</p>
-      </div>
-      <form onsubmit="handleRegister(event)" class="space-y-3">
-        <div>
-          <label class="block text-xs font-semibold text-slate-300 mb-1">Full Name</label>
-          <input type="text" id="reg-fullname" required placeholder="e.g. John Doe" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-brand-cyan focus:outline-none">
-        </div>
-        <div>
-          <label class="block text-xs font-semibold text-slate-300 mb-1">Username</label>
-          <input type="text" id="reg-username" required placeholder="unique username" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-brand-cyan focus:outline-none">
-        </div>
-        <div>
-          <label class="block text-xs font-semibold text-slate-300 mb-1">Email</label>
-          <input type="email" id="reg-email" required placeholder="john@example.com" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-brand-cyan focus:outline-none">
-        </div>
-        <div>
-          <label class="block text-xs font-semibold text-slate-300 mb-1">Phone Number (Optional)</label>
-          <input type="text" id="reg-phone" placeholder="+91..." class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-brand-cyan focus:outline-none">
-        </div>
-        <div>
-          <label class="block text-xs font-semibold text-slate-300 mb-1">Sponsor / Referral Code</label>
-          <input type="text" id="reg-sponsor" placeholder="e.g. CAT1001 (Optional)" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm font-mono text-cyan-300 focus:border-brand-cyan focus:outline-none">
-        </div>
-        <div>
-          <label class="block text-xs font-semibold text-slate-300 mb-1">Password</label>
-          <input type="password" id="reg-password" required placeholder="Minimum 6 characters" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-brand-cyan focus:outline-none">
-        </div>
-        <button type="submit" class="w-full py-2.5 rounded-lg font-bold text-slate-950 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 shadow-lg shadow-amber-500/20 transition mt-2">
-          Create Investor Account
-        </button>
-      </form>
-      <div class="mt-4 text-center text-xs text-slate-400">
-        Already registered? <button onclick="closeModal('registerModal'); openModal('loginModal');" class="text-brand-cyan hover:underline font-semibold">Sign in</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- PURCHASE CONFIRMATION MODAL -->
-  <div id="purchaseModal" class="modal fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4">
-    <div class="bg-brand-card border border-brand-border rounded-2xl max-w-sm w-full p-6 shadow-2xl relative">
-      <button onclick="closeModal('purchaseModal')" class="absolute right-4 top-4 text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+  <!-- WITHDRAWAL MODAL -->
+  <div id="withdrawModal" class="modal fixed inset-0 z-50 bg-black/85 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-[#12151e] border border-[#23293a] rounded-2xl max-w-sm w-full p-5 shadow-2xl relative">
+      <button onclick="closeModal('withdrawModal')" class="absolute right-4 top-4 text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
       <div class="text-center mb-4">
-        <div class="w-12 h-12 rounded-full bg-brand-cyan/20 text-brand-cyan flex items-center justify-center mx-auto mb-2">
-          <i data-lucide="check" class="w-6 h-6"></i>
+        <div class="w-10 h-10 rounded-full bg-gradient-to-tr from-[#0984e3] to-[#00cec9] flex items-center justify-center mx-auto mb-2 text-white shadow-lg shadow-cyan-500/30">
+          <i data-lucide="arrow-up-from-dot" class="w-5 h-5"></i>
         </div>
-        <h3 class="text-xl font-heading font-bold text-white">Activate Plan</h3>
-        <p class="text-xs text-slate-400">Confirm package activation</p>
+        <h3 class="text-base font-bold text-white">Withdrawal (0% Fee)</h3>
+        <p class="text-xs text-slate-400">Instant payout within 0 - 24 hours</p>
       </div>
-      <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 text-xs space-y-2 mb-4">
-        <div class="flex justify-between">
-          <span class="text-slate-400">Plan:</span>
-          <span class="font-bold text-white" id="modal-plan-name">Plan 1</span>
-        </div>
-        <div class="flex justify-between">
-          <span class="text-slate-400">Price:</span>
-          <span class="font-bold text-brand-cyan" id="modal-plan-price">$25 USDT</span>
-        </div>
-        <div class="flex justify-between">
-          <span class="text-slate-400">Duration:</span>
-          <span class="font-bold text-white" id="modal-plan-duration">25 Days</span>
-        </div>
-        <div class="flex justify-between">
-          <span class="text-slate-400">Daily ROI:</span>
-          <span class="font-bold text-emerald-400" id="modal-plan-daily">$0.50 USDT / day</span>
-        </div>
-        <div class="flex justify-between border-t border-slate-800 pt-2 font-bold">
-          <span class="text-slate-300">Your Deposit Balance:</span>
-          <span class="text-white" id="modal-user-bal">$0.00</span>
-        </div>
-      </div>
-      <input type="hidden" id="modal-plan-id" value="">
-      <button onclick="confirmPlanPurchase()" class="w-full py-2.5 rounded-lg font-bold text-slate-950 bg-gradient-to-r from-cyan-400 to-blue-500 hover:from-cyan-300 hover:to-blue-400 shadow-lg shadow-cyan-500/20 transition">
-        Confirm & Start Earning
-      </button>
-    </div>
-  </div>
 
-  <!-- ADMIN ADJUST BALANCE MODAL -->
-  <div id="adminAdjustModal" class="modal fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4">
-    <div class="bg-brand-card border border-brand-border rounded-2xl max-w-sm w-full p-6 shadow-2xl relative">
-      <button onclick="closeModal('adminAdjustModal')" class="absolute right-4 top-4 text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
-      <div class="text-center mb-4">
-        <h3 class="text-lg font-heading font-bold text-white">Adjust Member Balance</h3>
-        <p class="text-xs text-slate-400" id="admin-adjust-user-label">User: rahul</p>
+      <div class="bg-black/60 border border-slate-800 rounded-xl p-3 my-2 text-[11px] space-y-1">
+        <div class="flex justify-between text-slate-300">
+          <span>Available Withdrawable:</span>
+          <span id="withdraw-available-bal" class="font-bold text-white font-mono">0.00 USDT</span>
+        </div>
+        <div class="flex justify-between text-slate-400 text-[10px]">
+          <span>Withdrawal Fee:</span>
+          <span class="text-emerald-400 font-bold">0% (Zero Fee)</span>
+        </div>
+        <div class="flex justify-between text-slate-400 text-[10px]">
+          <span>Min Withdrawal:</span>
+          <span class="text-slate-300 font-bold">15 USDT</span>
+        </div>
       </div>
-      <form onsubmit="handleAdminAdjustBalance(event)" class="space-y-3">
-        <input type="hidden" id="adjust-user-id" value="">
+
+      <form onsubmit="handleWithdrawSubmit(event)" class="space-y-3 text-xs">
         <div>
-          <label class="block text-xs font-semibold text-slate-300 mb-1">Wallet Type</label>
-          <select id="adjust-wallet-type" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none">
-            <option value="wallet_balance">Deposit Wallet</option>
+          <label class="block text-slate-300 font-semibold mb-1">Source Wallet</label>
+          <select id="withdraw-source" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none">
+            <option value="all">Combined (ROI + Commission Wallet)</option>
             <option value="roi_balance">Daily ROI Wallet</option>
             <option value="commission_balance">Commission Wallet</option>
           </select>
         </div>
         <div>
-          <label class="block text-xs font-semibold text-slate-300 mb-1">Action</label>
-          <select id="adjust-action" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none">
-            <option value="credit">Credit (+ Add funds)</option>
-            <option value="debit">Debit (- Deduct funds)</option>
-          </select>
+          <label class="block text-slate-300 font-semibold mb-1">Amount (USDT)</label>
+          <div class="relative">
+            <input type="number" id="withdraw-amount" min="15" step="any" required placeholder="Min 15" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white font-mono focus:outline-none focus:border-cyan-400">
+            <button type="button" onclick="setMaxWithdrawAmount()" class="absolute right-2 top-2 px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-400 text-[10px] font-bold">MAX</button>
+          </div>
         </div>
         <div>
-          <label class="block text-xs font-semibold text-slate-300 mb-1">Amount ($)</label>
-          <input type="number" id="adjust-amount" min="0.01" step="any" required placeholder="Amount" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none">
+          <label class="block text-slate-300 font-semibold mb-1">Your USDT (TRC20) Wallet Address</label>
+          <input type="text" id="withdraw-address" required placeholder="T..." class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white font-mono text-[11px] focus:outline-none focus:border-cyan-400">
         </div>
-        <div>
-          <label class="block text-xs font-semibold text-slate-300 mb-1">Reason / Note</label>
-          <input type="text" id="adjust-reason" placeholder="e.g. Deposit verified manually" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none">
-        </div>
-        <button type="submit" class="w-full py-2 rounded-lg font-bold text-slate-950 bg-amber-400 hover:bg-amber-300 transition text-xs mt-2">
-          Save Adjustment
+        <button type="submit" class="w-full py-2.5 rounded-xl font-bold bg-gradient-to-r from-[#0984e3] to-[#00cec9] text-white shadow-lg shadow-cyan-500/25 transition">
+          Submit Withdrawal
         </button>
       </form>
     </div>
   </div>
 
+  <!-- MY TASK MODAL -->
+  <div id="myTaskModal" class="modal fixed inset-0 z-50 bg-black/85 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-[#12151e] border border-[#23293a] rounded-2xl max-w-sm w-full p-5 shadow-2xl relative">
+      <button onclick="closeModal('myTaskModal')" class="absolute right-4 top-4 text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+      <div class="text-center mb-4">
+        <div class="w-10 h-10 rounded-full bg-gradient-to-tr from-[#11998e] to-[#38ef7d] flex items-center justify-center mx-auto mb-2 text-white shadow-lg">
+          <i data-lucide="sparkles" class="w-5 h-5"></i>
+        </div>
+        <h3 class="text-base font-bold text-white">Daily Tasks & Missions</h3>
+        <p class="text-xs text-slate-400">Complete tasks to earn bonus yields</p>
+      </div>
+
+      <div class="space-y-2.5 text-xs">
+        <div class="p-3 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between">
+          <div>
+            <div class="font-bold text-white">Daily Platform Check-in</div>
+            <div class="text-[10px] text-slate-400">Earn +0.10 USDT bonus daily</div>
+          </div>
+          <button onclick="claimDailyCheckin()" id="btn-daily-checkin" class="px-3 py-1.5 rounded-lg bg-emerald-500 text-black font-bold text-[11px]">
+            Claim
+          </button>
+        </div>
+
+        <div class="p-3 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between">
+          <div>
+            <div class="font-bold text-white">Invite 1 New Friend</div>
+            <div class="text-[10px] text-slate-400">Earn 6% team commission</div>
+          </div>
+          <button onclick="openInviteModal()" class="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 font-bold text-[11px]">
+            Invite
+          </button>
+        </div>
+
+        <div class="p-3 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between">
+          <div>
+            <div class="font-bold text-white">Activate VIP Plan</div>
+            <div class="text-[10px] text-slate-400">Start receiving automated daily ROI</div>
+          </div>
+          <button onclick="navigate('quotes'); closeModal('myTaskModal');" class="px-3 py-1.5 rounded-lg bg-[#ff4e91] text-white font-bold text-[11px]">
+            Explore
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RED ENVELOPE LUCKY DRAW MODAL (Image 2) -->
+  <div id="redEnvelopeModal" class="modal fixed inset-0 z-50 bg-black/90 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="bg-gradient-to-b from-[#e74c3c] to-[#c0392b] border border-amber-400/40 rounded-3xl max-w-xs w-full p-6 text-center text-white shadow-[0_0_50px_rgba(231,76,60,0.6)] relative">
+      <button onclick="closeModal('redEnvelopeModal')" class="absolute right-4 top-4 text-amber-200 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+      
+      <h3 class="font-serif font-bold text-xl text-amber-200 tracking-wide drop-shadow">Lucky Red Envelope</h3>
+      <p class="text-xs text-amber-100/90 mt-1">Tap the gold seal to open your surprise bonus!</p>
+
+      <div class="my-6">
+        <!-- Interactive Big Red Packet -->
+        <button onclick="openLuckyRedEnvelope()" id="envelope-tap-btn" class="w-24 h-24 rounded-full bg-gradient-to-tr from-amber-300 to-amber-500 shadow-2xl flex items-center justify-center mx-auto text-red-700 font-extrabold text-2xl hover:scale-105 active:scale-95 transition transform border-4 border-amber-200">
+          開
+        </button>
+      </div>
+
+      <div id="envelope-result" class="hidden bg-black/40 rounded-xl p-3 border border-amber-400/30 text-xs">
+        <span class="text-amber-300 font-bold block text-sm" id="envelope-prize-text">🎉 Congratulations!</span>
+        <span class="text-white mt-1 block">Credited to your bonus balance.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- BNV GUIDE MODAL (Image 2) -->
+  <div id="bnvGuideModal" class="modal fixed inset-0 z-50 bg-black/85 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-[#12151e] border border-[#23293a] rounded-2xl max-w-sm w-full p-5 shadow-2xl relative">
+      <button onclick="closeModal('bnvGuideModal')" class="absolute right-4 top-4 text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+      <h3 class="text-base font-serif font-bold text-white mb-2">BNV Trading Beginner Guide</h3>
+      <div class="space-y-3 text-xs text-slate-300 leading-relaxed">
+        <div class="p-2.5 rounded-lg bg-slate-900 border border-slate-800">
+          <strong class="text-white block mb-0.5">1. Recharge your balance:</strong>
+          Deposit USDT via TRC20 with 0 network deposit fee.
+        </div>
+        <div class="p-2.5 rounded-lg bg-slate-900 border border-slate-800">
+          <strong class="text-white block mb-0.5">2. Choose your Investment Plan:</strong>
+          Explore 6 packages on the Quotes page earning from 15% to 327% net return.
+        </div>
+        <div class="p-2.5 rounded-lg bg-slate-900 border border-slate-800">
+          <strong class="text-white block mb-0.5">3. 24/7 Automated Daily Payouts:</strong>
+          Daily ROI and 3-level Referral Income are credited directly every 24 hours.
+        </div>
+      </div>
+      <button onclick="navigate('quotes'); closeModal('bnvGuideModal');" class="w-full mt-4 py-2.5 rounded-xl font-bold bg-[#ff4e91] text-white">
+        View Investment Plans
+      </button>
+    </div>
+  </div>
+
+  <!-- SIGNAL MODAL -->
+  <div id="signalModal" class="modal fixed inset-0 z-50 bg-black/85 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-[#12151e] border border-[#23293a] rounded-2xl max-w-sm w-full p-5 shadow-2xl relative">
+      <button onclick="closeModal('signalModal')" class="absolute right-4 top-4 text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+      <div class="flex items-center gap-2 mb-3">
+        <div class="w-8 h-8 rounded-full bg-purple-500/20 text-purple-400 flex items-center justify-center">
+          <i data-lucide="radio" class="w-4 h-4"></i>
+        </div>
+        <div>
+          <h3 class="text-sm font-bold text-white">VIP Trading Signals</h3>
+          <span class="text-[10px] text-emerald-400 font-bold">Accuracy: 94.8% &bull; AI Powered</span>
+        </div>
+      </div>
+
+      <div class="space-y-2 text-xs">
+        <div class="p-2.5 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between">
+          <div>
+            <span class="font-bold text-white">BTC / USDT</span>
+            <span class="block text-[10px] text-slate-400">Target: $86,400 &bull; Stop: $84,200</span>
+          </div>
+          <span class="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-bold text-[10px]">BUY / LONG</span>
+        </div>
+        <div class="p-2.5 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between">
+          <div>
+            <span class="font-bold text-white">ETH / USDT</span>
+            <span class="block text-[10px] text-slate-400">Target: $2,850 &bull; Stop: $2,650</span>
+          </div>
+          <span class="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-bold text-[10px]">BUY / LONG</span>
+        </div>
+        <div class="p-2.5 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between">
+          <div>
+            <span class="font-bold text-white">SOL / USDT</span>
+            <span class="block text-[10px] text-slate-400">Target: $195 &bull; Stop: $178</span>
+          </div>
+          <span class="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-bold text-[10px]">STRONG BUY</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SERVICE / SUPPORT MODAL (Image 3) -->
+  <div id="serviceModal" class="modal fixed inset-0 z-50 bg-black/85 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-[#12151e] border border-[#23293a] rounded-2xl max-w-sm w-full p-5 shadow-2xl relative">
+      <button onclick="closeModal('serviceModal')" class="absolute right-4 top-4 text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+      <div class="text-center mb-4">
+        <div class="w-10 h-10 rounded-full bg-gradient-to-tr from-amber-400 to-orange-500 flex items-center justify-center mx-auto mb-2 text-white shadow-lg">
+          <i data-lucide="headphones" class="w-5 h-5"></i>
+        </div>
+        <h3 class="text-base font-bold text-white" id="service-modal-title">Official Guidance & Support</h3>
+        <p class="text-xs text-slate-400">24/7 Dedicated Client Relations</p>
+      </div>
+
+      <div class="space-y-2 text-xs">
+        <a href="https://t.me" target="_blank" class="p-3 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between hover:border-cyan-500 transition">
+          <div class="flex items-center gap-2.5">
+            <i data-lucide="send" class="w-5 h-5 text-cyan-400"></i>
+            <div>
+              <div class="font-bold text-white">Telegram 24/7 Channel</div>
+              <div class="text-[10px] text-slate-400">@CatalystCapitalOfficial</div>
+            </div>
+          </div>
+          <span class="text-cyan-400 font-bold">&rarr;</span>
+        </a>
+
+        <a href="https://wa.me" target="_blank" class="p-3 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between hover:border-emerald-500 transition">
+          <div class="flex items-center gap-2.5">
+            <i data-lucide="message-circle" class="w-5 h-5 text-emerald-400"></i>
+            <div>
+              <div class="font-bold text-white">VIP WhatsApp Manager</div>
+              <div class="text-[10px] text-slate-400">+91 98111 22233</div>
+            </div>
+          </div>
+          <span class="text-emerald-400 font-bold">&rarr;</span>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- INVITE MODAL -->
+  <div id="inviteModal" class="modal fixed inset-0 z-50 bg-black/85 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-[#12151e] border border-[#23293a] rounded-2xl max-w-sm w-full p-5 shadow-2xl relative text-center">
+      <button onclick="closeModal('inviteModal')" class="absolute right-4 top-4 text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+      <div class="w-10 h-10 rounded-full bg-gradient-to-tr from-[#fdcb6e] to-[#e17055] flex items-center justify-center mx-auto mb-2 text-white shadow-lg">
+        <i data-lucide="user-plus" class="w-5 h-5"></i>
+      </div>
+      <h3 class="text-base font-bold text-white">Invite Friends & Earn</h3>
+      <p class="text-xs text-slate-400 mb-4">Earn 6% direct commission + 10% daily ROI of ROI</p>
+
+      <div class="bg-black/60 border border-slate-800 rounded-xl p-3 text-left space-y-2 text-xs">
+        <div>
+          <span class="text-[10px] text-slate-400">My Referral Code</span>
+          <div class="text-lg font-bold font-mono text-[#ff4e91]" id="modal-ref-code">CAT1001</div>
+        </div>
+        <div>
+          <span class="text-[10px] text-slate-400">Invitation Link</span>
+          <div class="flex items-center gap-2 mt-1">
+            <input type="text" id="modal-ref-input" readonly value="https://catalystcapital.com/?ref=CAT1001" class="bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-[11px] font-mono text-cyan-300 flex-1 truncate">
+            <button onclick="copyModalReferral()" class="px-3 py-1.5 rounded-lg bg-[#ff4e91] text-white text-xs font-bold shrink-0">Copy</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PURCHASE PLAN CONFIRM MODAL -->
+  <div id="purchaseModal" class="modal fixed inset-0 z-50 bg-black/85 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-[#12151e] border border-[#23293a] rounded-2xl max-w-sm w-full p-5 shadow-2xl relative">
+      <button onclick="closeModal('purchaseModal')" class="absolute right-4 top-4 text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+      <div class="text-center mb-3">
+        <h3 class="text-base font-bold text-white" id="modal-plan-name">Activate Package</h3>
+        <p class="text-xs text-slate-400">Start automated daily returns</p>
+      </div>
+
+      <div class="bg-black/60 rounded-xl p-3 border border-slate-800 space-y-2 text-xs my-3">
+        <div class="flex justify-between">
+          <span class="text-slate-400">Investment Price:</span>
+          <span class="font-extrabold text-white font-mono" id="modal-plan-price">$25 USDT</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-slate-400">Duration:</span>
+          <span class="font-bold text-cyan-300" id="modal-plan-duration">25 Days</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-slate-400">Daily ROI:</span>
+          <span class="font-bold text-emerald-400 font-mono" id="modal-plan-daily">$0.50 USDT / day</span>
+        </div>
+        <div class="flex justify-between border-t border-slate-800 pt-2 font-bold">
+          <span class="text-slate-300">Your Deposit Balance:</span>
+          <span class="text-white font-mono" id="modal-user-bal">$0.00 USDT</span>
+        </div>
+      </div>
+      <input type="hidden" id="modal-plan-id" value="">
+      <button onclick="confirmPlanPurchase()" class="w-full py-2.5 rounded-xl font-bold bg-gradient-to-r from-[#ff4e91] to-[#ff7675] text-white shadow-lg shadow-pink-500/25 transition">
+        Confirm & Start Earning
+      </button>
+    </div>
+  </div>
+
+  <!-- AUTH / LOGIN MODAL -->
+  <div id="loginModal" class="modal fixed inset-0 z-50 bg-black/85 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-[#12151e] border border-[#23293a] rounded-2xl max-w-sm w-full p-5 shadow-2xl relative">
+      <button onclick="closeModal('loginModal')" class="absolute right-4 top-4 text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+      <div class="text-center mb-4">
+        <h3 class="text-base font-bold text-white">Login to BNV Platform</h3>
+        <p class="text-xs text-slate-400">Enter your credentials or use demo accounts</p>
+      </div>
+
+      <form onsubmit="handleLogin(event)" class="space-y-3 text-xs">
+        <div>
+          <label class="block text-slate-300 font-semibold mb-1">Username or Email</label>
+          <input type="text" id="login-id" required placeholder="username" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-[#ff4e91]">
+        </div>
+        <div>
+          <label class="block text-slate-300 font-semibold mb-1">Password</label>
+          <input type="password" id="login-password" required placeholder="••••••••" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-[#ff4e91]">
+        </div>
+        <button type="submit" class="w-full py-2.5 rounded-xl font-bold bg-[#ff4e91] text-white shadow-lg transition">
+          Sign In
+        </button>
+      </form>
+
+      <div class="mt-4 pt-3 border-t border-slate-800 text-center text-xs">
+        <span class="text-slate-400">Need an account?</span>
+        <button onclick="closeModal('loginModal'); openModal('registerModal');" class="text-cyan-400 font-bold ml-1">Create Account</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- REGISTER MODAL -->
+  <div id="registerModal" class="modal fixed inset-0 z-50 bg-black/85 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-[#12151e] border border-[#23293a] rounded-2xl max-w-sm w-full p-5 shadow-2xl relative">
+      <button onclick="closeModal('registerModal')" class="absolute right-4 top-4 text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+      <div class="text-center mb-3">
+        <h3 class="text-base font-bold text-white">Create BNV Account</h3>
+        <p class="text-xs text-slate-400">Register under official Catalyst Capital network</p>
+      </div>
+
+      <form onsubmit="handleRegister(event)" class="space-y-2.5 text-xs">
+        <div>
+          <label class="block text-slate-300 font-semibold mb-0.5">Full Name</label>
+          <input type="text" id="reg-fullname" required placeholder="John Doe" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-white focus:outline-none">
+        </div>
+        <div>
+          <label class="block text-slate-300 font-semibold mb-0.5">Username</label>
+          <input type="text" id="reg-username" required placeholder="johndoe" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-white focus:outline-none">
+        </div>
+        <div>
+          <label class="block text-slate-300 font-semibold mb-0.5">Email</label>
+          <input type="email" id="reg-email" required placeholder="john@example.com" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-white focus:outline-none">
+        </div>
+        <div>
+          <label class="block text-slate-300 font-semibold mb-0.5">Sponsor Referral Code (Optional)</label>
+          <input type="text" id="reg-sponsor" placeholder="CATADMIN" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-white font-mono focus:outline-none">
+        </div>
+        <div>
+          <label class="block text-slate-300 font-semibold mb-0.5">Password</label>
+          <input type="password" id="reg-password" required placeholder="••••••••" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-white focus:outline-none">
+        </div>
+        <button type="submit" class="w-full py-2.5 rounded-xl font-bold bg-[#ff4e91] text-white shadow-lg transition mt-2">
+          Register & Join
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- USER PROFILE MODAL -->
+  <div id="profileModal" class="modal fixed inset-0 z-50 bg-black/85 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-[#12151e] border border-[#23293a] rounded-2xl max-w-sm w-full p-5 shadow-2xl relative">
+      <button onclick="closeModal('profileModal')" class="absolute right-4 top-4 text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+      <div class="text-center mb-4">
+        <div class="w-14 h-14 rounded-full bg-gradient-to-tr from-purple-500 to-indigo-500 flex items-center justify-center mx-auto mb-2 text-white font-bold text-xl shadow-lg">
+          <span id="prof-avatar-letter">U</span>
+        </div>
+        <h3 class="text-base font-bold text-white" id="prof-fullname">User Full Name</h3>
+        <p class="text-xs text-slate-400 font-mono" id="prof-username">@username</p>
+      </div>
+
+      <div class="bg-black/60 rounded-xl p-3 border border-slate-800 space-y-2 text-xs my-3">
+        <div class="flex justify-between">
+          <span class="text-slate-400">Referral Code:</span>
+          <span class="font-bold text-cyan-300 font-mono" id="prof-refcode">CAT1001</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-slate-400">Account Role:</span>
+          <span class="font-bold text-amber-300 uppercase" id="prof-role">USER</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-slate-400">Saved USDT Address:</span>
+          <span class="font-mono text-slate-300 text-[10px] truncate max-w-[170px]" id="prof-usdt-address">-</span>
+        </div>
+      </div>
+
+      <div class="space-y-2">
+        <button id="prof-admin-panel-btn" onclick="navigate('admin'); closeModal('profileModal');" class="hidden w-full py-2 rounded-lg bg-amber-500/20 text-amber-400 border border-amber-500/40 text-xs font-bold">
+          Open Admin Control Panel
+        </button>
+        <button onclick="logout(); closeModal('profileModal');" class="w-full py-2 rounded-lg bg-rose-500/20 text-rose-400 border border-rose-500/40 text-xs font-bold">
+          Sign Out
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- TOAST NOTIFICATION CONTAINER -->
-  <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 max-w-sm"></div>
+  <div id="toast-container" class="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-2 w-11/12 max-w-sm pointer-events-none"></div>
 
   <!-- Main JavaScript App -->
   <script src="app.js"></script>
