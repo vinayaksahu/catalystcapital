@@ -600,3 +600,125 @@ html:not(.dark) .official-guidance-card {
   from { transform: translateY(20px); opacity: 0; }
   to { transform: translateY(0); opacity: 1; }
 }
+
+/* ==================== CALENDAR RANGE PICKER STYLES ==================== */
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  width: 100%;
+  row-gap: 3px;
+  column-gap: 0px;
+}
+
+.cal-cell {
+  position: relative;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  user-select: none;
+  font-size: 13px;
+  font-weight: 600;
+  color: #e2e8f0;
+  transition: transform 0.1s ease;
+}
+.cal-cell:active {
+  transform: scale(0.94);
+}
+
+/* Middle days in continuous range - seamless full width */
+.cal-cell.in-range::before {
+  content: '';
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 0;
+  right: 0;
+  background-color: #3b152d;
+  z-index: 1;
+}
+
+/* Range Start Day - rounded left cap, extends to right edge */
+.cal-cell.range-start::before {
+  content: '';
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 2px;
+  right: 0;
+  background-color: #3b152d;
+  border-top-left-radius: 9999px;
+  border-bottom-left-radius: 9999px;
+  z-index: 1;
+}
+
+/* Range End Day - extends from left edge, rounded right cap */
+.cal-cell.range-end::before {
+  content: '';
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 0;
+  right: 2px;
+  background-color: #3b152d;
+  border-top-right-radius: 9999px;
+  border-bottom-right-radius: 9999px;
+  z-index: 1;
+}
+
+/* Single selected day: no connecting strip */
+.cal-cell.single-selected::before {
+  display: none !important;
+}
+
+/* Active Start & End Gradient Circle Pill */
+.cal-pill {
+  position: relative;
+  z-index: 2;
+  width: 32px;
+  height: 32px;
+  border-radius: 9999px;
+  background: linear-gradient(135deg, #60a5fa 0%, #ec4899 50%, #f97316 100%);
+  color: #ffffff;
+  font-weight: 800;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 14px rgba(236, 72, 153, 0.45);
+  transform: scale(1.05);
+}
+
+.cal-cell-content {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+
+.cal-cell:hover .cal-hover-circle {
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+.cal-hover-circle {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  transition: background-color 0.15s ease;
+}
+
+.cal-today-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 9999px;
+  background-color: #f43f5e;
+  display: inline-block;
+  margin-left: 2px;
+}
+

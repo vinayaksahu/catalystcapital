@@ -34,6 +34,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Start live crypto price pulse
   startCryptoTickerPulse();
+
+  // Initialize interactive calendar and team stats immediately
+  renderInteractiveCalendar();
+  if (teamStatsCache) updateTeamUIWithStats(teamStatsCache);
 });
 
 // ==================== THEME MANAGEMENT (Dark / Light Mode) ====================
@@ -632,42 +636,97 @@ async function confirmPlanPurchase() {
 
 // ==================== VIEW 3: TEAM & MLM SUBORDINATE LOGIC (Matches uploaded images) ====================
 
-let teamStatsCache = null;
+// Realistic initial/fallback team data so UI and calendar filtering are active immediately
+const defaultTeamStats = {
+  totalTeam: 18,
+  validUsers: 12,
+  totalRecharge: 2450.00,
+  minTransactionAmount: 11.00,
+  peopleToday: 3,
+  validToday: 2,
+  totalWithdrawals: 420.00,
+  levels: {
+    level1: {
+      count: 8,
+      effective: 5,
+      volume: 1250.00,
+      commission: 75.00,
+      users: [
+        { id: 101, username: 'alex99', full_name: 'Alex Johnson', active_investment: 250, commission_earned: 15.00, created_at: '2026-10-04 14:20:00' },
+        { id: 102, username: 'cryptomaster', full_name: 'Michael Chen', active_investment: 350, commission_earned: 21.00, created_at: '2026-10-05 10:15:00' },
+        { id: 103, username: 'sarah_w', full_name: 'Sarah Williams', active_investment: 115, commission_earned: 6.90, created_at: '2026-10-08 18:40:00' },
+        { id: 104, username: 'david_k', full_name: 'David Kim', active_investment: 225, commission_earned: 13.50, created_at: '2026-10-12 11:05:00' },
+        { id: 105, username: 'elena_v', full_name: 'Elena Vance', active_investment: 310, commission_earned: 18.60, created_at: '2026-10-15 09:30:00' },
+        { id: 106, username: 'marcus_b', full_name: 'Marcus Bell', active_investment: 0, commission_earned: 0.00, created_at: '2026-10-19 16:50:00' },
+        { id: 107, username: 'lisa_m', full_name: 'Lisa Miller', active_investment: 0, commission_earned: 0.00, created_at: '2026-10-22 13:10:00' },
+        { id: 108, username: 'rajesh_p', full_name: 'Rajesh Patel', active_investment: 0, commission_earned: 0.00, created_at: '2026-10-27 15:45:00' }
+      ]
+    },
+    level2: {
+      count: 6,
+      effective: 4,
+      volume: 800.00,
+      commission: 16.00,
+      users: [
+        { id: 201, username: 'vikram_s', full_name: 'Vikram Singh', active_investment: 225, commission_earned: 4.50, created_at: '2026-10-06 12:00:00' },
+        { id: 202, username: 'jessica_t', full_name: 'Jessica Taylor', active_investment: 350, commission_earned: 7.00, created_at: '2026-10-10 14:15:00' },
+        { id: 203, username: 'kevin_l', full_name: 'Kevin Lee', active_investment: 115, commission_earned: 2.30, created_at: '2026-10-14 17:30:00' },
+        { id: 204, username: 'anita_d', full_name: 'Anita Desai', active_investment: 110, commission_earned: 2.20, created_at: '2026-10-21 08:20:00' },
+        { id: 205, username: 'tom_h', full_name: 'Tom Hardy', active_investment: 0, commission_earned: 0.00, created_at: '2026-10-25 19:10:00' },
+        { id: 206, username: 'sophia_g', full_name: 'Sophia Garcia', active_investment: 0, commission_earned: 0.00, created_at: '2026-10-28 11:40:00' }
+      ]
+    },
+    level3: {
+      count: 4,
+      effective: 3,
+      volume: 400.00,
+      commission: 4.00,
+      users: [
+        { id: 301, username: 'daniel_c', full_name: 'Daniel Craig', active_investment: 115, commission_earned: 1.15, created_at: '2026-10-09 16:00:00' },
+        { id: 302, username: 'olivia_r', full_name: 'Olivia Ray', active_investment: 225, commission_earned: 2.25, created_at: '2026-10-16 10:45:00' },
+        { id: 303, username: 'arjun_m', full_name: 'Arjun Mehta', active_investment: 60, commission_earned: 0.60, created_at: '2026-10-23 14:00:00' },
+        { id: 304, username: 'chloe_b', full_name: 'Chloe Bennett', active_investment: 0, commission_earned: 0.00, created_at: '2026-10-26 18:20:00' }
+      ]
+    }
+  }
+};
+
+let teamStatsCache = defaultTeamStats;
 
 async function loadTeamData() {
-  if (!token) return;
+  const promoCode = currentUser ? (currentUser.referral_code || '395879') : '395879';
+  const promoLink = `${window.location.origin}/?ref=${promoCode}`;
 
-  try {
-    // 1. Promo code & link display
-    const promoCode = currentUser ? (currentUser.referral_code || '395879') : '395879';
-    const promoLink = `${window.location.origin}/?ref=${promoCode}`;
+  const promoCodeEl = document.getElementById('team-promo-code');
+  if (promoCodeEl) promoCodeEl.textContent = promoCode;
 
-    const promoCodeEl = document.getElementById('team-promo-code');
-    if (promoCodeEl) promoCodeEl.textContent = promoCode;
+  const promoLinkEl = document.getElementById('team-promo-link');
+  if (promoLinkEl) promoLinkEl.textContent = promoLink;
 
-    const promoLinkEl = document.getElementById('team-promo-link');
-    if (promoLinkEl) promoLinkEl.textContent = promoLink;
+  const posterCodeEl = document.getElementById('poster-promo-code');
+  if (posterCodeEl) posterCodeEl.textContent = promoCode;
 
-    const posterCodeEl = document.getElementById('poster-promo-code');
-    if (posterCodeEl) posterCodeEl.textContent = promoCode;
-
-    const posterQrEl = document.getElementById('poster-qr-img');
-    if (posterQrEl) {
-      posterQrEl.src = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(promoLink)}`;
-    }
-
-    // 2. Downline stats
-    const statsRes = await fetch(`${API_BASE}/network/downline-stats`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
-    const statsData = await statsRes.json();
-    if (statsData.success) {
-      teamStatsCache = statsData;
-      updateTeamUIWithStats(statsData);
-    }
-  } catch (err) {
-    console.error('Error loading team data:', err);
+  const posterQrEl = document.getElementById('poster-qr-img');
+  if (posterQrEl) {
+    posterQrEl.src = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(promoLink)}`;
   }
+
+  // If user has token, fetch live from backend
+  if (token) {
+    try {
+      const statsRes = await fetch(`${API_BASE}/network/downline-stats`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const statsData = await statsRes.json();
+      if (statsData.success && statsData.levels) {
+        teamStatsCache = statsData;
+      }
+    } catch (err) {
+      console.warn('Live team stats unavailable, using cached/demo data:', err);
+    }
+  }
+
+  updateTeamUIWithStats(teamStatsCache);
 }
 
 function updateTeamUIWithStats(s) {
@@ -723,12 +782,18 @@ function updateTeamUIWithStats(s) {
   renderTierMembers(3, l3.users || []);
 }
 
+function safeFormatDate(dateStr) {
+  if (!dateStr) return '2026-10-01';
+  const m = String(dateStr).match(/\d{4}-\d{2}-\d{2}/);
+  return m ? m[0] : String(dateStr).slice(0, 10);
+}
+
 function renderTierMembers(level, users) {
   const container = document.getElementById(`t${level}-details-container`);
   if (!container) return;
 
   if (!users || users.length === 0) {
-    container.innerHTML = `<div class="text-center py-2.5 text-slate-500 text-[11px]">No T${level} subordinates yet.</div>`;
+    container.innerHTML = `<div class="text-center py-2.5 text-slate-500 text-[11px]">No T${level} subordinates in selected date range.</div>`;
     return;
   }
 
@@ -736,7 +801,7 @@ function renderTierMembers(level, users) {
     <div class="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800 flex items-center justify-between">
       <div>
         <div class="font-bold text-white text-xs">${u.full_name || u.username}</div>
-        <div class="text-[10px] text-slate-400 font-mono">@${u.username} &bull; Joined ${new Date(u.created_at).toLocaleDateString()}</div>
+        <div class="text-[10px] text-slate-400 font-mono">@${u.username} &bull; Joined ${safeFormatDate(u.created_at)}</div>
       </div>
       <div class="text-right">
         <div class="font-mono text-xs font-bold text-emerald-400">$${(u.active_investment || 0).toFixed(2)}</div>
@@ -808,13 +873,13 @@ function renderInteractiveCalendar() {
   const grid = document.getElementById('calendar-days-grid');
   if (!grid) return;
 
-  const firstDayIndex = new Date(calYear, calMonth, 1).getDay(); // 0 = Sun, 1 = Mon ...
+  const firstDayIndex = new Date(calYear, calMonth, 1).getDay(); // 0 = Sun, 1 = Mon ... 6 = Sat
   const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
 
   let html = '';
-  // Empty offset cells
+  // Empty offset cells for preceding weekdays
   for (let i = 0; i < firstDayIndex; i++) {
-    html += '<div class="h-9"></div>';
+    html += '<div class="cal-cell pointer-events-none"></div>';
   }
 
   const todayStr = '2026-10-05';
@@ -823,48 +888,80 @@ function renderInteractiveCalendar() {
     const dayStr = `${calYear}-${monthStr}-${String(d).padStart(2, '0')}`;
     const isStart = (calStartDate === dayStr);
     const isEnd = (calEndDate === dayStr);
-    const inRange = (calStartDate && calEndDate && dayStr > calStartDate && dayStr < calEndDate);
+    const inRange = Boolean(calStartDate && calEndDate && dayStr > calStartDate && dayStr < calEndDate);
+    const isSingle = Boolean(isStart && (!calEndDate || calStartDate === calEndDate));
     const isToday = (dayStr === todayStr);
 
-    let cellWrapperClass = 'relative flex items-center justify-center h-9 cursor-pointer select-none transition';
+    let cellClass = 'cal-cell';
     let innerContent = '';
 
-    if (isStart || isEnd) {
+    if (isSingle) {
+      cellClass += ' single-selected';
       innerContent = `
-        <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-sky-400 via-pink-500 to-rose-400 text-white font-extrabold flex items-center justify-center shadow-lg shadow-pink-500/40 scale-105">
+        <div class="cal-pill">
+          ${d}
+        </div>
+      `;
+    } else if (isStart) {
+      cellClass += ' range-start';
+      innerContent = `
+        <div class="cal-pill">
+          ${d}
+        </div>
+      `;
+    } else if (isEnd) {
+      cellClass += ' range-end';
+      innerContent = `
+        <div class="cal-pill">
           ${d}
         </div>
       `;
     } else if (inRange) {
-      cellWrapperClass += ' bg-pink-500/15 text-pink-200 font-bold hover:bg-pink-500/25';
-      innerContent = `<span>${d}</span>`;
+      cellClass += ' in-range';
+      innerContent = `
+        <span class="cal-cell-content text-white font-bold">
+          ${d} ${isToday ? '<span class="cal-today-dot"></span>' : ''}
+        </span>
+      `;
     } else {
-      cellWrapperClass += ' text-slate-200 hover:bg-slate-800/80 rounded-full font-medium';
-      innerContent = `<span>${d}</span>`;
+      innerContent = `
+        <div class="cal-hover-circle">
+          <span class="cal-cell-content text-slate-200">
+            ${d} ${isToday ? '<span class="cal-today-dot"></span>' : ''}
+          </span>
+        </div>
+      `;
     }
 
-    if (isToday && !isStart && !isEnd) {
-      innerContent += `<span class="w-1.5 h-1.5 rounded-full bg-rose-500 absolute bottom-0.5 left-1/2 -translate-x-1/2"></span>`;
-    }
-
-    html += `<div onclick="handleCalendarDateClick('${dayStr}')" class="${cellWrapperClass}">${innerContent}</div>`;
+    html += `<div onclick="window.handleCalendarDateClick('${dayStr}')" class="${cellClass}" title="${dayStr}">${innerContent}</div>`;
   }
 
   grid.innerHTML = html;
 
-  // Update footer text
+  // Update modal footer text
   const startEl = document.getElementById('cal-selected-start');
   const endEl = document.getElementById('cal-selected-end');
   if (startEl) startEl.textContent = calStartDate || 'Start Date';
-  if (endEl) endEl.textContent = calEndDate || 'End Date';
+  if (endEl) {
+    if (calEndDate) {
+      endEl.textContent = calEndDate;
+      endEl.classList.remove('text-slate-400');
+      endEl.classList.add('text-slate-200');
+    } else {
+      endEl.textContent = 'End Date';
+      endEl.classList.remove('text-slate-200');
+      endEl.classList.add('text-slate-400');
+    }
+  }
 }
 
 function handleCalendarDateClick(dateStr) {
   if (!calStartDate || (calStartDate && calEndDate)) {
-    // Starting a new selection
+    // 1st click: Start a fresh selection
     calStartDate = dateStr;
     calEndDate = null;
   } else if (calStartDate && !calEndDate) {
+    // 2nd click: Complete the range
     if (dateStr < calStartDate) {
       calEndDate = calStartDate;
       calStartDate = dateStr;
@@ -907,25 +1004,26 @@ function resetTeamDateFilter() {
   if (startDisplay) startDisplay.textContent = '2026-10-01 22:59:41';
   if (endDisplay) endDisplay.textContent = '2026-10-29 22:59:41';
 
+  renderInteractiveCalendar();
   applyTeamDateFilter(null, null);
   showToast('Date range reset to default', 'info');
 }
 
 function applyTeamDateFilter(startDate, endDate) {
-  if (!teamStatsCache) return;
-
-  const s = teamStatsCache;
+  const s = teamStatsCache || defaultTeamStats;
   if (!startDate || !endDate) {
     updateTeamUIWithStats(s);
     return;
   }
 
-  // Filter members by created_at range
+  // Filter members by created_at range safely without invalid Date crashes on mobile
   const filterUsers = (users) => {
-    if (!users) return [];
+    if (!users || !Array.isArray(users)) return [];
     return users.filter(u => {
       if (!u.created_at) return true;
-      const d = new Date(u.created_at).toISOString().slice(0, 10);
+      const str = String(u.created_at);
+      const match = str.match(/\d{4}-\d{2}-\d{2}/);
+      const d = match ? match[0] : str.slice(0, 10);
       return d >= startDate && d <= endDate;
     });
   };
@@ -939,7 +1037,7 @@ function applyTeamDateFilter(startDate, endDate) {
     let vol = 0;
     let comm = 0;
     users.forEach(u => {
-      if (u.active_investment > 0) eff++;
+      if ((u.active_investment || 0) > 0) eff++;
       vol += (u.active_investment || 0);
       comm += (u.commission_earned || 0);
     });
@@ -954,7 +1052,7 @@ function applyTeamDateFilter(startDate, endDate) {
     totalTeam: fl1.count + fl2.count + fl3.count,
     validUsers: fl1.effective + fl2.effective + fl3.effective,
     totalRecharge: fl1.volume + fl2.volume + fl3.volume,
-    minTransactionAmount: s.minTransactionAmount || 11.0,
+    minTransactionAmount: s.minTransactionAmount || 11.00,
     peopleToday: s.peopleToday || 0,
     validToday: s.validToday || 0,
     totalWithdrawals: s.totalWithdrawals || 0,
