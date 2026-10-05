@@ -17,6 +17,7 @@ let currentHistoryFilter = 'all';
 
 // Initialize on DOM Ready
 document.addEventListener('DOMContentLoaded', async () => {
+  initThemeMode();
   lucide.createIcons();
   setupEventListeners();
 
@@ -34,6 +35,39 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Start live crypto price pulse
   startCryptoTickerPulse();
 });
+
+// ==================== THEME MANAGEMENT (Dark / Light Mode) ====================
+
+function initThemeMode() {
+  const savedTheme = localStorage.getItem('catalyst_theme') || 'dark';
+  applyTheme(savedTheme);
+}
+
+function toggleThemeMode() {
+  const isDark = document.documentElement.classList.contains('dark');
+  const nextTheme = isDark ? 'light' : 'dark';
+  applyTheme(nextTheme);
+  showToast(`Switched to ${nextTheme === 'dark' ? 'Dark' : 'Light'} Mode`, 'info');
+}
+
+function applyTheme(theme) {
+  const iconContainer = document.getElementById('theme-toggle-btn');
+  if (theme === 'dark') {
+    document.documentElement.classList.add('dark');
+    document.documentElement.classList.remove('light');
+    if (iconContainer) {
+      iconContainer.innerHTML = '<i data-lucide="sun" class="w-4 h-4 text-amber-500"></i>';
+    }
+  } else {
+    document.documentElement.classList.remove('dark');
+    document.documentElement.classList.add('light');
+    if (iconContainer) {
+      iconContainer.innerHTML = '<i data-lucide="moon" class="w-4 h-4 text-slate-700"></i>';
+    }
+  }
+  localStorage.setItem('catalyst_theme', theme);
+  lucide.createIcons();
+}
 
 // Setup global event listeners
 function setupEventListeners() {
