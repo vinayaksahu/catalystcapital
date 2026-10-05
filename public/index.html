@@ -12,10 +12,10 @@
   
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Google Fonts: Plus Jakarta Sans & Inter (CryptoFinance Exact Typography) -->
+  <!-- Google Fonts: Roboto & Inter (Exact CryptoFinance & BNV Typography) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,600&family=Inter:wght@400;500;600;700;800&family=Cinzel:wght@600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,300;0,400;0,500;0,700;0,900;1,400&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
   <!-- Chart.js -->
@@ -27,9 +27,9 @@
       theme: {
         extend: {
           fontFamily: {
-            sans: ['Plus Jakarta Sans', 'Inter', 'sans-serif'],
-            heading: ['Plus Jakarta Sans', 'sans-serif'],
-            serif: ['Cinzel', 'Georgia', 'serif']
+            sans: ['Roboto', 'Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
+            mono: ['Roboto', 'Inter', 'system-ui', 'sans-serif'],
+            heading: ['Roboto', 'Inter', 'sans-serif']
           },
           colors: {
             app: {
@@ -686,105 +686,105 @@
 
       <!-- 7. SUBORDINATE INVITATION: T1, T2, T3 TIERS -->
       <section class="space-y-3 pt-2">
-        <h3 class="text-sm font-extrabold text-white px-1 tracking-wide">
+        <h3 class="text-[15px] font-bold text-white px-1 tracking-tight">
           Subordinate Invitation
         </h3>
 
         <!-- T1 CARD (Gold/Yellow theme) -->
-        <div class="border border-amber-500/50 rounded-2xl bg-[#12141c] p-3.5 space-y-2.5 shadow-md">
+        <div class="border border-amber-500/40 rounded-2xl bg-[#12141c] p-3.5 space-y-2.5 shadow-md">
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-2">
-              <span class="text-base font-black text-amber-400 font-mono">T1</span>
-              <span class="text-xs font-semibold text-slate-200">The member invited by T is T1</span>
+              <span class="text-base font-black text-amber-400">T1</span>
+              <span class="text-[13px] font-medium text-white">The member invited by T is T1</span>
             </div>
-            <button onclick="openUpgradeProgressModal('T1')" type="button" class="px-2.5 py-1 rounded-full text-[10px] font-extrabold text-white bg-gradient-to-r from-[#ec4899] to-[#f97316] shadow-sm hover:brightness-110 transition">
+            <button onclick="openUpgradeProgressModal('T1')" type="button" class="px-3 py-0.5 rounded-full text-[10.5px] font-bold text-white bg-gradient-to-r from-[#ec4899] to-[#f97316] shadow-sm hover:brightness-110 transition">
               Upgrade progress
             </button>
           </div>
 
           <div class="flex items-center justify-between pt-1">
             <div>
-              <span class="text-[10px] text-slate-400 block font-medium">Total / Effective</span>
-              <span id="t1-count" class="text-base font-extrabold text-emerald-400 font-mono">0/0</span>
+              <span class="text-[11.5px] text-[#848e9c] block font-medium">Total / Effective</span>
+              <span id="t1-count" class="text-[22px] font-extrabold text-cf-turquoise tracking-tight">0/0</span>
             </div>
             <div class="text-right">
-              <span class="text-[10px] text-slate-400 block font-medium">Commission Received</span>
-              <span id="t1-commission" class="text-base font-extrabold text-white font-mono">0.00</span>
+              <span class="text-[11.5px] text-[#848e9c] block font-medium">Commission Received</span>
+              <span id="t1-commission" class="text-[22px] font-extrabold text-white tracking-tight">0.00</span>
             </div>
           </div>
 
           <!-- Accordion Toggle -->
           <div class="pt-2 border-t border-slate-800">
-            <button onclick="toggleTierAccordion(1)" type="button" class="w-full flex items-center justify-between text-xs text-slate-400 hover:text-white transition">
+            <button onclick="toggleTierAccordion(1)" type="button" class="w-full flex items-center justify-between text-[12px] text-[#848e9c] hover:text-white transition">
               <span>Details</span>
-              <i id="t1-chevron" data-lucide="chevron-down" class="w-4 h-4 transition duration-200"></i>
+              <i id="t1-chevron" data-lucide="chevron-down" class="w-4 h-4 text-[#848e9c] transition duration-200"></i>
             </button>
             <div id="t1-details-container" class="hidden mt-2.5 space-y-2 text-xs">
-              <div class="text-center py-2 text-slate-500 text-[11px]">No T1 subordinates yet.</div>
+              <div class="text-center py-2 text-[#848e9c] text-[11px]">No T1 subordinates yet.</div>
             </div>
           </div>
         </div>
 
         <!-- T2 CARD (Red/Coral theme) -->
-        <div class="border border-red-500/50 rounded-2xl bg-[#12141c] p-3.5 space-y-2.5 shadow-md">
+        <div class="border border-red-500/40 rounded-2xl bg-[#12141c] p-3.5 space-y-2.5 shadow-md">
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-2">
-              <span class="text-base font-black text-red-500 font-mono">T2</span>
-              <span class="text-xs font-semibold text-slate-200">The member invited by T1 is T2</span>
+              <span class="text-base font-black text-red-500">T2</span>
+              <span class="text-[13px] font-medium text-white">The member invited by T1 is T2</span>
             </div>
           </div>
 
           <div class="flex items-center justify-between pt-1">
             <div>
-              <span class="text-[10px] text-slate-400 block font-medium">Total / Effective</span>
-              <span id="t2-count" class="text-base font-extrabold text-emerald-400 font-mono">0/0</span>
+              <span class="text-[11.5px] text-[#848e9c] block font-medium">Total / Effective</span>
+              <span id="t2-count" class="text-[22px] font-extrabold text-cf-turquoise tracking-tight">0/0</span>
             </div>
             <div class="text-right">
-              <span class="text-[10px] text-slate-400 block font-medium">Commission Received</span>
-              <span id="t2-commission" class="text-base font-extrabold text-white font-mono">0.00</span>
+              <span class="text-[11.5px] text-[#848e9c] block font-medium">Commission Received</span>
+              <span id="t2-commission" class="text-[22px] font-extrabold text-white tracking-tight">0.00</span>
             </div>
           </div>
 
           <!-- Accordion Toggle -->
           <div class="pt-2 border-t border-slate-800">
-            <button onclick="toggleTierAccordion(2)" type="button" class="w-full flex items-center justify-between text-xs text-slate-400 hover:text-white transition">
+            <button onclick="toggleTierAccordion(2)" type="button" class="w-full flex items-center justify-between text-[12px] text-[#848e9c] hover:text-white transition">
               <span>Details</span>
-              <i id="t2-chevron" data-lucide="chevron-down" class="w-4 h-4 transition duration-200"></i>
+              <i id="t2-chevron" data-lucide="chevron-down" class="w-4 h-4 text-[#848e9c] transition duration-200"></i>
             </button>
             <div id="t2-details-container" class="hidden mt-2.5 space-y-2 text-xs">
-              <div class="text-center py-2 text-slate-500 text-[11px]">No T2 subordinates yet.</div>
+              <div class="text-center py-2 text-[#848e9c] text-[11px]">No T2 subordinates yet.</div>
             </div>
           </div>
         </div>
 
         <!-- T3 CARD (Blue theme) -->
-        <div class="border border-sky-500/50 rounded-2xl bg-[#12141c] p-3.5 space-y-2.5 shadow-md">
+        <div class="border border-sky-500/40 rounded-2xl bg-[#12141c] p-3.5 space-y-2.5 shadow-md">
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-2">
-              <span class="text-base font-black text-sky-400 font-mono">T3</span>
-              <span class="text-xs font-semibold text-slate-200">The member invited by T2 is T3</span>
+              <span class="text-base font-black text-sky-400">T3</span>
+              <span class="text-[13px] font-medium text-white">The member invited by T2 is T3</span>
             </div>
           </div>
 
           <div class="flex items-center justify-between pt-1">
             <div>
-              <span class="text-[10px] text-slate-400 block font-medium">Total / Effective</span>
-              <span id="t3-count" class="text-base font-extrabold text-emerald-400 font-mono">0/0</span>
+              <span class="text-[11.5px] text-[#848e9c] block font-medium">Total / Effective</span>
+              <span id="t3-count" class="text-[22px] font-extrabold text-cf-turquoise tracking-tight">0/0</span>
             </div>
             <div class="text-right">
-              <span class="text-[10px] text-slate-400 block font-medium">Commission Received</span>
-              <span id="t3-commission" class="text-base font-extrabold text-white font-mono">0.00</span>
+              <span class="text-[11.5px] text-[#848e9c] block font-medium">Commission Received</span>
+              <span id="t3-commission" class="text-[22px] font-extrabold text-white tracking-tight">0.00</span>
             </div>
           </div>
 
           <!-- Accordion Toggle -->
           <div class="pt-2 border-t border-slate-800">
-            <button onclick="toggleTierAccordion(3)" type="button" class="w-full flex items-center justify-between text-xs text-slate-400 hover:text-white transition">
+            <button onclick="toggleTierAccordion(3)" type="button" class="w-full flex items-center justify-between text-[12px] text-[#848e9c] hover:text-white transition">
               <span>Details</span>
-              <i id="t3-chevron" data-lucide="chevron-down" class="w-4 h-4 transition duration-200"></i>
+              <i id="t3-chevron" data-lucide="chevron-down" class="w-4 h-4 text-[#848e9c] transition duration-200"></i>
             </button>
             <div id="t3-details-container" class="hidden mt-2.5 space-y-2 text-xs">
-              <div class="text-center py-2 text-slate-500 text-[11px]">No T3 subordinates yet.</div>
+              <div class="text-center py-2 text-[#848e9c] text-[11px]">No T3 subordinates yet.</div>
             </div>
           </div>
         </div>
