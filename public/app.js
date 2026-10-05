@@ -275,7 +275,7 @@ let activeViewName = 'home';
 
 function navigate(viewName) {
   activeViewName = viewName;
-  const views = ['home', 'quotes', 'team', 'history', 'assets', 'admin'];
+  const views = ['home', 'quotes', 'invest', 'team', 'history', 'assets', 'admin'];
   views.forEach(v => {
     const el = document.getElementById(`view-${v}`);
     if (el) el.classList.add('hidden');
@@ -306,6 +306,7 @@ function navigate(viewName) {
 async function refreshCurrentViewData() {
   if (activeViewName === 'home') await loadAssetsData();
   if (activeViewName === 'assets') await loadAssetsData();
+  if (activeViewName === 'invest') renderPresentationPlans();
   if (activeViewName === 'quotes') renderPresentationPlans();
   if (activeViewName === 'team') await loadTeamData();
   if (activeViewName === 'history') await loadHistoryData();
@@ -361,15 +362,9 @@ function openImageViewer(src, title) {
   openModal('imageViewerModal');
 }
 
-// Open Quotes tab and smoothly scroll to the Investment Packages ($25 - $350)
+// Open Dedicated Invest tab to see the Investment Packages ($25 - $350)
 function openInvestPackages() {
-  navigate('quotes');
-  setTimeout(() => {
-    const el = document.getElementById('investment-packages-section');
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-  }, 150);
+  navigate('invest');
 }
 
 function switchTab(viewName) {
@@ -912,36 +907,35 @@ async function loadAssetsData() {
         totalWithdrawnEl.textContent = `${(w.totalWithdrawn || 0).toFixed(2)} USDT`;
       }
 
-      // 6-Grid Stats Box
+      // Assets Income Stats (Total ROI, Team ROI, Team Commission)
+      const totalRoiEl = document.getElementById('stat-total-roi-income');
+      if (totalRoiEl) {
+        totalRoiEl.textContent = `${(w.totalRoiIncome || 0).toFixed(2)} USDT`;
+      }
+
+      const teamRoiEl = document.getElementById('stat-team-roi-income');
+      if (teamRoiEl) {
+        teamRoiEl.textContent = `${(w.totalTeamRoiIncome || 0).toFixed(2)} USDT`;
+      }
+
+      const teamCommEl = document.getElementById('stat-team-commission');
+      if (teamCommEl) {
+        teamCommEl.textContent = `${(w.totalTeamCommission || 0).toFixed(2)} USDT`;
+      }
+
+      // Legacy fallbacks if present
       const tradingAssetsEl = document.getElementById('stat-trading-assets');
-      if (tradingAssetsEl) {
-        tradingAssetsEl.textContent = (w.tradingAssets || 0).toFixed(2);
-      }
-
+      if (tradingAssetsEl) tradingAssetsEl.textContent = (w.tradingAssets || 0).toFixed(2);
       const bonusAssetsEl = document.getElementById('stat-bonus-assets');
-      if (bonusAssetsEl) {
-        bonusAssetsEl.textContent = (w.bonusAssets || 0).toFixed(2);
-      }
-
+      if (bonusAssetsEl) bonusAssetsEl.textContent = (w.bonusAssets || 0).toFixed(2);
       const accumulatedBonusEl = document.getElementById('stat-accumulated-bonus');
-      if (accumulatedBonusEl) {
-        accumulatedBonusEl.textContent = (w.accumulatedBonus || 0).toFixed(2);
-      }
-
+      if (accumulatedBonusEl) accumulatedBonusEl.textContent = (w.accumulatedBonus || 0).toFixed(2);
       const yesterdayIncomeEl = document.getElementById('stat-yesterday-income');
-      if (yesterdayIncomeEl) {
-        yesterdayIncomeEl.textContent = `${(w.yesterdayIncome || 0).toFixed(2)} USDT`;
-      }
-
+      if (yesterdayIncomeEl) yesterdayIncomeEl.textContent = `${(w.yesterdayIncome || 0).toFixed(2)} USDT`;
       const todayIncomeEl = document.getElementById('stat-today-income');
-      if (todayIncomeEl) {
-        todayIncomeEl.textContent = `${(w.todayIncome || 0).toFixed(2)} USDT`;
-      }
-
+      if (todayIncomeEl) todayIncomeEl.textContent = `${(w.todayIncome || 0).toFixed(2)} USDT`;
       const profitMarginEl = document.getElementById('stat-profit-margin');
-      if (profitMarginEl) {
-        profitMarginEl.textContent = w.profitMargin || '4.00%';
-      }
+      if (profitMarginEl) profitMarginEl.textContent = w.profitMargin || '4.00%';
     }
   } catch (err) {
     console.error('Error loading assets data:', err);
@@ -968,6 +962,15 @@ function setMaxWithdrawAmount() {
 
   if (input) input.value = max;
 }
+
+function setRechargeAmount(amt) {
+  const input = document.getElementById('deposit-amount');
+  if (input) {
+    input.value = amt;
+    input.dispatchEvent(new Event('input'));
+  }
+}
+window.setRechargeAmount = setRechargeAmount;
 
 // ==================== DEPOSIT & WITHDRAWAL SUBMISSIONS ====================
 

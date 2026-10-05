@@ -36,6 +36,9 @@ router.get('/overview', authenticateToken, async (req, res) => {
     const yest = new Date(Date.now() - 86400000);
     const yestStr = yest.toISOString().slice(0, 10);
 
+    let totalRoiIncome = 0;
+    let totalTeamRoiIncome = 0;
+    let totalTeamCommission = 0;
     let todayIncome = 0;
     let yesterdayIncome = 0;
     let accumulatedBonus = 0;
@@ -45,7 +48,13 @@ router.get('/overview', authenticateToken, async (req, res) => {
       const txDate = new Date(tx.created_at).toISOString().slice(0, 10);
       const amt = parseFloat(tx.amount) || 0;
       totalEarned += amt;
-      if (tx.type === 'referral_roi' || tx.type === 'team_commission') {
+      if (tx.type === 'daily_roi') {
+        totalRoiIncome += amt;
+      } else if (tx.type === 'referral_roi') {
+        totalTeamRoiIncome += amt;
+        accumulatedBonus += amt;
+      } else if (tx.type === 'team_commission') {
+        totalTeamCommission += amt;
         accumulatedBonus += amt;
       }
       if (txDate === todayStr) {
@@ -81,6 +90,9 @@ router.get('/overview', authenticateToken, async (req, res) => {
         totalAssets,
         totalRecharge,
         totalWithdrawn: totalWithdrawnRes ? (parseFloat(totalWithdrawnRes.total) || 0) : 0,
+        totalRoiIncome,
+        totalTeamRoiIncome,
+        totalTeamCommission,
         tradingAssets,
         bonusAssets: user.commission_balance || 0,
         accumulatedBonus,
