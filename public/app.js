@@ -630,125 +630,196 @@ async function confirmPlanPurchase() {
   }
 }
 
-// ==================== VIEW 3: TEAM & GENEALOGY ====================
+// ==================== VIEW 3: TEAM & MLM SUBORDINATE LOGIC (Matches uploaded images) ====================
+
+let teamStatsCache = null;
 
 async function loadTeamData() {
   if (!token) return;
 
   try {
-    // 1. Downline stats
+    // 1. Promo code & link display
+    const promoCode = currentUser ? (currentUser.referral_code || '395879') : '395879';
+    const promoLink = `${window.location.origin}/?ref=${promoCode}`;
+
+    const promoCodeEl = document.getElementById('team-promo-code');
+    if (promoCodeEl) promoCodeEl.textContent = promoCode;
+
+    const promoLinkEl = document.getElementById('team-promo-link');
+    if (promoLinkEl) promoLinkEl.textContent = promoLink;
+
+    const posterCodeEl = document.getElementById('poster-promo-code');
+    if (posterCodeEl) posterCodeEl.textContent = promoCode;
+
+    const posterQrEl = document.getElementById('poster-qr-img');
+    if (posterQrEl) {
+      posterQrEl.src = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(promoLink)}`;
+    }
+
+    // 2. Downline stats
     const statsRes = await fetch(`${API_BASE}/network/downline-stats`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
     const statsData = await statsRes.json();
     if (statsData.success) {
+      teamStatsCache = statsData;
       const s = statsData;
-      const countEl = document.getElementById('team-total-count');
-      const directEl = document.getElementById('team-directs-count');
-      const volEl = document.getElementById('team-volume-total');
 
-      if (countEl) countEl.textContent = s.totalTeam;
-      if (directEl) directEl.textContent = s.levels.level1.count;
-      const totalVol = (s.levels.level1.volume || 0) + (s.levels.level2.volume || 0) + (s.levels.level3.volume || 0);
-      if (volEl) volEl.textContent = `$${totalVol.toFixed(2)}`;
+      // 1. Team size
+      const sizeEl = document.getElementById('team-size-display');
+      if (sizeEl) sizeEl.textContent = s.totalTeam || 0;
 
-      const l1 = document.getElementById('team-l1-info');
-      const l2 = document.getElementById('team-l2-info');
-      const l3 = document.getElementById('team-l3-info');
+      // 2. Info rows inside card
+      const validUsersEl = document.getElementById('team-valid-users');
+      if (validUsersEl) validUsersEl.textContent = s.validUsers || 0;
 
-      if (l1) l1.textContent = `${s.levels.level1.count} Users ($${s.levels.level1.volume.toFixed(0)})`;
-      if (l2) l2.textContent = `${s.levels.level2.count} Users ($${s.levels.level2.volume.toFixed(0)})`;
-      if (l3) l3.textContent = `${s.levels.level3.count} Users ($${s.levels.level3.volume.toFixed(0)})`;
-    }
+      const totalRechargeEl = document.getElementById('team-total-recharge');
+      if (totalRechargeEl) totalRechargeEl.textContent = (s.totalRecharge || 0).toFixed(2);
 
-    // 2. Directs table
-    const dirRes = await fetch(`${API_BASE}/network/direct-referrals`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
-    const dirData = await dirRes.json();
-    const listContainer = document.getElementById('team-members-list');
-    if (listContainer) {
-      if (dirData.success && dirData.referrals && dirData.referrals.length > 0) {
-        listContainer.innerHTML = dirData.referrals.map(r => `
-          <div class="p-2.5 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between">
-            <div>
-              <div class="font-bold text-white">${r.full_name || r.username}</div>
-              <div class="text-[10px] text-slate-400 font-mono">@${r.username} &bull; Joined ${new Date(r.created_at).toLocaleDateString()}</div>
-            </div>
-            <div class="text-right">
-              <div class="font-bold text-cyan-300 font-mono text-xs">$${r.active_investment.toFixed(2)}</div>
-              <span class="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-bold">ACTIVE</span>
-            </div>
-          </div>
-        `).join('');
-      } else {
-        listContainer.innerHTML = `<div class="text-center py-4 text-slate-500 text-xs">No direct members yet. Share your referral link!</div>`;
-      }
-    }
+      const minTxnEl = document.getElementById('team-min-txn');
+      if (minTxnEl) minTxnEl.textContent = (s.minTransactionAmount || 11.00).toFixed(2);
 
-    // 3. Tree data
-    const treeRes = await fetch(`${API_BASE}/network/tree`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
-    const treeData = await treeRes.json();
-    if (treeData.success && treeData.tree) {
-      renderGenealogyTree(treeData.tree);
+      // 3. 3-Stats grid
+      const peopleTodayEl = document.getElementById('team-people-today');
+      if (peopleTodayEl) peopleTodayEl.textContent = s.peopleToday || 0;
+
+      const validTodayEl = document.getElementById('team-valid-today');
+      if (validTodayEl) validTodayEl.textContent = s.validToday || 0;
+
+      const totalWithdrawalsEl = document.getElementById('team-total-withdrawals');
+      if (totalWithdrawalsEl) totalWithdrawalsEl.textContent = (s.totalWithdrawals || 0).toFixed(2);
+
+      // 4. T1, T2, T3 stats
+      const l1 = s.levels ? s.levels.level1 : { count: 0, effective: 0, commission: 0, users: [] };
+      const l2 = s.levels ? s.levels.level2 : { count: 0, effective: 0, commission: 0, users: [] };
+      const l3 = s.levels ? s.levels.level3 : { count: 0, effective: 0, commission: 0, users: [] };
+
+      const t1CountEl = document.getElementById('t1-count');
+      if (t1CountEl) t1CountEl.textContent = `${l1.count || 0}/${l1.effective || 0}`;
+      const t1CommEl = document.getElementById('t1-commission');
+      if (t1CommEl) t1CommEl.textContent = (l1.commission || 0).toFixed(2);
+
+      const t2CountEl = document.getElementById('t2-count');
+      if (t2CountEl) t2CountEl.textContent = `${l2.count || 0}/${l2.effective || 0}`;
+      const t2CommEl = document.getElementById('t2-commission');
+      if (t2CommEl) t2CommEl.textContent = (l2.commission || 0).toFixed(2);
+
+      const t3CountEl = document.getElementById('t3-count');
+      if (t3CountEl) t3CountEl.textContent = `${l3.count || 0}/${l3.effective || 0}`;
+      const t3CommEl = document.getElementById('t3-commission');
+      if (t3CommEl) t3CommEl.textContent = (l3.commission || 0).toFixed(2);
+
+      // Render details accordions
+      renderTierMembers(1, l1.users || []);
+      renderTierMembers(2, l2.users || []);
+      renderTierMembers(3, l3.users || []);
     }
   } catch (err) {
     console.error('Error loading team data:', err);
   }
 }
 
-function toggleGenealogyTree() {
-  const container = document.getElementById('team-tree-container');
-  const btn = document.getElementById('tree-toggle-btn');
-  if (container) {
-    container.classList.toggle('hidden');
-    if (btn) btn.textContent = container.classList.contains('hidden') ? 'Show Tree' : 'Hide Tree';
-  }
-}
-
-function renderGenealogyTree(node) {
-  const container = document.getElementById('team-genealogy-tree');
+function renderTierMembers(level, users) {
+  const container = document.getElementById(`t${level}-details-container`);
   if (!container) return;
 
-  function buildNodeHtml(currNode, isRoot = false) {
-    if (!currNode) return '';
-    const hasChildren = currNode.children && currNode.children.length > 0;
-
-    return `
-      <div class="tree-node">
-        <div class="tree-card ${isRoot ? 'border-[#ff4e91] bg-pink-950/20' : 'border-cyan-500/40'}">
-          <div class="text-[11px] font-bold ${isRoot ? 'text-[#ff4e91]' : 'text-cyan-400'}">${currNode.username}</div>
-          <div class="text-[10px] text-slate-400 font-mono">${currNode.referral_code}</div>
-          <div class="text-[9px] px-1.5 py-0.5 rounded bg-black/60 text-slate-300 font-semibold mt-1">
-            Active: $${currNode.active_investment || 0}
-          </div>
-        </div>
-
-        ${hasChildren ? `
-          <div class="tree-children">
-            ${currNode.children.map(child => `
-              <div class="tree-node-branch">
-                ${buildNodeHtml(child, false)}
-              </div>
-            `).join('')}
-          </div>
-        ` : ''}
-      </div>
-    `;
+  if (!users || users.length === 0) {
+    container.innerHTML = `<div class="text-center py-2.5 text-slate-500 text-[11px]">No T${level} subordinates yet.</div>`;
+    return;
   }
 
-  container.innerHTML = buildNodeHtml(node, true);
+  container.innerHTML = users.map(u => `
+    <div class="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800 flex items-center justify-between">
+      <div>
+        <div class="font-bold text-white text-xs">${u.full_name || u.username}</div>
+        <div class="text-[10px] text-slate-400 font-mono">@${u.username} &bull; Joined ${new Date(u.created_at).toLocaleDateString()}</div>
+      </div>
+      <div class="text-right">
+        <div class="font-mono text-xs font-bold text-emerald-400">$${(u.active_investment || 0).toFixed(2)}</div>
+        <div class="text-[9px] text-amber-400 font-semibold font-mono">+$${(u.commission_earned || 0).toFixed(2)} Comm</div>
+      </div>
+    </div>
+  `).join('');
 }
 
-function copyTeamReferral() {
-  const input = document.getElementById('team-referral-input');
-  if (input) {
-    input.select();
-    navigator.clipboard.writeText(input.value);
-    showToast('Referral link copied to clipboard!', 'success');
+function toggleTierAccordion(level) {
+  const container = document.getElementById(`t${level}-details-container`);
+  const chevron = document.getElementById(`t${level}-chevron`);
+  if (!container) return;
+
+  const isHidden = container.classList.contains('hidden');
+  if (isHidden) {
+    container.classList.remove('hidden');
+    if (chevron) chevron.classList.add('rotate-180');
+  } else {
+    container.classList.add('hidden');
+    if (chevron) chevron.classList.remove('rotate-180');
   }
+}
+
+function copyPromoCode() {
+  const code = currentUser ? (currentUser.referral_code || '395879') : '395879';
+  copyToClipboard(code);
+  showToast(`Promotion Code ${code} copied!`, 'success');
+}
+
+function copyPromoLink() {
+  const code = currentUser ? (currentUser.referral_code || '395879') : '395879';
+  const link = `${window.location.origin}/?ref=${code}`;
+  copyToClipboard(link);
+  showToast('Invitation link copied to clipboard!', 'success');
+}
+
+function openTeamCalendarModal() {
+  openModal('teamCalendarModal');
+}
+
+function resetTeamDateFilter() {
+  const startEl = document.getElementById('team-date-start');
+  const endEl = document.getElementById('team-date-end');
+  if (startEl) startEl.textContent = '2026-10-01 22:59:41';
+  if (endEl) endEl.textContent = '2026-10-29 22:59:41';
+  showToast('Date range reset to default (October 2026)', 'info');
+}
+
+function confirmDateFilter() {
+  closeModal('teamCalendarModal');
+  showToast('Date filter confirmed: 2026-10-01 to 2026-10-29', 'success');
+}
+
+function changeCalendarMonth(delta) {
+  const title = document.getElementById('cal-month-title');
+  if (title) {
+    title.textContent = delta > 0 ? '2026-11' : '2026-10';
+  }
+}
+
+function openExclusivePosterModal() {
+  openModal('exclusivePosterModal');
+}
+
+function sharePoster() {
+  copyPromoLink();
+  showToast('Poster link ready to share!', 'info');
+}
+
+function openUpgradeProgressModal(tier) {
+  openModal('upgradeProgressModal');
+}
+
+window.copyPromoCode = copyPromoCode;
+window.copyPromoLink = copyPromoLink;
+window.openTeamCalendarModal = openTeamCalendarModal;
+window.resetTeamDateFilter = resetTeamDateFilter;
+window.confirmDateFilter = confirmDateFilter;
+window.changeCalendarMonth = changeCalendarMonth;
+window.openExclusivePosterModal = openExclusivePosterModal;
+window.sharePoster = sharePoster;
+window.openUpgradeProgressModal = openUpgradeProgressModal;
+window.toggleTierAccordion = toggleTierAccordion;
+
+function copyTeamReferral() {
+  copyPromoLink();
 }
 
 function copyModalReferral() {

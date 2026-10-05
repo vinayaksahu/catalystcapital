@@ -386,11 +386,11 @@ html.light .squircle-purple {
 }
 
 html.dark .bottom-tab.active {
-  color: #f59e0b; /* in dark mode matches the gold icon in the screenshot */
+  color: #ff4e91;
 }
 html.dark .bottom-tab.active svg {
-  stroke: #f59e0b;
-  filter: drop-shadow(0 0 6px rgba(245, 158, 11, 0.5));
+  stroke: #ff4e91;
+  filter: drop-shadow(0 0 6px rgba(255, 78, 145, 0.6));
 }
 
 html:not(.dark) .bottom-tab.active {

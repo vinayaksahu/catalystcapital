@@ -155,37 +155,107 @@ class MlmService {
     }
     const l3Ids = l3Users.map(u => u.id);
 
-    const getVolume = async (ids) => {
-      if (ids.length === 0) return 0;
+    const enrichUsers = async (users) => {
+      if (!users || users.length === 0) return { users: [], count: 0, effective: 0, volume: 0, commission: 0 };
+      const ids = users.map(u => u.id);
       const placeholders = ids.map(() => '?').join(',');
-      const res = await db.get(`SELECT COALESCE(SUM(amount), 0) as total FROM investments WHERE user_id IN (${placeholders}) AND status = 'active'`, ids);
-      return res ? res.total || 0 : 0;
+
+      // Get active investment per user
+      const invRows = await db.all(`
+        SELECT user_id, COALESCE(SUM(amount), 0) as active_amount 
+        FROM investments 
+        WHERE user_id IN (${placeholders}) AND status = 'active'
+        GROUP BY user_id
+      `, ids);
+      const invMap = {};
+      invRows.forEach(r => { invMap[r.user_id] = parseFloat(r.active_amount) || 0; });
+
+      // Get commissions paid to userId from these users
+      const commRows = await db.all(`
+        SELECT from_user_id, COALESCE(SUM(amount), 0) as total_comm 
+        FROM transactions 
+        WHERE user_id = ? AND from_user_id IN (${placeholders})
+        GROUP BY from_user_id
+      `, [userId, ...ids]);
+      const commMap = {};
+      commRows.forEach(r => { commMap[r.from_user_id] = parseFloat(r.total_comm) || 0; });
+
+      let volume = 0;
+      let effective = 0;
+      let totalComm = 0;
+
+      const enriched = users.map(u => {
+        const activeInv = invMap[u.id] || 0;
+        const comm = commMap[u.id] || 0;
+        volume += activeInv;
+        if (activeInv > 0) effective++;
+        totalComm += comm;
+        return {
+          ...u,
+          active_investment: activeInv,
+          commission_earned: comm
+        };
+      });
+
+      return {
+        users: enriched,
+        count: users.length,
+        effective,
+        volume,
+        commission: totalComm
+      };
     };
 
-    const [vol1, vol2, vol3] = await Promise.all([
-      getVolume(l1Ids),
-      getVolume(l2Ids),
-      getVolume(l3Ids)
+    const [lvl1, lvl2, lvl3] = await Promise.all([
+      enrichUsers(l1Users),
+      enrichUsers(l2Users),
+      enrichUsers(l3Users)
     ]);
 
+    const totalTeam = lvl1.count + lvl2.count + lvl3.count;
+    const validUsers = lvl1.effective + lvl2.effective + lvl3.effective;
+    const totalRecharge = lvl1.volume + lvl2.volume + lvl3.volume;
+
+    const allDownline = [...lvl1.users, ...lvl2.users, ...lvl3.users];
+    const todayStr = new Date().toISOString().slice(0, 10);
+
+    const peopleToday = allDownline.filter(u => {
+      if (!u.created_at) return false;
+      const d = new Date(u.created_at).toISOString().slice(0, 10);
+      return d === todayStr;
+    }).length;
+
+    const validToday = allDownline.filter(u => {
+      if (!u.created_at) return false;
+      const d = new Date(u.created_at).toISOString().slice(0, 10);
+      return d === todayStr && u.active_investment > 0;
+    }).length;
+
+    // Team withdrawals
+    let totalWithdrawals = 0;
+    const allIds = [...l1Ids, ...l2Ids, ...l3Ids];
+    if (allIds.length > 0) {
+      const placeholders = allIds.map(() => '?').join(',');
+      const wRow = await db.get(`
+        SELECT COALESCE(SUM(amount), 0) as total 
+        FROM withdrawals 
+        WHERE user_id IN (${placeholders}) AND status = 'approved'
+      `, allIds);
+      if (wRow && wRow.total) totalWithdrawals = parseFloat(wRow.total);
+    }
+
     return {
-      totalTeam: l1Users.length + l2Users.length + l3Users.length,
+      totalTeam,
+      validUsers,
+      totalRecharge,
+      minTransactionAmount: 11.0,
+      peopleToday,
+      validToday,
+      totalWithdrawals,
       levels: {
-        level1: {
-          count: l1Users.length,
-          volume: vol1,
-          users: l1Users
-        },
-        level2: {
-          count: l2Users.length,
-          volume: vol2,
-          users: l2Users
-        },
-        level3: {
-          count: l3Users.length,
-          volume: vol3,
-          users: l3Users
-        }
+        level1: lvl1,
+        level2: lvl2,
+        level3: lvl3
       }
     };
   }
