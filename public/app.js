@@ -24,12 +24,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Load official investment plans
   await loadPlans();
 
-  // Try to authenticate current user or default to demo Rahul
+  // Authenticate current user or auto-login with Master Admin
   if (token) {
     await fetchUserProfile();
   } else {
-    // Auto-login with demo user rahul for seamless preview
-    await quickLogin('rahul');
+    await quickLogin('admin');
   }
 
   // Start live crypto price pulse
@@ -277,6 +276,14 @@ function logout() {
 
 let activeViewName = 'home';
 
+function toggleAdminPortal() {
+  if (activeViewName === 'admin') {
+    navigate('home');
+  } else {
+    navigate('admin');
+  }
+}
+
 function navigate(viewName) {
   activeViewName = viewName;
   const views = ['home', 'quotes', 'invest', 'team', 'history', 'assets', 'admin'];
@@ -287,6 +294,23 @@ function navigate(viewName) {
 
   const targetView = document.getElementById(`view-${viewName}`);
   if (targetView) targetView.classList.remove('hidden');
+
+  // Update Portal Switcher Button in Header
+  const switchBtn = document.getElementById('portal-switch-btn');
+  const switchText = document.getElementById('portal-switch-text');
+  const switchIcon = document.getElementById('portal-switch-icon');
+  if (switchBtn && switchText) {
+    if (viewName === 'admin') {
+      switchText.textContent = 'User Portal';
+      switchBtn.className = 'px-2.5 py-1 rounded-full text-[11px] font-bold flex items-center gap-1.5 shadow-sm transition bg-cyan-500/15 border border-cyan-500/40 text-cyan-400 hover:bg-cyan-500/25 active:scale-95';
+      if (switchIcon) switchIcon.setAttribute('data-lucide', 'user');
+    } else {
+      switchText.textContent = 'Admin Portal';
+      switchBtn.className = 'px-2.5 py-1 rounded-full text-[11px] font-bold flex items-center gap-1.5 shadow-sm transition bg-amber-500/15 border border-amber-500/40 text-amber-400 hover:bg-amber-500/25 active:scale-95';
+      if (switchIcon) switchIcon.setAttribute('data-lucide', 'shield-check');
+    }
+    if (window.lucide) lucide.createIcons();
+  }
 
   // Update Bottom Nav Tab styling
   const tabs = ['home', 'quotes', 'team', 'history', 'assets'];
@@ -694,7 +718,7 @@ const defaultTeamStats = {
 let teamStatsCache = defaultTeamStats;
 
 async function loadTeamData() {
-  const promoCode = currentUser ? (currentUser.referral_code || '395879') : '395879';
+  const promoCode = currentUser ? (currentUser.referral_code || 'CATADMIN') : 'CATADMIN';
   const promoLink = `${window.location.origin}/?ref=${promoCode}`;
 
   const promoCodeEl = document.getElementById('team-promo-code');
@@ -827,13 +851,13 @@ function toggleTierAccordion(level) {
 }
 
 function copyPromoCode() {
-  const code = currentUser ? (currentUser.referral_code || '395879') : '395879';
+  const code = currentUser ? (currentUser.referral_code || 'CATADMIN') : 'CATADMIN';
   copyToClipboard(code);
   showToast(`Promotion Code ${code} copied!`, 'success');
 }
 
 function copyPromoLink() {
-  const code = currentUser ? (currentUser.referral_code || '395879') : '395879';
+  const code = currentUser ? (currentUser.referral_code || 'CATADMIN') : 'CATADMIN';
   const link = `${window.location.origin}/?ref=${code}`;
   copyToClipboard(link);
   showToast('Invitation link copied to clipboard!', 'success');
@@ -1090,6 +1114,7 @@ window.openExclusivePosterModal = openExclusivePosterModal;
 window.sharePoster = sharePoster;
 window.openUpgradeProgressModal = openUpgradeProgressModal;
 window.toggleTierAccordion = toggleTierAccordion;
+window.toggleAdminPortal = toggleAdminPortal;
 
 function copyTeamReferral() {
   copyPromoLink();
