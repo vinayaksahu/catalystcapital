@@ -3,18 +3,16 @@ const { db } = require('../db/database');
 class MlmService {
   /**
    * Retrieves up to 3 levels of upline sponsors for a given user.
-   * @param {number} userId 
-   * @returns {Array<{ level: number, user: object }>}
    */
-  getUplineChain(userId, maxLevels = 3) {
+  async getUplineChain(userId, maxLevels = 3) {
     const chain = [];
     let currentUserId = userId;
 
     for (let level = 1; level <= maxLevels; level++) {
-      const user = db.prepare('SELECT id, sponsor_id FROM users WHERE id = ?').get(currentUserId);
+      const user = await db.get('SELECT id, sponsor_id FROM users WHERE id = ?', [currentUserId]);
       if (!user || !user.sponsor_id) break;
 
-      const sponsor = db.prepare('SELECT id, username, email, full_name, status, wallet_balance, roi_balance, commission_balance FROM users WHERE id = ?').get(user.sponsor_id);
+      const sponsor = await db.get('SELECT id, username, email, full_name, status, wallet_balance, roi_balance, commission_balance FROM users WHERE id = ?', [user.sponsor_id]);
       if (!sponsor) break;
 
       chain.push({ level, user: sponsor });
@@ -29,13 +27,10 @@ class MlmService {
    * Level 1: 6%
    * Level 2: 2%
    * Level 3: 1%
-   * @param {number} investorId
-   * @param {number} amount
-   * @param {number} investmentId
    */
-  distributeTeamCommission(investorId, amount, investmentId) {
-    const uplines = this.getUplineChain(investorId, 3);
-    const investor = db.prepare('SELECT id, username, full_name FROM users WHERE id = ?').get(investorId);
+  async distributeTeamCommission(investorId, amount, investmentId) {
+    const uplines = await this.getUplineChain(investorId, 3);
+    const investor = await db.get('SELECT id, username, full_name FROM users WHERE id = ?', [investorId]);
 
     const rates = {
       1: 0.06, // 6%
@@ -53,20 +48,20 @@ class MlmService {
 
       if (commission > 0) {
         // Credit sponsor's commission balance
-        db.prepare('UPDATE users SET commission_balance = commission_balance + ? WHERE id = ?').run(commission, user.id);
+        await db.run('UPDATE users SET commission_balance = commission_balance + ? WHERE id = ?', [commission, user.id]);
 
         // Record transaction
-        db.prepare(`
+        await db.run(`
           INSERT INTO transactions (user_id, amount, type, wallet_type, description, reference_id, from_user_id, level, status)
           VALUES (?, ?, 'team_commission', 'commission_balance', ?, ?, ?, ?, 'completed')
-        `).run(
+        `, [
           user.id,
           commission,
           `Level ${level} Team Commission (${(rate * 100).toFixed(0)}%) from ${investor.username} ($${amount} investment)`,
           `INV-${investmentId}`,
           investor.id,
           level
-        );
+        ]);
 
         distributions.push({
           level,
@@ -87,13 +82,10 @@ class MlmService {
    * Level 1: 10%
    * Level 2: 4%
    * Level 3: 2%
-   * @param {number} earnerId
-   * @param {number} dailyRoiAmount
-   * @param {number} investmentId
    */
-  distributeReferralRoi(earnerId, dailyRoiAmount, investmentId) {
-    const uplines = this.getUplineChain(earnerId, 3);
-    const earner = db.prepare('SELECT id, username FROM users WHERE id = ?').get(earnerId);
+  async distributeReferralRoi(earnerId, dailyRoiAmount, investmentId) {
+    const uplines = await this.getUplineChain(earnerId, 3);
+    const earner = await db.get('SELECT id, username FROM users WHERE id = ?', [earnerId]);
 
     const rates = {
       1: 0.10, // 10%
@@ -111,20 +103,20 @@ class MlmService {
 
       if (commission > 0) {
         // Credit sponsor's commission balance
-        db.prepare('UPDATE users SET commission_balance = commission_balance + ? WHERE id = ?').run(commission, user.id);
+        await db.run('UPDATE users SET commission_balance = commission_balance + ? WHERE id = ?', [commission, user.id]);
 
         // Record transaction
-        db.prepare(`
+        await db.run(`
           INSERT INTO transactions (user_id, amount, type, wallet_type, description, reference_id, from_user_id, level, status)
           VALUES (?, ?, 'referral_roi', 'commission_balance', ?, ?, ?, ?, 'completed')
-        `).run(
+        `, [
           user.id,
           commission,
           `Level ${level} Referral ROI (${(rate * 100).toFixed(0)}%) from ${earner.username}'s Daily ROI ($${dailyRoiAmount})`,
           `ROI-INV-${investmentId}`,
           earner.id,
           level
-        );
+        ]);
 
         distributions.push({
           level,
@@ -141,18 +133,17 @@ class MlmService {
 
   /**
    * Returns downline summary statistics (counts and volumes per level 1, 2, 3)
-   * @param {number} userId
    */
-  getDownlineStats(userId) {
+  async getDownlineStats(userId) {
     // Level 1
-    const l1Users = db.prepare('SELECT id, username, full_name, email, phone, created_at, status FROM users WHERE sponsor_id = ?').all(userId);
+    const l1Users = await db.all('SELECT id, username, full_name, email, phone, created_at, status FROM users WHERE sponsor_id = ?', [userId]);
     const l1Ids = l1Users.map(u => u.id);
 
     // Level 2
     let l2Users = [];
     if (l1Ids.length > 0) {
       const placeholders = l1Ids.map(() => '?').join(',');
-      l2Users = db.prepare(`SELECT id, username, full_name, email, phone, created_at, status, sponsor_id FROM users WHERE sponsor_id IN (${placeholders})`).all(...l1Ids);
+      l2Users = await db.all(`SELECT id, username, full_name, email, phone, created_at, status, sponsor_id FROM users WHERE sponsor_id IN (${placeholders})`, l1Ids);
     }
     const l2Ids = l2Users.map(u => u.id);
 
@@ -160,33 +151,39 @@ class MlmService {
     let l3Users = [];
     if (l2Ids.length > 0) {
       const placeholders = l2Ids.map(() => '?').join(',');
-      l3Users = db.prepare(`SELECT id, username, full_name, email, phone, created_at, status, sponsor_id FROM users WHERE sponsor_id IN (${placeholders})`).all(...l2Ids);
+      l3Users = await db.all(`SELECT id, username, full_name, email, phone, created_at, status, sponsor_id FROM users WHERE sponsor_id IN (${placeholders})`, l2Ids);
     }
     const l3Ids = l3Users.map(u => u.id);
 
-    const getVolume = (ids) => {
+    const getVolume = async (ids) => {
       if (ids.length === 0) return 0;
       const placeholders = ids.map(() => '?').join(',');
-      const res = db.prepare(`SELECT COALESCE(SUM(amount), 0) as total FROM investments WHERE user_id IN (${placeholders}) AND status = 'active'`).get(...ids);
-      return res.total || 0;
+      const res = await db.get(`SELECT COALESCE(SUM(amount), 0) as total FROM investments WHERE user_id IN (${placeholders}) AND status = 'active'`, ids);
+      return res ? res.total || 0 : 0;
     };
+
+    const [vol1, vol2, vol3] = await Promise.all([
+      getVolume(l1Ids),
+      getVolume(l2Ids),
+      getVolume(l3Ids)
+    ]);
 
     return {
       totalTeam: l1Users.length + l2Users.length + l3Users.length,
       levels: {
         level1: {
           count: l1Users.length,
-          volume: getVolume(l1Ids),
+          volume: vol1,
           users: l1Users
         },
         level2: {
           count: l2Users.length,
-          volume: getVolume(l2Ids),
+          volume: vol2,
           users: l2Users
         },
         level3: {
           count: l3Users.length,
-          volume: getVolume(l3Ids),
+          volume: vol3,
           users: l3Users
         }
       }
@@ -196,12 +193,12 @@ class MlmService {
   /**
    * Generates a recursive hierarchical tree node for visualization
    */
-  getUserTreeNode(userId, depth = 3) {
-    const user = db.prepare(`
+  async getUserTreeNode(userId, depth = 3) {
+    const user = await db.get(`
       SELECT u.id, u.username, u.full_name, u.referral_code, u.status, u.created_at,
              COALESCE((SELECT SUM(amount) FROM investments WHERE user_id = u.id AND status = 'active'), 0) as active_investment
       FROM users u WHERE u.id = ?
-    `).get(userId);
+    `, [userId]);
 
     if (!user) return null;
 
@@ -209,12 +206,14 @@ class MlmService {
       return { ...user, children: [] };
     }
 
-    const children = db.prepare('SELECT id FROM users WHERE sponsor_id = ?').all(userId);
-    const childNodes = children.map(c => this.getUserTreeNode(c.id, depth - 1)).filter(Boolean);
+    const children = await db.all('SELECT id FROM users WHERE sponsor_id = ?', [userId]);
+    const childNodes = await Promise.all(
+      children.map(c => this.getUserTreeNode(c.id, depth - 1))
+    );
 
     return {
       ...user,
-      children: childNodes
+      children: childNodes.filter(Boolean)
     };
   }
 }

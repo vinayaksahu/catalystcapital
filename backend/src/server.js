@@ -11,17 +11,29 @@ const investmentRoutes = require('./routes/investmentRoutes');
 const networkRoutes = require('./routes/networkRoutes');
 const walletRoutes = require('./routes/walletRoutes');
 const adminRoutes = require('./routes/adminRoutes');
+const cronRoutes = require('./routes/cronRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Initialize Database & Tables
-initDatabase();
-
-// Middlewares
+// Middleware
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Lazy/On-demand database initialization middleware for serverless
+let dbInitialized = false;
+app.use(async (req, res, next) => {
+  if (!dbInitialized) {
+    try {
+      await initDatabase();
+      dbInitialized = true;
+    } catch (err) {
+      console.error('Failed to initialize database tables:', err);
+    }
+  }
+  next();
+});
 
 // API Endpoints
 app.use('/api/auth', authRoutes);
@@ -29,12 +41,14 @@ app.use('/api/investments', investmentRoutes);
 app.use('/api/network', networkRoutes);
 app.use('/api/wallet', walletRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/cron', cronRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'online',
     system: 'Catalyst Capital MLM Platform',
+    database: process.env.DATABASE_URL ? 'Neon Serverless Postgres' : 'SQLite (Local)',
     timestamp: new Date().toISOString()
   });
 });
@@ -43,7 +57,7 @@ app.get('/api/health', (req, res) => {
 const frontendPath = path.join(__dirname, '..', '..', 'frontend', 'public');
 app.use(express.static(frontendPath));
 
-// Fallback to SPA index.html
+// Fallback to SPA index.html for frontend routing
 app.use((req, res) => {
   if (req.path.startsWith('/api')) {
     return res.status(404).json({ error: 'Endpoint not found' });
@@ -51,16 +65,21 @@ app.use((req, res) => {
   res.sendFile(path.join(frontendPath, 'index.html'));
 });
 
-// Start Background Cron
-startRoiCron();
-
-// Start Server
-app.listen(PORT, () => {
-  console.log(`====================================================`);
-  console.log(`🚀 Catalyst Capital MLM Engine is running!`);
-  console.log(`🌐 Server URL: http://localhost:${PORT}`);
-  console.log(`📊 Mode: Production-ready with native SQLite`);
-  console.log(`====================================================`);
-});
+// If running in traditional server mode (not Vercel serverless)
+if (!process.env.VERCEL) {
+  initDatabase().then(() => {
+    dbInitialized = true;
+    startRoiCron();
+    app.listen(PORT, () => {
+      console.log(`====================================================`);
+      console.log(`🚀 Catalyst Capital MLM Engine is running!`);
+      console.log(`🌐 Server URL: http://localhost:${PORT}`);
+      console.log(`📊 Mode: ${process.env.DATABASE_URL ? 'Neon Postgres' : 'Local SQLite'}`);
+      console.log(`====================================================`);
+    });
+  }).catch(err => {
+    console.error('Initialization error:', err);
+  });
+}
 
 module.exports = app;

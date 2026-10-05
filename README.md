@@ -2,6 +2,8 @@
 
 Production-ready ROI and 3-Tier Multi-Level Marketing (MLM) platform for **Catalyst Capital**, designed according to the official promotional brochure and PDF specifications.
 
+Supports serverless deployment on **Vercel** with **Neon Serverless PostgreSQL** database.
+
 ---
 
 ## 🚀 Key Plan Highlights
@@ -25,28 +27,21 @@ Production-ready ROI and 3-Tier Multi-Level Marketing (MLM) platform for **Catal
 ## 💰 Income Streams
 
 ### 1. Daily ROI Income
-- Credited every 24 hours (automated daily midnight cron job or manual admin trigger).
+- Credited every 24 hours.
+- Supported via **Vercel Cron** (`/api/cron/daily-roi` schedule `0 0 * * *`) and Admin manual trigger.
 - Directly credited to the user's **ROI Wallet**.
-- Automatically marks investments as `completed` once all days are credited.
 
 ### 2. Referral Income (ROI of ROI)
-Whenever a downline member receives their Daily ROI, upline sponsors receive a percentage of that daily payout:
+Whenever a downline member receives their Daily ROI, upline sponsors receive:
 - 🔥 **Level 1 (Directs)**: **10%** of downline's Daily ROI
 - ✨ **Level 2**: **4%** of downline's Daily ROI
 - ⚡ **Level 3**: **2%** of downline's Daily ROI
 
-*Example:* If a Level 1 member is on Plan 6 ($6.00/day ROI), their sponsor receives **$0.60/day** every day!
-
 ### 3. Team Commission (One-Time Instant Commission)
-Instant commission credited directly to the sponsor's **Commission Wallet** upon downline package activation:
+Instant commission credited directly to sponsor's **Commission Wallet** upon downline package activation:
 - 🔥 **Level 1 (Directs)**: **6%** of package price
 - ✨ **Level 2**: **2%** of package price
 - ⚡ **Level 3**: **1%** of package price
-
-*Example:* When a downline member activates Plan 6 ($350):
-- Level 1 Sponsor gets **$21.00** (6%)
-- Level 2 Sponsor gets **$7.00** (2%)
-- Level 3 Sponsor gets **$3.50** (1%)
 
 ---
 
@@ -55,89 +50,60 @@ Instant commission credited directly to the sponsor's **Commission Wallet** upon
 - **Withdrawal Fee**: **0% (Zero Fee)**
 - **Processing Time**: **0 hr - 24 hr**
 - Supported Networks: USDT (TRC20 & BEP20)
-- Auto refund on administrative rejection.
 
 ---
 
-## 🛠 Tech Stack & Architecture
+## ☁️ Deploying to Vercel with Neon PostgreSQL
 
-- **Backend**: Node.js & Express
-- **Database**: Native in-process C-level SQLite (`node:sqlite`) — zero external database server required, fast and ACID compliant.
-- **Frontend**: Responsive Single Page App (Tailwind CSS, Lucide icons, Chart.js).
-- **Automation**: `node-cron` running daily ROI & referral distributions at 00:00 midnight.
-- **Security**: Password hashing with `bcryptjs`, JWT token authentication with role guards.
+### Step 1: Create a Free Neon PostgreSQL Database
+1. Go to [Neon.tech](https://neon.tech) and create a free account.
+2. Create a new Project named `catalystcapital`.
+3. In the Neon Console Dashboard, copy your connection string (`DATABASE_URL`):
+   ```
+   postgresql://[user]:[password]@[endpoint].neon.tech/neondb?sslmode=require
+   ```
 
----
+### Step 2: Deploy on Vercel
+1. Go to [Vercel.com](https://vercel.com) and click **"Add New Project"**.
+2. Select your GitHub repository: `vinayaksahu/catalystcapital`.
+3. In the **Environment Variables** section, add the following variables:
+   - `DATABASE_URL`: `postgresql://[user]:[password]@[endpoint].neon.tech/neondb?sslmode=require`
+   - `JWT_SECRET`: `your_random_secret_jwt_key_here`
+   - `CRON_SECRET`: `your_random_cron_secret_token`
+4. Click **Deploy**. Vercel will automatically build the project and launch the serverless function!
 
-## ⚡ Quick Start
-
-### 1. Install Dependencies
+### Step 3: Initialize Database & Seed (One-time)
+You can initialize your Neon database either automatically (it auto-creates tables on your first visit to your Vercel website) or by running locally:
 ```bash
-npm install
-```
-
-### 2. Seed Database with Test MLM Tree
-```bash
+# Add DATABASE_URL to your local .env file, then run:
+npm run db:init
 npm run seed
 ```
-
-### 3. Run Automated Engine Test Suite
-```bash
-npm test
-```
-
-### 4. Start the Server
-```bash
-npm start
-```
-Open **[http://localhost:5000](http://localhost:5000)** in your browser!
 
 ---
 
 ## 👥 Demo Pre-Seeded Accounts
 
-| Role | Username | Password | Sponsor | Active Plan | Referral Code |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| **Admin** | `admin` | `Password@123` | - | Master | `CATADMIN` |
-| **Level 1** | `rahul` | `Password@123` | admin | Plan 6 ($350) | `CAT1001` |
-| **Level 2** | `priya` | `Password@123` | rahul | Plan 5 ($225) | `CAT2002` |
-| **Level 3** | `amit` | `Password@123` | priya | Plan 4 ($115) | `CAT3003` |
-| **Level 3** | `neha` | `Password@123` | priya | Plan 1 ($25) | `CAT3004` |
-
-*(Tip: In the top banner of the web application, you can click on the quick login buttons: "Admin", "Rahul (L1)", "Priya (L2)", "Amit (L3)" to seamlessly switch between accounts and test all features!)*
+| Role | Username | Password | Active Plan | Referral Code |
+| :--- | :--- | :--- | :--- | :--- |
+| **Admin** | `admin` | `Password@123` | Master Control | `CATADMIN` |
+| **Level 1** | `rahul` | `Password@123` | Plan 6 ($350) | `CAT1001` |
+| **Level 2** | `priya` | `Password@123` | Plan 5 ($225) | `CAT2002` |
+| **Level 3** | `amit` | `Password@123` | Plan 4 ($115) | `CAT3003` |
+| **Level 3** | `neha` | `Password@123` | Plan 1 ($25) | `CAT3004` |
 
 ---
 
-## 🔌 API Endpoints Reference
+## 💻 Local Development
 
-### Authentication
-- `POST /api/auth/register` — Register with optional sponsor code
-- `POST /api/auth/login` — Login with username/email & password
-- `GET /api/auth/me` — Current user profile and wallet balances
+```bash
+# 1. Install dependencies
+npm install
 
-### Investments
-- `GET /api/investments/plans` — List the 6 predefined Catalyst Capital packages
-- `POST /api/investments/purchase` — Activate package and trigger team commissions
-- `GET /api/investments/my` — User active & past investments with progress
+# 2. Run test engine
+npm test
 
-### MLM Network
-- `GET /api/network/downline-stats` — Counts & volumes for Level 1, 2, and 3
-- `GET /api/network/tree` — Hierarchical genealogy tree data
-- `GET /api/network/direct-referrals` — Direct referrals list with earnings
-
-### Wallet & Finance
-- `GET /api/wallet/overview` — Deposit, ROI, Commission & withdrawable balances
-- `POST /api/wallet/deposit` — Deposit USDT
-- `POST /api/wallet/transfer` — Reinvest earnings to deposit wallet
-- `POST /api/wallet/withdraw` — Request withdrawal (min 15 USDT, 0% fee)
-- `GET /api/wallet/transactions` — Full audit ledger with type filter
-- `GET /api/wallet/withdrawals` — User withdrawal history
-
-### Admin Control Center
-- `GET /api/admin/stats` — Platform KPI analytics
-- `GET /api/admin/users` — Member directory & investments
-- `POST /api/admin/adjust-balance` — Credit/debit user balances
-- `GET /api/admin/withdrawals` — List pending withdrawal requests
-- `POST /api/admin/withdrawals/:id/approve` — Approve with TX hash
-- `POST /api/admin/withdrawals/:id/reject` — Reject with reason and auto-refund
-- `POST /api/admin/trigger-daily-roi` — Trigger today's Daily ROI & Referral Income cycle
+# 3. Start local server
+npm start
+```
+Runs at **http://localhost:5000**

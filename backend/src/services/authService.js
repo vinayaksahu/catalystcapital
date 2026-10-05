@@ -10,7 +10,6 @@ class AuthService {
   }
 
   async register({ username, email, password, fullName, phone, sponsorCode }) {
-    // 1. Validation
     if (!username || !email || !password || !fullName) {
       throw new Error('All required fields must be filled');
     }
@@ -19,45 +18,46 @@ class AuthService {
     const cleanEmail = email.trim().toLowerCase();
 
     // Check duplicate username or email
-    const existing = db.prepare('SELECT id FROM users WHERE username = ? OR email = ?').get(cleanUsername, cleanEmail);
+    const existing = await db.get('SELECT id FROM users WHERE username = ? OR email = ?', [cleanUsername, cleanEmail]);
     if (existing) {
       throw new Error('Username or Email already registered');
     }
 
-    // 2. Validate Sponsor Code
+    // Validate Sponsor Code
     let sponsorId = null;
     if (sponsorCode && sponsorCode.trim()) {
-      const sponsor = db.prepare('SELECT id FROM users WHERE referral_code = ?').get(sponsorCode.trim().toUpperCase());
+      const sponsor = await db.get('SELECT id FROM users WHERE referral_code = ?', [sponsorCode.trim().toUpperCase()]);
       if (sponsor) {
         sponsorId = sponsor.id;
       } else {
         throw new Error('Invalid Sponsor / Referral code');
       }
     } else {
-      // Find default admin or root user as fallback sponsor
-      const admin = db.prepare("SELECT id FROM users WHERE role = 'admin' LIMIT 1").get();
+      const admin = await db.get("SELECT id FROM users WHERE role = 'admin' LIMIT 1");
       if (admin) {
         sponsorId = admin.id;
       }
     }
 
-    // 3. Hash password
+    // Hash password
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(password, salt);
 
-    // 4. Generate unique referral code
+    // Generate unique referral code
     let referralCode = this.generateReferralCode();
-    while (db.prepare('SELECT id FROM users WHERE referral_code = ?').get(referralCode)) {
+    let exists = await db.get('SELECT id FROM users WHERE referral_code = ?', [referralCode]);
+    while (exists) {
       referralCode = this.generateReferralCode();
+      exists = await db.get('SELECT id FROM users WHERE referral_code = ?', [referralCode]);
     }
 
-    // 5. Insert user
-    const insert = db.prepare(`
+    // Insert user
+    const insert = await db.run(`
       INSERT INTO users (username, email, password_hash, full_name, phone, role, referral_code, sponsor_id, wallet_balance, roi_balance, commission_balance, status)
       VALUES (?, ?, ?, ?, ?, 'user', ?, ?, 0.0, 0.0, 0.0, 'active')
-    `).run(cleanUsername, cleanEmail, passwordHash, fullName.trim(), phone ? phone.trim() : null, referralCode, sponsorId);
+    `, [cleanUsername, cleanEmail, passwordHash, fullName.trim(), phone ? phone.trim() : null, referralCode, sponsorId]);
 
-    const newUser = db.prepare('SELECT id, username, email, full_name, phone, role, referral_code, sponsor_id, wallet_balance, roi_balance, commission_balance FROM users WHERE id = ?').get(insert.lastInsertRowid);
+    const newUser = await db.get('SELECT id, username, email, full_name, phone, role, referral_code, sponsor_id, wallet_balance, roi_balance, commission_balance FROM users WHERE id = ?', [insert.lastInsertRowid]);
 
     const token = jwt.sign(
       { id: newUser.id, username: newUser.username, role: newUser.role },
@@ -74,9 +74,9 @@ class AuthService {
     }
 
     const cleanLogin = loginId.trim().toLowerCase();
-    const user = db.prepare(`
+    const user = await db.get(`
       SELECT * FROM users WHERE lower(username) = ? OR lower(email) = ?
-    `).get(cleanLogin, cleanLogin);
+    `, [cleanLogin, cleanLogin]);
 
     if (!user) {
       throw new Error('Invalid credentials');

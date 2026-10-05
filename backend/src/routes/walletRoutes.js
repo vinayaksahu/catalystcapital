@@ -5,33 +5,32 @@ const walletService = require('../services/walletService');
 const { authenticateToken } = require('../middleware/authMiddleware');
 
 // Get wallet overview & balances
-router.get('/overview', authenticateToken, (req, res) => {
+router.get('/overview', authenticateToken, async (req, res) => {
   try {
-    const user = db.prepare(`
+    const user = await db.get(`
       SELECT wallet_balance, roi_balance, commission_balance, usdt_address
       FROM users WHERE id = ?
-    `).get(req.user.id);
+    `, [req.user.id]);
 
-    const totalEarnedRes = db.prepare(`
+    const totalEarnedRes = await db.get(`
       SELECT COALESCE(SUM(amount), 0) as total
       FROM transactions
       WHERE user_id = ? AND type IN ('daily_roi', 'referral_roi', 'team_commission') AND status = 'completed'
-    `).get(req.user.id);
+    `, [req.user.id]);
 
-    const totalWithdrawnRes = db.prepare(`
+    const totalWithdrawnRes = await db.get(`
       SELECT COALESCE(SUM(amount), 0) as total
       FROM withdrawals
       WHERE user_id = ? AND status = 'approved'
-    `).get(req.user.id);
+    `, [req.user.id]);
 
-    const pendingWithdrawnRes = db.prepare(`
+    const pendingWithdrawnRes = await db.get(`
       SELECT COALESCE(SUM(amount), 0) as total
       FROM withdrawals
       WHERE user_id = ? AND status = 'pending'
-    `).get(req.user.id);
+    `, [req.user.id]);
 
-    // Get system settings for display (min_withdrawal, fee, deposit address)
-    const settingsRows = db.prepare('SELECT key, value FROM system_settings').all();
+    const settingsRows = await db.all('SELECT key, value FROM system_settings');
     const settings = settingsRows.reduce((acc, row) => {
       acc[row.key] = row.value;
       return acc;
@@ -40,13 +39,13 @@ router.get('/overview', authenticateToken, (req, res) => {
     res.json({
       success: true,
       wallets: {
-        depositWallet: user.wallet_balance,
-        roiWallet: user.roi_balance,
-        commissionWallet: user.commission_balance,
-        totalWithdrawable: user.roi_balance + user.commission_balance,
-        totalEarned: totalEarnedRes.total,
-        totalWithdrawn: totalWithdrawnRes.total,
-        pendingWithdrawn: pendingWithdrawnRes.total,
+        depositWallet: user.wallet_balance || 0,
+        roiWallet: user.roi_balance || 0,
+        commissionWallet: user.commission_balance || 0,
+        totalWithdrawable: (user.roi_balance || 0) + (user.commission_balance || 0),
+        totalEarned: totalEarnedRes ? totalEarnedRes.total : 0,
+        totalWithdrawn: totalWithdrawnRes ? totalWithdrawnRes.total : 0,
+        pendingWithdrawn: pendingWithdrawnRes ? pendingWithdrawnRes.total : 0,
         savedUsdtAddress: user.usdt_address
       },
       rules: {
@@ -62,14 +61,14 @@ router.get('/overview', authenticateToken, (req, res) => {
 });
 
 // Deposit USDT
-router.post('/deposit', authenticateToken, (req, res) => {
+router.post('/deposit', authenticateToken, async (req, res) => {
   try {
     const { amount, network, txHash } = req.body;
     if (!amount || Number(amount) <= 0) {
       return res.status(400).json({ success: false, error: 'Valid deposit amount required' });
     }
 
-    const result = walletService.deposit(req.user.id, Number(amount), network, txHash);
+    const result = await walletService.deposit(req.user.id, Number(amount), network, txHash);
     res.json(result);
   } catch (err) {
     res.status(400).json({ success: false, error: err.message });
@@ -77,10 +76,10 @@ router.post('/deposit', authenticateToken, (req, res) => {
 });
 
 // Reinvestment Transfer (ROI or Commission wallet -> Deposit wallet)
-router.post('/transfer', authenticateToken, (req, res) => {
+router.post('/transfer', authenticateToken, async (req, res) => {
   try {
     const { amount, fromWallet } = req.body;
-    const result = walletService.transferEarningsToDepositWallet(req.user.id, Number(amount), fromWallet);
+    const result = await walletService.transferEarningsToDepositWallet(req.user.id, Number(amount), fromWallet);
     res.json(result);
   } catch (err) {
     res.status(400).json({ success: false, error: err.message });
@@ -88,10 +87,10 @@ router.post('/transfer', authenticateToken, (req, res) => {
 });
 
 // Request Withdrawal (Min 15 USDT, 0% Fee, 0-24hr)
-router.post('/withdraw', authenticateToken, (req, res) => {
+router.post('/withdraw', authenticateToken, async (req, res) => {
   try {
     const { amount, usdtAddress, network, walletSource } = req.body;
-    const result = walletService.requestWithdrawal(req.user.id, {
+    const result = await walletService.requestWithdrawal(req.user.id, {
       amount: Number(amount),
       usdtAddress,
       network,
@@ -104,7 +103,7 @@ router.post('/withdraw', authenticateToken, (req, res) => {
 });
 
 // Transaction History
-router.get('/transactions', authenticateToken, (req, res) => {
+router.get('/transactions', authenticateToken, async (req, res) => {
   try {
     const { type, limit = 50 } = req.query;
     let query = 'SELECT * FROM transactions WHERE user_id = ?';
@@ -118,7 +117,7 @@ router.get('/transactions', authenticateToken, (req, res) => {
     query += ' ORDER BY created_at DESC LIMIT ?';
     params.push(Number(limit));
 
-    const transactions = db.prepare(query).all(...params);
+    const transactions = await db.all(query, params);
     res.json({ success: true, transactions });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -126,11 +125,11 @@ router.get('/transactions', authenticateToken, (req, res) => {
 });
 
 // User Withdrawal History
-router.get('/withdrawals', authenticateToken, (req, res) => {
+router.get('/withdrawals', authenticateToken, async (req, res) => {
   try {
-    const withdrawals = db.prepare(`
+    const withdrawals = await db.all(`
       SELECT * FROM withdrawals WHERE user_id = ? ORDER BY created_at DESC
-    `).all(req.user.id);
+    `, [req.user.id]);
     res.json({ success: true, withdrawals });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });

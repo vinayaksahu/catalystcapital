@@ -1,0 +1,19 @@
+{
+  "version": 2,
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/frontend/public/$1"
+    }
+  ],
+  "crons": [
+    {
+      "path": "/api/cron/daily-roi",
+      "schedule": "0 0 * * *"
+    }
+  ]
+}

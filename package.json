@@ -6,6 +6,8 @@
   "scripts": {
     "start": "node backend/src/server.js",
     "seed": "node seed.js",
+    "db:init": "node scripts/init-neon.js",
+    "build": "echo 'Ready for Vercel'",
     "test": "node test-engine.js"
   },
   "keywords": [],
@@ -13,6 +15,7 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@neondatabase/serverless": "^1.2.0",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
     "dotenv": "^18.0.5",

@@ -3,7 +3,7 @@ const { db } = require('../db/database');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'catalyst_capital_secret_key_2026';
 
-function authenticateToken(req, res, next) {
+async function authenticateToken(req, res, next) {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
 
@@ -13,11 +13,11 @@ function authenticateToken(req, res, next) {
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
-    const user = db.prepare(`
+    const user = await db.get(`
       SELECT id, username, email, full_name, role, referral_code, sponsor_id,
              wallet_balance, roi_balance, commission_balance, usdt_address, status
       FROM users WHERE id = ?
-    `).get(decoded.id);
+    `, [decoded.id]);
 
     if (!user) {
       return res.status(401).json({ error: 'User no longer exists' });

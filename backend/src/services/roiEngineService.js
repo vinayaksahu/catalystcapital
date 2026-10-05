@@ -4,13 +4,12 @@ const mlmService = require('./mlmService');
 class RoiEngineService {
   /**
    * Process daily ROI for all active investments and distribute ROI of ROI to upline
-   * @param {boolean} force - if true, bypasses 24hr/same-day check (useful for manual runs/testing)
    */
-  processDailyRoi(force = false) {
+  async processDailyRoi(force = false) {
     const today = new Date().toISOString().split('T')[0];
 
     // Find all active investments that still have days remaining
-    const activeInvestments = db.prepare(`
+    const activeInvestments = await db.all(`
       SELECT i.*, p.name as plan_name, u.username, u.status as user_status
       FROM investments i
       JOIN plans p ON i.plan_id = p.id
@@ -18,7 +17,7 @@ class RoiEngineService {
       WHERE i.status = 'active'
         AND i.days_credited < i.total_days
         AND u.status = 'active'
-    `).all();
+    `);
 
     let processedCount = 0;
     let totalRoiDistributed = 0;
@@ -26,9 +25,10 @@ class RoiEngineService {
     const details = [];
 
     for (const inv of activeInvestments) {
-      // If not forced, prevent double processing on the same calendar day
       if (!force && inv.last_roi_at) {
-        const lastDate = inv.last_roi_at.split(' ')[0];
+        const lastDate = typeof inv.last_roi_at === 'string'
+          ? inv.last_roi_at.split(' ')[0].split('T')[0]
+          : new Date(inv.last_roi_at).toISOString().split('T')[0];
         if (lastDate === today) {
           continue;
         }
@@ -38,39 +38,38 @@ class RoiEngineService {
       const nextDaysCredited = inv.days_credited + 1;
       const isCompleted = nextDaysCredited >= inv.total_days;
       const newStatus = isCompleted ? 'completed' : 'active';
-      const completedAt = isCompleted ? "datetime('now')" : null;
+      const nowExpr = db.isPostgres ? 'CURRENT_TIMESTAMP' : "datetime('now')";
 
       // 1. Update investment record
-      db.prepare(`
+      await db.run(`
         UPDATE investments
-        SET days_credited = days_credited + 1,
+        SET days_credited = days_credited + ?,
             total_earned = total_earned + ?,
-            last_roi_at = datetime('now'),
+            last_roi_at = ${nowExpr},
             status = ?,
-            completed_at = ${isCompleted ? "datetime('now')" : "NULL"}
+            completed_at = ${isCompleted ? nowExpr : "NULL"}
         WHERE id = ?
-      `).run(dailyRoi, newStatus, inv.id);
+      `, [1, dailyRoi, newStatus, inv.id]);
 
       // 2. Credit user's ROI wallet
-      db.prepare('UPDATE users SET roi_balance = roi_balance + ? WHERE id = ?').run(dailyRoi, inv.user_id);
+      await db.run('UPDATE users SET roi_balance = roi_balance + ? WHERE id = ?', [dailyRoi, inv.user_id]);
 
       // 3. Log user's daily ROI transaction
-      db.prepare(`
+      await db.run(`
         INSERT INTO transactions (user_id, amount, type, wallet_type, description, reference_id, status)
         VALUES (?, ?, 'daily_roi', 'roi_balance', ?, ?, 'completed')
-      `).run(
+      `, [
         inv.user_id,
         dailyRoi,
         `Daily ROI Payout (Day ${nextDaysCredited}/${inv.total_days}) for ${inv.plan_name} ($${inv.amount})`,
         `ROI-INV-${inv.id}`
-      );
+      ]);
 
       totalRoiDistributed += dailyRoi;
       processedCount++;
 
-      // 4. Distribute Referral Income (ROI of ROI)
-      // Level 1: 10%, Level 2: 4%, Level 3: 2%
-      const referralDistributions = mlmService.distributeReferralRoi(inv.user_id, dailyRoi, inv.id);
+      // 4. Distribute Referral Income (ROI of ROI: L1=10%, L2=4%, L3=2%)
+      const referralDistributions = await mlmService.distributeReferralRoi(inv.user_id, dailyRoi, inv.id);
       const referralSum = referralDistributions.reduce((acc, d) => acc + d.amount, 0);
       totalReferralRoiDistributed += referralSum;
 
@@ -98,10 +97,10 @@ class RoiEngineService {
   }
 
   /**
-   * Dry-run estimate of the next daily cycle
+   * Forecast of pending daily cycle
    */
-  getPendingRoiSummary() {
-    const activeInvestments = db.prepare(`
+  async getPendingRoiSummary() {
+    const activeInvestments = await db.all(`
       SELECT i.*, p.name as plan_name, u.username
       FROM investments i
       JOIN plans p ON i.plan_id = p.id
@@ -109,15 +108,14 @@ class RoiEngineService {
       WHERE i.status = 'active'
         AND i.days_credited < i.total_days
         AND u.status = 'active'
-    `).all();
+    `);
 
     let estimatedDailyRoi = 0;
     let estimatedReferralRoi = 0;
 
     for (const inv of activeInvestments) {
       estimatedDailyRoi += inv.daily_roi;
-      // Max potential referral ROI (10% + 4% + 2% = 16%)
-      const uplines = mlmService.getUplineChain(inv.user_id, 3);
+      const uplines = await mlmService.getUplineChain(inv.user_id, 3);
       for (const { level } of uplines) {
         if (level === 1) estimatedReferralRoi += inv.daily_roi * 0.10;
         if (level === 2) estimatedReferralRoi += inv.daily_roi * 0.04;
