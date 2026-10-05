@@ -1473,68 +1473,16 @@
         <div>SAT</div>
       </div>
 
-      <!-- Calendar Days Grid (matching image 1) -->
-      <div id="calendar-days-grid" class="grid grid-cols-7 gap-y-1 text-center text-xs font-semibold">
-        <!-- Oct 2026 starts Thursday: 4 empty slots -->
-        <div></div>
-        <div></div>
-        <div></div>
-        <div></div>
-
-        <!-- 1st: Range Start Pill -->
-        <div class="flex items-center justify-center py-1">
-          <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-sky-400 via-pink-500 to-rose-400 text-white font-extrabold flex items-center justify-center shadow-md">1</div>
-        </div>
-        <div class="flex items-center justify-center py-1 text-slate-200">2</div>
-        <div class="flex items-center justify-center py-1 text-slate-200">3</div>
-
-        <!-- Week 2 -->
-        <div class="flex items-center justify-center py-1 text-slate-200">4</div>
-        <div class="flex items-center justify-center py-1 text-slate-200 relative">
-          5 <span class="w-1.5 h-1.5 rounded-full bg-rose-500 absolute bottom-0.5 left-1/2 -translate-x-1/2"></span>
-        </div>
-        <div class="flex items-center justify-center py-1 text-slate-200">6</div>
-        <div class="flex items-center justify-center py-1 text-slate-200">7</div>
-        <div class="flex items-center justify-center py-1 text-slate-200">8</div>
-        <div class="flex items-center justify-center py-1 text-slate-200">9</div>
-        <div class="flex items-center justify-center py-1 text-slate-200">10</div>
-
-        <!-- Week 3 -->
-        <div class="flex items-center justify-center py-1 text-slate-200">11</div>
-        <div class="flex items-center justify-center py-1 text-slate-200">12</div>
-        <div class="flex items-center justify-center py-1 text-slate-200">13</div>
-        <div class="flex items-center justify-center py-1 text-slate-200">14</div>
-        <div class="flex items-center justify-center py-1 text-slate-200">15</div>
-        <div class="flex items-center justify-center py-1 text-slate-200">16</div>
-        <div class="flex items-center justify-center py-1 text-slate-200">17</div>
-
-        <!-- Week 4 -->
-        <div class="flex items-center justify-center py-1 text-slate-200">18</div>
-        <div class="flex items-center justify-center py-1 text-slate-200">19</div>
-        <div class="flex items-center justify-center py-1 text-slate-200">20</div>
-        <div class="flex items-center justify-center py-1 text-slate-200">21</div>
-        <div class="flex items-center justify-center py-1 text-slate-200">22</div>
-        <div class="flex items-center justify-center py-1 text-slate-200">23</div>
-        <div class="flex items-center justify-center py-1 text-slate-200">24</div>
-
-        <!-- Week 5 -->
-        <div class="flex items-center justify-center py-1 text-slate-200">25</div>
-        <div class="flex items-center justify-center py-1 text-slate-200">26</div>
-        <div class="flex items-center justify-center py-1 text-slate-200">27</div>
-        <div class="flex items-center justify-center py-1 text-slate-200">28</div>
-        <div class="flex items-center justify-center py-1 text-slate-200">29</div>
-        <div class="flex items-center justify-center py-1 text-slate-200">30</div>
-        <!-- 31st: Range End Pill -->
-        <div class="flex items-center justify-center py-1">
-          <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-sky-400 via-pink-500 to-rose-400 text-white font-extrabold flex items-center justify-center shadow-md">31</div>
-        </div>
+      <!-- Calendar Days Grid (Dynamically rendered by renderInteractiveCalendar()) -->
+      <div id="calendar-days-grid" class="grid grid-cols-7 gap-y-1 text-center text-xs font-semibold select-none min-h-[190px]">
+        <!-- Rendered via renderInteractiveCalendar() in app.js -->
       </div>
 
       <!-- Time & Range indicator -->
       <div class="flex items-center justify-between text-xs font-mono text-slate-300 pt-3 border-t border-slate-800">
-        <div>2026-10-01 <strong class="text-white">22:59:41</strong></div>
+        <div><span id="cal-selected-start">2026-10-01</span> <strong class="text-white">22:59:41</strong></div>
         <span class="text-slate-500">&rarr;</span>
-        <div>End Date <strong class="text-white">22:59:41</strong></div>
+        <div><span id="cal-selected-end">2026-10-31</span> <strong class="text-white">22:59:41</strong></div>
       </div>
 
       <!-- Gradient Confirm Button -->

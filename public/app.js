@@ -663,60 +663,64 @@ async function loadTeamData() {
     const statsData = await statsRes.json();
     if (statsData.success) {
       teamStatsCache = statsData;
-      const s = statsData;
-
-      // 1. Team size
-      const sizeEl = document.getElementById('team-size-display');
-      if (sizeEl) sizeEl.textContent = s.totalTeam || 0;
-
-      // 2. Info rows inside card
-      const validUsersEl = document.getElementById('team-valid-users');
-      if (validUsersEl) validUsersEl.textContent = s.validUsers || 0;
-
-      const totalRechargeEl = document.getElementById('team-total-recharge');
-      if (totalRechargeEl) totalRechargeEl.textContent = (s.totalRecharge || 0).toFixed(2);
-
-      const minTxnEl = document.getElementById('team-min-txn');
-      if (minTxnEl) minTxnEl.textContent = (s.minTransactionAmount || 11.00).toFixed(2);
-
-      // 3. 3-Stats grid
-      const peopleTodayEl = document.getElementById('team-people-today');
-      if (peopleTodayEl) peopleTodayEl.textContent = s.peopleToday || 0;
-
-      const validTodayEl = document.getElementById('team-valid-today');
-      if (validTodayEl) validTodayEl.textContent = s.validToday || 0;
-
-      const totalWithdrawalsEl = document.getElementById('team-total-withdrawals');
-      if (totalWithdrawalsEl) totalWithdrawalsEl.textContent = (s.totalWithdrawals || 0).toFixed(2);
-
-      // 4. T1, T2, T3 stats
-      const l1 = s.levels ? s.levels.level1 : { count: 0, effective: 0, commission: 0, users: [] };
-      const l2 = s.levels ? s.levels.level2 : { count: 0, effective: 0, commission: 0, users: [] };
-      const l3 = s.levels ? s.levels.level3 : { count: 0, effective: 0, commission: 0, users: [] };
-
-      const t1CountEl = document.getElementById('t1-count');
-      if (t1CountEl) t1CountEl.textContent = `${l1.count || 0}/${l1.effective || 0}`;
-      const t1CommEl = document.getElementById('t1-commission');
-      if (t1CommEl) t1CommEl.textContent = (l1.commission || 0).toFixed(2);
-
-      const t2CountEl = document.getElementById('t2-count');
-      if (t2CountEl) t2CountEl.textContent = `${l2.count || 0}/${l2.effective || 0}`;
-      const t2CommEl = document.getElementById('t2-commission');
-      if (t2CommEl) t2CommEl.textContent = (l2.commission || 0).toFixed(2);
-
-      const t3CountEl = document.getElementById('t3-count');
-      if (t3CountEl) t3CountEl.textContent = `${l3.count || 0}/${l3.effective || 0}`;
-      const t3CommEl = document.getElementById('t3-commission');
-      if (t3CommEl) t3CommEl.textContent = (l3.commission || 0).toFixed(2);
-
-      // Render details accordions
-      renderTierMembers(1, l1.users || []);
-      renderTierMembers(2, l2.users || []);
-      renderTierMembers(3, l3.users || []);
+      updateTeamUIWithStats(statsData);
     }
   } catch (err) {
     console.error('Error loading team data:', err);
   }
+}
+
+function updateTeamUIWithStats(s) {
+  if (!s) return;
+
+  // 1. Team size
+  const sizeEl = document.getElementById('team-size-display');
+  if (sizeEl) sizeEl.textContent = s.totalTeam || 0;
+
+  // 2. Info rows inside card
+  const validUsersEl = document.getElementById('team-valid-users');
+  if (validUsersEl) validUsersEl.textContent = s.validUsers || 0;
+
+  const totalRechargeEl = document.getElementById('team-total-recharge');
+  if (totalRechargeEl) totalRechargeEl.textContent = (s.totalRecharge || 0).toFixed(2);
+
+  const minTxnEl = document.getElementById('team-min-txn');
+  if (minTxnEl) minTxnEl.textContent = (s.minTransactionAmount || 11.00).toFixed(2);
+
+  // 3. 3-Stats grid
+  const peopleTodayEl = document.getElementById('team-people-today');
+  if (peopleTodayEl) peopleTodayEl.textContent = s.peopleToday || 0;
+
+  const validTodayEl = document.getElementById('team-valid-today');
+  if (validTodayEl) validTodayEl.textContent = s.validToday || 0;
+
+  const totalWithdrawalsEl = document.getElementById('team-total-withdrawals');
+  if (totalWithdrawalsEl) totalWithdrawalsEl.textContent = (s.totalWithdrawals || 0).toFixed(2);
+
+  // 4. T1, T2, T3 stats
+  const l1 = (s.levels && s.levels.level1) ? s.levels.level1 : { count: 0, effective: 0, commission: 0, users: [] };
+  const l2 = (s.levels && s.levels.level2) ? s.levels.level2 : { count: 0, effective: 0, commission: 0, users: [] };
+  const l3 = (s.levels && s.levels.level3) ? s.levels.level3 : { count: 0, effective: 0, commission: 0, users: [] };
+
+  const t1CountEl = document.getElementById('t1-count');
+  if (t1CountEl) t1CountEl.textContent = `${l1.count || 0}/${l1.effective || 0}`;
+  const t1CommEl = document.getElementById('t1-commission');
+  if (t1CommEl) t1CommEl.textContent = (l1.commission || 0).toFixed(2);
+
+  const t2CountEl = document.getElementById('t2-count');
+  if (t2CountEl) t2CountEl.textContent = `${l2.count || 0}/${l2.effective || 0}`;
+  const t2CommEl = document.getElementById('t2-commission');
+  if (t2CommEl) t2CommEl.textContent = (l2.commission || 0).toFixed(2);
+
+  const t3CountEl = document.getElementById('t3-count');
+  if (t3CountEl) t3CountEl.textContent = `${l3.count || 0}/${l3.effective || 0}`;
+  const t3CommEl = document.getElementById('t3-commission');
+  if (t3CommEl) t3CommEl.textContent = (l3.commission || 0).toFixed(2);
+
+  // Render details accordions
+  renderTierMembers(1, l1.users || []);
+  renderTierMembers(2, l2.users || []);
+  renderTierMembers(3, l3.users || []);
 }
 
 function renderTierMembers(level, users) {
@@ -770,28 +774,198 @@ function copyPromoLink() {
   showToast('Invitation link copied to clipboard!', 'success');
 }
 
+// ==================== INTERACTIVE DATE RANGE CALENDAR ====================
+
+let calYear = 2026;
+let calMonth = 9; // 0-based: 9 = October
+let calStartDate = '2026-10-01';
+let calEndDate = '2026-10-29';
+
 function openTeamCalendarModal() {
   openModal('teamCalendarModal');
-}
-
-function resetTeamDateFilter() {
-  const startEl = document.getElementById('team-date-start');
-  const endEl = document.getElementById('team-date-end');
-  if (startEl) startEl.textContent = '2026-10-01 22:59:41';
-  if (endEl) endEl.textContent = '2026-10-29 22:59:41';
-  showToast('Date range reset to default (October 2026)', 'info');
-}
-
-function confirmDateFilter() {
-  closeModal('teamCalendarModal');
-  showToast('Date filter confirmed: 2026-10-01 to 2026-10-29', 'success');
+  renderInteractiveCalendar();
+  if (window.lucide) lucide.createIcons();
 }
 
 function changeCalendarMonth(delta) {
-  const title = document.getElementById('cal-month-title');
-  if (title) {
-    title.textContent = delta > 0 ? '2026-11' : '2026-10';
+  calMonth += delta;
+  if (calMonth < 0) {
+    calMonth = 11;
+    calYear--;
+  } else if (calMonth > 11) {
+    calMonth = 0;
+    calYear++;
   }
+  renderInteractiveCalendar();
+  if (window.lucide) lucide.createIcons();
+}
+
+function renderInteractiveCalendar() {
+  const titleEl = document.getElementById('cal-month-title');
+  const monthStr = String(calMonth + 1).padStart(2, '0');
+  if (titleEl) titleEl.textContent = `${calYear}-${monthStr}`;
+
+  const grid = document.getElementById('calendar-days-grid');
+  if (!grid) return;
+
+  const firstDayIndex = new Date(calYear, calMonth, 1).getDay(); // 0 = Sun, 1 = Mon ...
+  const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+
+  let html = '';
+  // Empty offset cells
+  for (let i = 0; i < firstDayIndex; i++) {
+    html += '<div class="h-9"></div>';
+  }
+
+  const todayStr = '2026-10-05';
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dayStr = `${calYear}-${monthStr}-${String(d).padStart(2, '0')}`;
+    const isStart = (calStartDate === dayStr);
+    const isEnd = (calEndDate === dayStr);
+    const inRange = (calStartDate && calEndDate && dayStr > calStartDate && dayStr < calEndDate);
+    const isToday = (dayStr === todayStr);
+
+    let cellWrapperClass = 'relative flex items-center justify-center h-9 cursor-pointer select-none transition';
+    let innerContent = '';
+
+    if (isStart || isEnd) {
+      innerContent = `
+        <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-sky-400 via-pink-500 to-rose-400 text-white font-extrabold flex items-center justify-center shadow-lg shadow-pink-500/40 scale-105">
+          ${d}
+        </div>
+      `;
+    } else if (inRange) {
+      cellWrapperClass += ' bg-pink-500/15 text-pink-200 font-bold hover:bg-pink-500/25';
+      innerContent = `<span>${d}</span>`;
+    } else {
+      cellWrapperClass += ' text-slate-200 hover:bg-slate-800/80 rounded-full font-medium';
+      innerContent = `<span>${d}</span>`;
+    }
+
+    if (isToday && !isStart && !isEnd) {
+      innerContent += `<span class="w-1.5 h-1.5 rounded-full bg-rose-500 absolute bottom-0.5 left-1/2 -translate-x-1/2"></span>`;
+    }
+
+    html += `<div onclick="handleCalendarDateClick('${dayStr}')" class="${cellWrapperClass}">${innerContent}</div>`;
+  }
+
+  grid.innerHTML = html;
+
+  // Update footer text
+  const startEl = document.getElementById('cal-selected-start');
+  const endEl = document.getElementById('cal-selected-end');
+  if (startEl) startEl.textContent = calStartDate || 'Start Date';
+  if (endEl) endEl.textContent = calEndDate || 'End Date';
+}
+
+function handleCalendarDateClick(dateStr) {
+  if (!calStartDate || (calStartDate && calEndDate)) {
+    // Starting a new selection
+    calStartDate = dateStr;
+    calEndDate = null;
+  } else if (calStartDate && !calEndDate) {
+    if (dateStr < calStartDate) {
+      calEndDate = calStartDate;
+      calStartDate = dateStr;
+    } else {
+      calEndDate = dateStr;
+    }
+  }
+  renderInteractiveCalendar();
+}
+
+function confirmDateFilter() {
+  if (!calStartDate) {
+    calStartDate = '2026-10-01';
+  }
+  if (!calEndDate) {
+    calEndDate = calStartDate;
+  }
+
+  const startDisplay = document.getElementById('team-date-start');
+  const endDisplay = document.getElementById('team-date-end');
+
+  if (startDisplay) startDisplay.textContent = `${calStartDate} 22:59:41`;
+  if (endDisplay) endDisplay.textContent = `${calEndDate} 22:59:41`;
+
+  applyTeamDateFilter(calStartDate, calEndDate);
+
+  closeModal('teamCalendarModal');
+  showToast(`Date filter applied: ${calStartDate} to ${calEndDate}`, 'success');
+}
+
+function resetTeamDateFilter() {
+  calYear = 2026;
+  calMonth = 9;
+  calStartDate = '2026-10-01';
+  calEndDate = '2026-10-29';
+
+  const startDisplay = document.getElementById('team-date-start');
+  const endDisplay = document.getElementById('team-date-end');
+
+  if (startDisplay) startDisplay.textContent = '2026-10-01 22:59:41';
+  if (endDisplay) endDisplay.textContent = '2026-10-29 22:59:41';
+
+  applyTeamDateFilter(null, null);
+  showToast('Date range reset to default', 'info');
+}
+
+function applyTeamDateFilter(startDate, endDate) {
+  if (!teamStatsCache) return;
+
+  const s = teamStatsCache;
+  if (!startDate || !endDate) {
+    updateTeamUIWithStats(s);
+    return;
+  }
+
+  // Filter members by created_at range
+  const filterUsers = (users) => {
+    if (!users) return [];
+    return users.filter(u => {
+      if (!u.created_at) return true;
+      const d = new Date(u.created_at).toISOString().slice(0, 10);
+      return d >= startDate && d <= endDate;
+    });
+  };
+
+  const l1Users = filterUsers((s.levels && s.levels.level1) ? s.levels.level1.users : []);
+  const l2Users = filterUsers((s.levels && s.levels.level2) ? s.levels.level2.users : []);
+  const l3Users = filterUsers((s.levels && s.levels.level3) ? s.levels.level3.users : []);
+
+  const calcMetrics = (users) => {
+    let eff = 0;
+    let vol = 0;
+    let comm = 0;
+    users.forEach(u => {
+      if (u.active_investment > 0) eff++;
+      vol += (u.active_investment || 0);
+      comm += (u.commission_earned || 0);
+    });
+    return { count: users.length, effective: eff, volume: vol, commission: comm, users };
+  };
+
+  const fl1 = calcMetrics(l1Users);
+  const fl2 = calcMetrics(l2Users);
+  const fl3 = calcMetrics(l3Users);
+
+  const filteredStats = {
+    totalTeam: fl1.count + fl2.count + fl3.count,
+    validUsers: fl1.effective + fl2.effective + fl3.effective,
+    totalRecharge: fl1.volume + fl2.volume + fl3.volume,
+    minTransactionAmount: s.minTransactionAmount || 11.0,
+    peopleToday: s.peopleToday || 0,
+    validToday: s.validToday || 0,
+    totalWithdrawals: s.totalWithdrawals || 0,
+    levels: {
+      level1: fl1,
+      level2: fl2,
+      level3: fl3
+    }
+  };
+
+  updateTeamUIWithStats(filteredStats);
 }
 
 function openExclusivePosterModal() {
@@ -813,6 +987,7 @@ window.openTeamCalendarModal = openTeamCalendarModal;
 window.resetTeamDateFilter = resetTeamDateFilter;
 window.confirmDateFilter = confirmDateFilter;
 window.changeCalendarMonth = changeCalendarMonth;
+window.handleCalendarDateClick = handleCalendarDateClick;
 window.openExclusivePosterModal = openExclusivePosterModal;
 window.sharePoster = sharePoster;
 window.openUpgradeProgressModal = openUpgradeProgressModal;
