@@ -304,6 +304,7 @@ function navigate(viewName) {
 }
 
 async function refreshCurrentViewData() {
+  if (activeViewName === 'home') await loadAssetsData();
   if (activeViewName === 'assets') await loadAssetsData();
   if (activeViewName === 'quotes') renderPresentationPlans();
   if (activeViewName === 'team') await loadTeamData();
@@ -362,14 +363,21 @@ function openImageViewer(src, title) {
 
 // Open Quotes tab and smoothly scroll to the Investment Packages ($25 - $350)
 function openInvestPackages() {
-  switchTab('quotes');
+  navigate('quotes');
   setTimeout(() => {
     const el = document.getElementById('investment-packages-section');
     if (el) {
       el.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
-  }, 120);
+  }, 150);
 }
+
+function switchTab(viewName) {
+  navigate(viewName);
+}
+
+window.openInvestPackages = openInvestPackages;
+window.switchTab = switchTab;
 
 // Red Envelope Lucky Draw
 function openRedEnvelopeModal() {
@@ -887,6 +895,11 @@ async function loadAssetsData() {
       const totalAmountEl = document.getElementById('asset-total-amount');
       if (totalAmountEl) {
         totalAmountEl.textContent = `${(w.totalAssets || 0).toFixed(2)} USDT`;
+      }
+
+      const homeTotalEl = document.getElementById('home-total-balance');
+      if (homeTotalEl) {
+        homeTotalEl.textContent = (w.totalAssets || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       }
 
       const totalRechargeEl = document.getElementById('asset-total-recharge');

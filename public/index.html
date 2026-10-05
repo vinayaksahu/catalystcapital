@@ -44,27 +44,18 @@
 
   <link rel="stylesheet" href="styles.css">
 </head>
-<body class="bg-[#05070a] dark:bg-[#05070a] text-slate-900 dark:text-white antialiased selection:bg-[#ff4e91] selection:text-white">
+<body class="antialiased selection:bg-[#ff4e91] selection:text-white">
 
   <!-- ==================== MOBILE APP SHELL ==================== -->
   <div class="mobile-shell pb-24">
 
-    <!-- TOP GLOBAL APP BAR (Theme Toggle, Book Icon, Official Logo, Avatar) -->
+    <!-- TOP GLOBAL APP BAR (Theme Toggle, Official Logo, Avatar) -->
     <header class="sticky top-0 z-40 bg-white/95 dark:bg-[#0a0d14]/95 backdrop-blur-md border-b border-slate-200 dark:border-[#161c28] px-3.5 py-2.5 flex items-center justify-between text-xs">
       
-      <!-- Left: Square Yellow Outlined Book / Ledger Icon + Official Logo (Replaces "BNV TRADING") -->
-      <div class="flex items-center gap-2">
-        <button onclick="navigate('history')" title="Transaction Ledger" class="top-ledger-btn">
-          <svg class="w-5 h-5 text-amber-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="4" y="3" width="16" height="18" rx="2"/>
-            <path d="M9 3v18"/>
-            <path d="m14 8-2 2 2 2"/>
-          </svg>
-        </button>
-
-        <!-- Official Catalyst Capital Logo -->
+      <!-- Left: Official Catalyst Capital Logo (3rd image button removed as requested!) -->
+      <div class="flex items-center">
         <div onclick="navigate('home')" class="cursor-pointer flex items-center">
-          <img src="logo.png" alt="Catalyst Capital" class="h-7 sm:h-8 max-w-[170px] w-auto object-contain drop-shadow">
+          <img src="logo.png" alt="Catalyst Capital" class="h-7 sm:h-8 max-w-[180px] w-auto object-contain drop-shadow">
         </div>
       </div>
 
@@ -121,58 +112,78 @@
          VIEW 1: HOME PAGE (Signal removed, Yield History -> Daily ROI, BNV -> Catalyst Capital)
          ======================================================== -->
     <main id="view-home" class="page-view flex-1 flex flex-col">
-      <!-- TOP ATMOSPHERIC MESH & SECURITY ASSURANCE -->
-      <section class="home-header-atmosphere pt-4 pb-2 px-3">
-        <p class="text-[11px] leading-relaxed text-slate-600 dark:text-slate-300 text-center font-normal px-2 mb-3">
-          We know the importance of security, so we use layers of encryption and security measures to ensure that your account and assets are secure.
-        </p>
 
-        <!-- 4 Circular Action Buttons (Signal removed as requested!) -->
-        <div class="grid grid-cols-4 gap-2 text-center my-2">
-          <!-- 1. Recharge -->
-          <div onclick="openRechargeModal()" class="flex flex-col items-center cursor-pointer group">
-            <div class="circle-action-btn bg-gradient-to-tr from-[#ff4e91] to-[#ff7675] shadow-lg shadow-pink-500/30 group-hover:scale-105">
-              <svg class="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="9"/>
-                <path d="M12 8v8"/>
-                <path d="M8 12h8"/>
-              </svg>
+      <!-- TOTAL BALANCE & QUICK ACTIONS CARD (Matches Image 1 & 2 exactly) -->
+      <section class="px-3 pt-3">
+        <div class="theme-card rounded-3xl p-4 sm:p-5 shadow-sm space-y-4">
+          <!-- Top Row: Balance & Enter Wallet -->
+          <div class="flex items-center justify-between">
+            <div>
+              <div class="text-[12px] font-medium text-slate-500 dark:text-slate-400">Total balance</div>
+              <div class="flex items-center gap-2 mt-1">
+                <span class="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight font-mono">
+                  $ <span id="home-total-balance">12412.48</span>
+                </span>
+                <button onclick="refreshCurrentViewData()" class="p-1 rounded-full text-slate-400 hover:text-amber-500 transition" title="Refresh Balance">
+                  <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+                </button>
+              </div>
             </div>
-            <span class="text-[11px] font-semibold text-slate-800 dark:text-white mt-1.5">Recharge</span>
+
+            <!-- Enter Wallet Button -->
+            <button onclick="navigate('assets')" class="px-4 py-2 rounded-full bg-amber-500 hover:bg-amber-400 text-black font-extrabold text-xs shadow-md shadow-amber-500/20 active:scale-95 transition">
+              Enter wallet
+            </button>
           </div>
 
-          <!-- 2. Withdrawal -->
-          <div onclick="openWithdrawModal()" class="flex flex-col items-center cursor-pointer group">
-            <div class="circle-action-btn bg-gradient-to-tr from-[#0984e3] to-[#00cec9] shadow-lg shadow-cyan-500/30 group-hover:scale-105">
-              <svg class="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="9"/>
-                <path d="M8 12h8"/>
-              </svg>
-            </div>
-            <span class="text-[11px] font-semibold text-slate-800 dark:text-white mt-1.5">Withdrawal</span>
-          </div>
+          <!-- Subtle Divider line -->
+          <div class="border-t border-slate-100 dark:border-slate-800/80"></div>
 
-          <!-- 3. Service -->
-          <div onclick="openServiceModal()" class="flex flex-col items-center cursor-pointer group">
-            <div class="circle-action-btn bg-gradient-to-tr from-[#00b894] to-[#55efc4] shadow-lg shadow-teal-500/30 group-hover:scale-105">
-              <svg class="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
-              </svg>
+          <!-- Bottom Row: 4 Squircle Action Buttons (P2P Wallet, Deposit, Withdraw, VIP Stake) -->
+          <div class="grid grid-cols-4 gap-2 text-center pt-1">
+            <!-- 1. P2P Wallet -->
+            <div onclick="openRechargeModal()" class="flex flex-col items-center cursor-pointer group">
+              <div class="squircle-icon-box squircle-pink group-hover:scale-105 transition">
+                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="2" y="4" width="20" height="16" rx="4"/>
+                  <path d="M16 12h.01"/>
+                  <path d="M18 8H6a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h12"/>
+                </svg>
+              </div>
+              <span class="text-[11.5px] font-bold text-slate-900 dark:text-white mt-1.5">P2P Wallet</span>
             </div>
-            <span class="text-[11px] font-semibold text-slate-800 dark:text-white mt-1.5">Service</span>
-          </div>
 
-          <!-- 4. Invite -->
-          <div onclick="openInviteModal()" class="flex flex-col items-center cursor-pointer group">
-            <div class="circle-action-btn bg-gradient-to-tr from-[#fdcb6e] to-[#e17055] shadow-lg shadow-amber-500/30 group-hover:scale-105">
-              <svg class="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
-                <circle cx="9" cy="7" r="4"/>
-                <line x1="19" y1="8" x2="19" y2="14"/>
-                <line x1="22" y1="11" x2="16" y2="11"/>
-              </svg>
+            <!-- 2. Deposit -->
+            <div onclick="openRechargeModal()" class="flex flex-col items-center cursor-pointer group">
+              <div class="squircle-icon-box squircle-amber group-hover:scale-105 transition">
+                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="12" y1="5" x2="12" y2="19"/>
+                  <polyline points="19 12 12 19 5 12"/>
+                </svg>
+              </div>
+              <span class="text-[11.5px] font-bold text-slate-900 dark:text-white mt-1.5">Deposit</span>
             </div>
-            <span class="text-[11px] font-semibold text-slate-800 dark:text-white mt-1.5">Invite</span>
+
+            <!-- 3. Withdraw -->
+            <div onclick="openWithdrawModal()" class="flex flex-col items-center cursor-pointer group">
+              <div class="squircle-icon-box squircle-blue group-hover:scale-105 transition">
+                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="7" y1="17" x2="17" y2="7"/>
+                  <polyline points="7 7 17 7 17 17"/>
+                </svg>
+              </div>
+              <span class="text-[11.5px] font-bold text-slate-900 dark:text-white mt-1.5">Withdraw</span>
+            </div>
+
+            <!-- 4. VIP Stake -->
+            <div onclick="openInvestPackages()" class="flex flex-col items-center cursor-pointer group">
+              <div class="squircle-icon-box squircle-emerald group-hover:scale-105 transition">
+                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="m2 4 3 12h14l3-12-6 7-4-7-4 7-6-7zm3 16h14"/>
+                </svg>
+              </div>
+              <span class="text-[11.5px] font-bold text-slate-900 dark:text-white mt-1.5">VIP Stake</span>
+            </div>
           </div>
         </div>
       </section>
@@ -945,13 +956,13 @@
       <span>Quotes</span>
     </button>
 
-    <!-- 3. Center Chip: "Invest" leading directly to Investment Packages ($25 - $350) as requested! -->
-    <div onclick="openInvestPackages()" class="flex flex-col items-center justify-center cursor-pointer group">
+    <!-- 3. Center Floating Button: Invest Packages ($25 - $350) -->
+    <button onclick="openInvestPackages()" type="button" id="center-invest-btn" class="flex flex-col items-center justify-center cursor-pointer group focus:outline-none -mt-4 z-20">
       <div class="center-floating-chip">
-        <i data-lucide="zap" class="w-5 h-5 text-white fill-white"></i>
+        <span class="text-[12px] font-extrabold text-white tracking-wider uppercase font-sans drop-shadow-sm">GO</span>
       </div>
-      <span class="text-[10px] font-extrabold text-amber-500 -mt-2">Invest</span>
-    </div>
+      <span class="text-[10px] font-extrabold text-[#e11d48] dark:text-amber-400 font-sans tracking-wide mt-0.5">Invest</span>
+    </button>
 
     <!-- 4. History Tab (Requirement 1: Bonus replaced with History) -->
     <button onclick="navigate('history')" id="tab-history" class="bottom-tab">
