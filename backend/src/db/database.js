@@ -59,12 +59,12 @@ const db = {
     if (isPostgres) {
       let idx = 1;
       let pgText = text.replace(/\?/g, () => `$${idx++}`);
-      // For INSERT in postgres, append RETURNING id if not present to capture inserted ID
-      if (pgText.trim().toUpperCase().startsWith('INSERT') && !pgText.toUpperCase().includes('RETURNING')) {
+      // For INSERT in postgres, append RETURNING id if not present to capture inserted ID (except for tables without id like system_settings)
+      if (pgText.trim().toUpperCase().startsWith('INSERT') && !pgText.toUpperCase().includes('RETURNING') && !pgText.toUpperCase().includes('SYSTEM_SETTINGS')) {
         pgText += ' RETURNING id';
       }
       const res = await pool.query(pgText, params);
-      const lastInsertId = res.rows && res.rows[0] ? res.rows[0].id : null;
+      const lastInsertId = res.rows && res.rows[0] && res.rows[0].id ? res.rows[0].id : null;
       return { lastInsertRowid: lastInsertId, rowCount: res.rowCount };
     } else {
       const stmt = sqliteDb.prepare(text);
