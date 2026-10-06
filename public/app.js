@@ -5069,6 +5069,8 @@ async function loadSuperRootMasterDashboard() {
 
     renderSuperRootBranchesTable(cachedSuperRootBranches);
     if (window.lucide) lucide.createIcons();
+    initTabSliderControls('sr-tabs-container');
+    setTimeout(() => updateTabSlideArrowStates('sr-tabs-container'), 250);
   } catch (err) {
     showToast(err.message, 'error');
   }
