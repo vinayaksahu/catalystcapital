@@ -619,16 +619,29 @@ function updateAuthUI() {
     if (withdrawAddr && currentUser.usdt_address) {
       withdrawAddr.value = currentUser.usdt_address;
     }
+
+    // Permanently ensure Profile Avatar Pill in Header is visible across all member and admin views
+    const profilePill = document.getElementById('profile-pill-wrapper');
+    if (profilePill) {
+      if (activeViewName !== 'login' && activeViewName !== 'adminlogin' && activeViewName !== 'register') {
+        profilePill.classList.remove('hidden');
+        profilePill.style.removeProperty('display');
+      } else {
+        profilePill.classList.add('hidden');
+      }
+    }
   } else {
     if (btnLogin) btnLogin.classList.remove('hidden');
     if (btnProfile) btnProfile.classList.add('hidden');
+    const profilePill = document.getElementById('profile-pill-wrapper');
+    if (profilePill) profilePill.classList.add('hidden');
     if (activeBadge) activeBadge.textContent = 'Guest';
   }
 
   // Ensure Admin Portal button in header is strictly hidden for non-admins or logged out users
   const portalBtn = document.getElementById('portal-switch-btn');
   if (portalBtn) {
-    if (currentUser && currentUser.role === 'admin' && activeViewName !== 'login' && activeViewName !== 'register') {
+    if (currentUser && currentUser.role === 'admin' && activeViewName !== 'login' && activeViewName !== 'adminlogin' && activeViewName !== 'register') {
       portalBtn.classList.remove('hidden');
       portalBtn.style.removeProperty('display');
     } else {
@@ -637,6 +650,24 @@ function updateAuthUI() {
     }
   }
 }
+
+// Logo click handler: Stays in Admin Portal if admin is in admin portal, else navigates to home
+function handleAppLogoClick() {
+  if (currentUser && currentUser.role === 'admin') {
+    if (activeViewName === 'admin') {
+      // Already in Admin portal -> reload or scroll to top of admin portal
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+  }
+  // For regular members or when in user portal
+  if (currentUser) {
+    navigate('home');
+  } else {
+    navigate('login');
+  }
+}
+window.handleAppLogoClick = handleAppLogoClick;
 
 async function quickLogin(username) {
   try {
