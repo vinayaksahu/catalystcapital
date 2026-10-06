@@ -83,7 +83,8 @@ class EmailService {
     const purposeTitles = {
       registration: 'Registration Verification Code',
       forgot_password: 'Password Reset OTP Code',
-      wallet_update: 'USDT (BEP-20) Wallet Address Change OTP'
+      wallet_update: 'USDT (BEP-20) Wallet Address Change OTP',
+      email_change: 'Email Address Change Security OTP'
     };
 
     const title = purposeTitles[purpose] || 'Verification Code';

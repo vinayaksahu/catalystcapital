@@ -189,14 +189,146 @@ function openEditProfileModal() {
   if (phoneEl) phoneEl.value = currentUser.phone || '';
   const emailEl = document.getElementById('edit-prof-email');
   if (emailEl) emailEl.value = currentUser.email || '';
+  
+  // Reset OTP container and status
+  const otpContainer = document.getElementById('edit-prof-otp-container');
+  if (otpContainer) otpContainer.classList.add('hidden');
+  const otpInput = document.getElementById('edit-prof-otp');
+  if (otpInput) {
+    otpInput.value = '';
+    otpInput.required = false;
+  }
+  const sendBtn = document.getElementById('btn-edit-prof-send-otp');
+  if (sendBtn) {
+    sendBtn.disabled = false;
+    sendBtn.textContent = 'Send OTP';
+  }
+  const oldEmailDisp = document.getElementById('edit-prof-old-email-display');
+  if (oldEmailDisp) oldEmailDisp.textContent = currentUser.email || '';
+
+  const emailBadge = document.getElementById('edit-prof-email-badge');
+  if (emailBadge) {
+    emailBadge.innerHTML = '<i data-lucide="shield-check" class="w-3 h-3 text-emerald-400"></i> Verified';
+    emailBadge.className = 'text-[10px] text-emerald-400 font-mono flex items-center gap-1';
+  }
+
   openModal('editProfileModal');
+  if (typeof lucide !== 'undefined') lucide.createIcons();
 }
+
+function handleEditProfileEmailChange() {
+  if (!currentUser) return;
+  const emailEl = document.getElementById('edit-prof-email');
+  const currentVal = (emailEl?.value || '').trim().toLowerCase();
+  const originalVal = (currentUser.email || '').trim().toLowerCase();
+  const otpContainer = document.getElementById('edit-prof-otp-container');
+  const otpInput = document.getElementById('edit-prof-otp');
+  const emailBadge = document.getElementById('edit-prof-email-badge');
+
+  if (currentVal !== originalVal) {
+    // Email has changed -> show OTP box
+    if (otpContainer) otpContainer.classList.remove('hidden');
+    if (otpInput) otpInput.required = true;
+    if (emailBadge) {
+      emailBadge.innerHTML = '<i data-lucide="alert-triangle" class="w-3 h-3 text-amber-400"></i> Change Pending';
+      emailBadge.className = 'text-[10px] text-amber-400 font-mono flex items-center gap-1';
+    }
+  } else {
+    // Reverted back to original -> hide OTP box
+    if (otpContainer) otpContainer.classList.add('hidden');
+    if (otpInput) {
+      otpInput.value = '';
+      otpInput.required = false;
+    }
+    if (emailBadge) {
+      emailBadge.innerHTML = '<i data-lucide="shield-check" class="w-3 h-3 text-emerald-400"></i> Verified';
+      emailBadge.className = 'text-[10px] text-emerald-400 font-mono flex items-center gap-1';
+    }
+  }
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+window.handleEditProfileEmailChange = handleEditProfileEmailChange;
+
+async function handleSendEmailChangeOtp() {
+  if (!currentUser) return;
+  const btn = document.getElementById('btn-edit-prof-send-otp');
+  const oldEmail = currentUser.email;
+
+  if (!oldEmail) {
+    showToast('No registered email found to send OTP', 'error');
+    return;
+  }
+
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Sending...';
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}/auth/email/send-change-otp`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast(`Security OTP sent to your old registered email (${oldEmail})! Check inbox/spam.`, 'success');
+      if (btn) btn.textContent = 'OTP Sent';
+      // 60-second cooldown timer
+      let countdown = 60;
+      const interval = setInterval(() => {
+        countdown--;
+        if (countdown > 0) {
+          if (btn) btn.textContent = `Resend (${countdown}s)`;
+        } else {
+          clearInterval(interval);
+          if (btn) {
+            btn.disabled = false;
+            btn.textContent = 'Send OTP';
+          }
+        }
+      }, 1000);
+    } else {
+      showToast(data.error || 'Failed to send OTP to old email', 'error');
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = 'Send OTP';
+      }
+    }
+  } catch (err) {
+    showToast(err.message, 'error');
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = 'Send OTP';
+    }
+  }
+}
+window.handleSendEmailChangeOtp = handleSendEmailChangeOtp;
 
 async function handleUpdateProfile(e) {
   e.preventDefault();
-  const fullName = document.getElementById('edit-prof-fullname').value;
-  const phone = document.getElementById('edit-prof-phone').value;
-  const email = document.getElementById('edit-prof-email').value;
+  const fullName = (document.getElementById('edit-prof-fullname')?.value || '').trim();
+  const phone = (document.getElementById('edit-prof-phone')?.value || '').trim();
+  const email = (document.getElementById('edit-prof-email')?.value || '').trim();
+  const otp = (document.getElementById('edit-prof-otp')?.value || '').trim();
+
+  // If email was changed, check that OTP was entered
+  if (currentUser && email.toLowerCase() !== (currentUser.email || '').toLowerCase()) {
+    if (!otp) {
+      showToast('Please enter the 6-digit OTP code sent to your old registered email', 'error');
+      const otpInput = document.getElementById('edit-prof-otp');
+      if (otpInput) otpInput.focus();
+      return;
+    }
+  }
+
+  const saveBtn = document.getElementById('btn-save-profile');
+  if (saveBtn) {
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Saving...';
+  }
 
   try {
     const res = await fetch(`${API_BASE}/auth/profile`, {
@@ -205,7 +337,7 @@ async function handleUpdateProfile(e) {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`
       },
-      body: JSON.stringify({ fullName, phone, email })
+      body: JSON.stringify({ fullName, phone, email, otp })
     });
     const data = await res.json();
     if (data.success && data.user) {
@@ -218,6 +350,11 @@ async function handleUpdateProfile(e) {
     }
   } catch (err) {
     showToast(err.message, 'error');
+  } finally {
+    if (saveBtn) {
+      saveBtn.disabled = false;
+      saveBtn.textContent = 'Save Changes';
+    }
   }
 }
 
@@ -565,7 +702,6 @@ window.handleSendRegistrationOtp = handleSendRegistrationOtp;
 async function handleRegister(e) {
   e.preventDefault();
   const fullName = (document.getElementById('reg-fullname')?.value || '').trim();
-  const username = (document.getElementById('reg-username')?.value || '').trim();
   const email = (document.getElementById('reg-email')?.value || '').trim();
   const sponsorCode = (document.getElementById('reg-sponsor')?.value || '').trim();
   const phone = (document.getElementById('reg-phone')?.value || '').trim();
@@ -581,7 +717,7 @@ async function handleRegister(e) {
     const res = await fetch(`${API_BASE}/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ fullName, username, email, sponsorCode, phone, password, otp })
+      body: JSON.stringify({ fullName, email, sponsorCode, phone, password, otp })
     });
     const data = await res.json();
     if (!res.ok || !data.success) {

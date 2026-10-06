@@ -168,15 +168,47 @@ class AuthService {
     return { user: safeUser, token };
   }
 
-  async updateProfile(userId, { fullName, phone }) {
+  async updateProfile(userId, { fullName, phone, newEmail, otp }) {
     if (!fullName || !fullName.trim()) {
       throw new Error('Full Name is required');
     }
+
+    const currentUser = await db.get('SELECT email FROM users WHERE id = ?', [userId]);
+    if (!currentUser) {
+      throw new Error('User not found');
+    }
+
+    let cleanNewEmail = newEmail ? newEmail.trim().toLowerCase() : null;
+    let emailToUpdate = currentUser.email;
+
+    // If user is attempting to change their email address
+    if (cleanNewEmail && cleanNewEmail !== currentUser.email.toLowerCase()) {
+      if (!cleanNewEmail.includes('@') || !cleanNewEmail.includes('.')) {
+        throw new Error('Please enter a valid new email address');
+      }
+
+      const existing = await db.get('SELECT id FROM users WHERE lower(email) = ? AND id != ?', [cleanNewEmail, userId]);
+      if (existing) {
+        throw new Error('This new email is already registered to another account');
+      }
+
+      if (!otp || !String(otp).trim()) {
+        throw new Error('Security verification required: Please enter the OTP sent to your old registered email address');
+      }
+
+      const otpVerify = await emailService.verifyOtp(currentUser.email, otp, 'email_change');
+      if (!otpVerify.success) {
+        throw new Error(otpVerify.error || 'Invalid or expired OTP code sent to your old email');
+      }
+
+      emailToUpdate = cleanNewEmail;
+    }
+
     await db.run(`
       UPDATE users
-      SET full_name = ?, phone = ?
+      SET full_name = ?, phone = ?, email = ?
       WHERE id = ?
-    `, [fullName.trim(), phone ? phone.trim() : null, userId]);
+    `, [fullName.trim(), phone ? phone.trim() : null, emailToUpdate, userId]);
 
     const updated = await db.get(`
       SELECT id, username, email, full_name, phone, role, referral_code, sponsor_id,

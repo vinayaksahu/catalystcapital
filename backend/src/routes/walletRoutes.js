@@ -111,7 +111,11 @@ router.get('/overview', authenticateToken, async (req, res) => {
         minWithdrawal: parseFloat(settings.min_withdrawal || '15'),
         withdrawalFee: parseFloat(settings.withdrawal_fee_percent || '0'),
         processingTime: settings.withdrawal_processing_time || '0 - 24 Hours',
-        depositAddress: settings.usdt_deposit_address || 'TYDzsXDvGgT3vXkX7q5sK8y1jN9pLmQ6wZ'
+        depositAddress: settings.usdt_deposit_address || 'TYDzsXDvGgT3vXkX7q5sK8y1jN9pLmQ6wZ',
+        announcementTicker: settings.announcement_ticker || 'Welcome to the official Catalyst Capital trading platform • High Frequency AI Trading • Instant 0% Withdrawal Payouts • Daily ROI Active •',
+        popupImageUrl: settings.popup_image_url || '',
+        popupImageActive: settings.popup_image_active === '1' || settings.popup_image_active === 'true',
+        popupImageTitle: settings.popup_image_title || 'Special Platform Announcement'
       }
     });
   } catch (err) {

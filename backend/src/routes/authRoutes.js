@@ -85,10 +85,24 @@ router.get('/me', authenticateToken, (req, res) => {
   res.json({ success: true, user: req.user });
 });
 
+// Member requesting OTP for Email Address change (sent to their current/old email)
+router.post('/email/send-change-otp', authenticateToken, async (req, res) => {
+  try {
+    const userEmail = req.user.email;
+    if (!userEmail) {
+      return res.status(400).json({ success: false, error: 'User does not have a registered email address' });
+    }
+    const result = await emailService.createAndSendOtp(userEmail, 'email_change');
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 router.put('/profile', authenticateToken, async (req, res) => {
   try {
-    const { fullName, phone } = req.body;
-    const updatedUser = await authService.updateProfile(req.user.id, { fullName, phone });
+    const { fullName, phone, email, otp } = req.body;
+    const updatedUser = await authService.updateProfile(req.user.id, { fullName, phone, newEmail: email, otp });
     res.json({ success: true, user: updatedUser });
   } catch (err) {
     res.status(400).json({ success: false, error: err.message });
