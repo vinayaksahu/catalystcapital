@@ -277,11 +277,44 @@ function openWalletAddressModal() {
   openModal('bep20WalletModal');
 }
 
+async function handleSendWalletOtp() {
+  const btn = document.getElementById('btn-bep20-send-otp');
+  if (btn) btn.disabled = true;
+
+  try {
+    const res = await fetch(`${API_BASE}/auth/wallet-address/send-otp`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast('Security OTP sent to your registered email!', 'success');
+      if (btn) btn.textContent = 'OTP Sent';
+    } else {
+      showToast(data.error || 'Failed to send OTP', 'error');
+      if (btn) btn.disabled = false;
+    }
+  } catch (err) {
+    showToast(err.message, 'error');
+    if (btn) btn.disabled = false;
+  }
+}
+window.handleSendWalletOtp = handleSendWalletOtp;
+
 async function handleUpdateWalletAddress(e) {
   e.preventDefault();
   const walletAddress = document.getElementById('bep20-address-input').value.trim();
+  const otp = document.getElementById('bep20-otp-input')?.value.trim();
+
   if (!walletAddress) {
-    showToast('Please enter a valid wallet address', 'error');
+    showToast('Please enter a valid BEP-20 wallet address', 'error');
+    return;
+  }
+  if (!otp) {
+    showToast('Please enter the 6-digit OTP code sent to your email', 'error');
     return;
   }
 
@@ -292,14 +325,16 @@ async function handleUpdateWalletAddress(e) {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`
       },
-      body: JSON.stringify({ walletAddress })
+      body: JSON.stringify({ walletAddress, otp })
     });
     const data = await res.json();
     if (data.success && data.user) {
       currentUser = data.user;
       updateAuthUI();
       closeModal('bep20WalletModal');
-      showToast('BEP-20 Wallet Address saved successfully!', 'success');
+      const otpInput = document.getElementById('bep20-otp-input');
+      if (otpInput) otpInput.value = '';
+      showToast('BEP-20 Wallet Address verified and updated successfully!', 'success');
     } else {
       showToast(data.error || 'Failed to update wallet address', 'error');
     }
@@ -494,6 +529,39 @@ async function handleLogin(e) {
   }
 }
 
+async function handleSendRegistrationOtp() {
+  const emailInput = document.getElementById('reg-email');
+  const email = emailInput ? emailInput.value.trim() : '';
+  const btn = document.getElementById('btn-reg-send-otp');
+
+  if (!email || !email.includes('@')) {
+    showToast('Please enter a valid email address first', 'error');
+    return;
+  }
+
+  if (btn) btn.disabled = true;
+
+  try {
+    const res = await fetch(`${API_BASE}/auth/send-otp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, purpose: 'registration' })
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast('Registration OTP sent to your email! Please check inbox/spam.', 'success');
+      if (btn) btn.textContent = 'OTP Sent';
+    } else {
+      showToast(data.error || 'Failed to send OTP', 'error');
+      if (btn) btn.disabled = false;
+    }
+  } catch (err) {
+    showToast(err.message, 'error');
+    if (btn) btn.disabled = false;
+  }
+}
+window.handleSendRegistrationOtp = handleSendRegistrationOtp;
+
 async function handleRegister(e) {
   e.preventDefault();
   const fullName = (document.getElementById('reg-fullname')?.value || '').trim();
@@ -502,12 +570,18 @@ async function handleRegister(e) {
   const sponsorCode = (document.getElementById('reg-sponsor')?.value || '').trim();
   const phone = (document.getElementById('reg-phone')?.value || '').trim();
   const password = document.getElementById('reg-password')?.value || '';
+  const otp = (document.getElementById('reg-otp')?.value || '').trim();
+
+  if (!otp) {
+    showToast('Please enter the 6-digit Email Verification OTP', 'error');
+    return;
+  }
 
   try {
     const res = await fetch(`${API_BASE}/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ fullName, username, email, sponsorCode, phone, password })
+      body: JSON.stringify({ fullName, username, email, sponsorCode, phone, password, otp })
     });
     const data = await res.json();
     if (!res.ok || !data.success) {
@@ -519,7 +593,7 @@ async function handleRegister(e) {
     localStorage.setItem('catalyst_token', token);
 
     updateAuthUI();
-    showToast(`Account created! Welcome ${currentUser.full_name}`, 'success');
+    showToast(`Account created! Welcome ${currentUser.full_name}. Your User ID: ${data.memberUserId || currentUser.referral_code}`, 'success');
     await refreshCurrentViewData();
     navigate('home');
   } catch (err) {
@@ -2561,3 +2635,103 @@ function showToast(message, type = 'info') {
     if (toast.parentElement) toast.remove();
   }, 4000);
 }
+
+// ==================== FORGOT PASSWORD (EMAIL OTP) ====================
+
+function openForgotPasswordModal() {
+  const emailInput = document.getElementById('fp-email-input');
+  const otpInput = document.getElementById('fp-otp-input');
+  const newPass = document.getElementById('fp-new-password');
+  const confPass = document.getElementById('fp-confirm-password');
+  const loginIdInput = document.getElementById('login-id');
+
+  if (emailInput) {
+    emailInput.value = (loginIdInput && loginIdInput.value.includes('@')) ? loginIdInput.value.trim() : '';
+  }
+  if (otpInput) otpInput.value = '';
+  if (newPass) newPass.value = '';
+  if (confPass) confPass.value = '';
+
+  const btn = document.getElementById('btn-fp-send-otp');
+  if (btn) {
+    btn.disabled = false;
+    btn.textContent = 'Send OTP';
+  }
+
+  openModal('forgotPasswordModal');
+}
+window.openForgotPasswordModal = openForgotPasswordModal;
+
+async function handleSendForgotPasswordOtp() {
+  const emailInput = document.getElementById('fp-email-input');
+  const email = emailInput ? emailInput.value.trim() : '';
+  const btn = document.getElementById('btn-fp-send-otp');
+
+  if (!email || !email.includes('@')) {
+    showToast('Please enter your registered email address', 'error');
+    return;
+  }
+
+  if (btn) btn.disabled = true;
+
+  try {
+    const res = await fetch(`${API_BASE}/auth/send-otp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, purpose: 'forgot_password' })
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast('Password reset OTP sent to your email! Please check inbox/spam.', 'success');
+      if (btn) btn.textContent = 'OTP Sent';
+    } else {
+      showToast(data.error || 'Failed to send reset OTP', 'error');
+      if (btn) btn.disabled = false;
+    }
+  } catch (err) {
+    showToast(err.message, 'error');
+    if (btn) btn.disabled = false;
+  }
+}
+window.handleSendForgotPasswordOtp = handleSendForgotPasswordOtp;
+
+async function handleResetPasswordSubmit(e) {
+  e.preventDefault();
+  const email = document.getElementById('fp-email-input')?.value.trim();
+  const otp = document.getElementById('fp-otp-input')?.value.trim();
+  const newPassword = document.getElementById('fp-new-password')?.value;
+  const confirmPassword = document.getElementById('fp-confirm-password')?.value;
+
+  if (!email || !otp) {
+    showToast('Email and OTP code are required', 'error');
+    return;
+  }
+  if (newPassword !== confirmPassword) {
+    showToast('Passwords do not match!', 'error');
+    return;
+  }
+  if (newPassword.length < 6) {
+    showToast('Password must be at least 6 characters', 'error');
+    return;
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}/auth/reset-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, otp, newPassword })
+    });
+    const data = await res.json();
+    if (data.success) {
+      closeModal('forgotPasswordModal');
+      showToast('Password reset successfully! You can now login.', 'success');
+      const loginPassInput = document.getElementById('login-password');
+      if (loginPassInput) loginPassInput.value = '';
+    } else {
+      showToast(data.error || 'Failed to reset password', 'error');
+    }
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+window.handleResetPasswordSubmit = handleResetPasswordSubmit;

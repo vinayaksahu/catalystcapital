@@ -1220,6 +1220,11 @@
                 <i data-lucide="eye" class="w-4 h-4"></i>
               </button>
             </div>
+            <div class="text-right mt-1.5">
+              <button type="button" onclick="openForgotPasswordModal()" class="text-[11px] text-amber-500 hover:text-amber-400 font-semibold transition cursor-pointer">
+                Forgot Password?
+              </button>
+            </div>
           </div>
 
           <!-- Submit Button -->
@@ -1291,14 +1296,30 @@
             </div>
           </div>
 
-          <!-- Email -->
+          <!-- Email & Send OTP -->
           <div>
             <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Email Address</label>
+            <div class="flex gap-2">
+              <div class="relative flex-1">
+                <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                  <i data-lucide="mail" class="w-4 h-4"></i>
+                </span>
+                <input type="email" id="reg-email" required placeholder="john@example.com" class="w-full pl-10 pr-3.5 py-2.5 rounded-2xl bg-slate-50 dark:bg-slate-900/90 border border-slate-300 dark:border-slate-700/80 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-amber-400 transition text-xs">
+              </div>
+              <button type="button" id="btn-reg-send-otp" onclick="handleSendRegistrationOtp()" class="px-3.5 py-2.5 rounded-2xl bg-amber-500/15 border border-amber-500/40 text-amber-500 hover:bg-amber-500/25 font-bold text-[11px] whitespace-nowrap active:scale-95 transition cursor-pointer">
+                Send OTP
+              </button>
+            </div>
+          </div>
+
+          <!-- Email OTP Code -->
+          <div>
+            <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Email Verification OTP</label>
             <div class="relative">
               <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                <i data-lucide="mail" class="w-4 h-4"></i>
+                <i data-lucide="key-round" class="w-4 h-4"></i>
               </span>
-              <input type="email" id="reg-email" required placeholder="john@example.com" class="w-full pl-10 pr-3.5 py-2.5 rounded-2xl bg-slate-50 dark:bg-slate-900/90 border border-slate-300 dark:border-slate-700/80 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-amber-400 transition text-xs">
+              <input type="text" id="reg-otp" required maxlength="6" placeholder="Enter 6-digit OTP from email" class="w-full pl-10 pr-3.5 py-2.5 rounded-2xl bg-slate-50 dark:bg-slate-900/90 border border-slate-300 dark:border-slate-700/80 text-slate-900 dark:text-white font-mono placeholder-slate-400 focus:outline-none focus:border-amber-400 tracking-widest transition text-xs">
             </div>
           </div>
 
@@ -1823,8 +1844,19 @@
           <input type="text" id="bep20-address-input" required placeholder="0x..." class="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700/80 text-white placeholder-slate-500 focus:outline-none focus:border-amber-400 text-xs font-mono">
         </div>
 
+        <div>
+          <label class="block text-slate-400 font-semibold mb-1">Email Security OTP</label>
+          <div class="flex gap-2">
+            <input type="text" id="bep20-otp-input" required maxlength="6" placeholder="Enter 6-digit OTP" class="flex-1 px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700/80 text-white font-mono placeholder-slate-500 focus:outline-none focus:border-amber-400 text-xs tracking-widest">
+            <button type="button" id="btn-bep20-send-otp" onclick="handleSendWalletOtp()" class="px-3 py-2.5 rounded-xl bg-amber-500/15 border border-amber-500/40 text-amber-400 hover:bg-amber-500/25 font-bold text-[11px] whitespace-nowrap active:scale-95 transition cursor-pointer">
+              Get OTP
+            </button>
+          </div>
+          <span class="text-[10px] text-slate-400 mt-1 block">OTP will be sent to your registered account email.</span>
+        </div>
+
         <button type="submit" id="btn-save-wallet" class="w-full mt-2 py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-extrabold text-xs shadow-lg shadow-amber-500/20 active:scale-95 transition">
-          Save BEP-20 Address
+          Verify OTP & Save Address
         </button>
       </form>
     </div>
@@ -2325,10 +2357,65 @@
     </div>
   </div>
 
+  <!-- FORGOT PASSWORD MODAL (Gmail OTP Verification) -->
+  <div id="forgotPasswordModal" class="modal fixed inset-0 z-50 bg-black/85 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="theme-card max-w-sm w-full p-5 shadow-2xl relative border border-slate-800 bg-[#0d111a] text-white">
+      <button onclick="closeModal('forgotPasswordModal')" class="absolute right-4 top-4 text-slate-400 hover:text-white transition">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+
+      <div class="flex items-center gap-2 mb-3 pb-2 border-b border-slate-800">
+        <i data-lucide="key-round" class="w-5 h-5 text-amber-400"></i>
+        <h3 class="font-bold text-base text-white">Reset Account Password</h3>
+      </div>
+
+      <div class="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 mb-3 text-[11px] text-amber-400 flex items-start gap-2">
+        <i data-lucide="info" class="w-4 h-4 flex-shrink-0 mt-0.5"></i>
+        <span>Enter your registered email address to receive a 6-digit verification OTP.</span>
+      </div>
+
+      <form id="forgot-password-form" onsubmit="handleResetPasswordSubmit(event)" class="space-y-3 text-xs">
+        <div>
+          <label class="block text-slate-400 font-semibold mb-1">Registered Email</label>
+          <div class="flex gap-2">
+            <input type="email" id="fp-email-input" required placeholder="your-email@example.com" class="flex-1 px-3 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white placeholder-slate-500 text-xs focus:outline-none focus:border-amber-400">
+            <button type="button" id="btn-fp-send-otp" onclick="handleSendForgotPasswordOtp()" class="px-3 py-2.5 rounded-xl bg-amber-500/15 border border-amber-500/40 text-amber-400 hover:bg-amber-500/25 font-bold text-[11px] whitespace-nowrap active:scale-95 transition cursor-pointer">
+              Send OTP
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-slate-400 font-semibold mb-1">6-Digit Email OTP</label>
+          <input type="text" id="fp-otp-input" required maxlength="6" placeholder="Enter OTP code" class="w-full px-3 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white font-mono placeholder-slate-500 text-xs tracking-widest focus:outline-none focus:border-amber-400">
+        </div>
+
+        <div>
+          <label class="block text-slate-400 font-semibold mb-1">New Password</label>
+          <div class="relative">
+            <input type="password" id="fp-new-password" required placeholder="Min 6 characters" class="w-full pl-3.5 pr-10 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white placeholder-slate-500 text-xs focus:outline-none focus:border-amber-400">
+            <button type="button" onclick="togglePasswordVisibility('fp-new-password', this)" class="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-white cursor-pointer">
+              <i data-lucide="eye" class="w-4 h-4"></i>
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-slate-400 font-semibold mb-1">Confirm New Password</label>
+          <input type="password" id="fp-confirm-password" required placeholder="Re-enter new password" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white placeholder-slate-500 text-xs focus:outline-none focus:border-amber-400">
+        </div>
+
+        <button type="submit" id="btn-fp-submit" class="w-full mt-2 py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-extrabold text-xs shadow-lg shadow-amber-500/20 active:scale-95 transition cursor-pointer">
+          Verify OTP & Change Password
+        </button>
+      </form>
+    </div>
+  </div>
+
   <!-- TOAST NOTIFICATION CONTAINER -->
   <div id="toast-container" class="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-2 w-11/12 max-w-sm pointer-events-none"></div>
 
   <!-- Main JavaScript App -->
-  <script src="app.js?v=5.4"></script>
+  <script src="app.js?v=5.5"></script>
 </body>
 </html>
