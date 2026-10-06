@@ -73,7 +73,7 @@
         </button>
 
         <!-- Portal Switcher Button: Quick toggle between Admin Portal & User Portal (Hidden by default, only shown for logged in admin) -->
-        <button onclick="toggleAdminPortal()" id="portal-switch-btn" class="hidden px-2.5 py-1 rounded-full text-[11px] font-bold flex items-center gap-1.5 shadow-sm transition bg-amber-500/15 border border-amber-500/40 text-amber-400 hover:bg-amber-500/25 active:scale-95" title="Switch between Admin Portal and User Portal">
+        <button onclick="toggleAdminPortal()" id="portal-switch-btn" style="display: none !important;" class="hidden px-2.5 py-1 rounded-full text-[11px] font-bold flex items-center gap-1.5 shadow-sm transition bg-amber-500/15 border border-amber-500/40 text-amber-400 hover:bg-amber-500/25 active:scale-95" title="Switch between Admin Portal and User Portal">
           <i data-lucide="shield-check" id="portal-switch-icon" class="w-3.5 h-3.5 text-amber-400"></i>
           <span id="portal-switch-text">Admin Portal</span>
         </button>
@@ -1953,6 +1953,6 @@
   <div id="toast-container" class="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-2 w-11/12 max-w-sm pointer-events-none"></div>
 
   <!-- Main JavaScript App -->
-  <script src="app.js?v=4.0"></script>
+  <script src="app.js?v=4.1"></script>
 </body>
 </html>

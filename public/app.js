@@ -410,8 +410,10 @@ function getAppBaseUrl() {
   if (portalBtn) {
     if (currentUser && currentUser.role === 'admin' && activeViewName !== 'login' && activeViewName !== 'register') {
       portalBtn.classList.remove('hidden');
+      portalBtn.style.removeProperty('display');
     } else {
       portalBtn.classList.add('hidden');
+      portalBtn.style.setProperty('display', 'none', 'important');
     }
   }
 }
@@ -593,35 +595,52 @@ function navigate(viewName, updateHistory = true) {
   if (viewName === 'login' || viewName === 'register') {
     if (bottomNav) bottomNav.classList.add('hidden');
     if (profilePill) profilePill.classList.add('hidden');
-    if (portalBtn) portalBtn.classList.add('hidden');
+    if (portalBtn) {
+      portalBtn.classList.add('hidden');
+      portalBtn.style.setProperty('display', 'none', 'important');
+    }
   } else {
     if (currentUser) {
       if (bottomNav) bottomNav.classList.remove('hidden');
       if (profilePill) profilePill.classList.remove('hidden');
       if (portalBtn) {
-        if (currentUser.role === 'admin') portalBtn.classList.remove('hidden');
-        else portalBtn.classList.add('hidden');
+        if (currentUser.role === 'admin') {
+          portalBtn.classList.remove('hidden');
+          portalBtn.style.removeProperty('display');
+        } else {
+          portalBtn.classList.add('hidden');
+          portalBtn.style.setProperty('display', 'none', 'important');
+        }
       }
     } else {
       if (bottomNav) bottomNav.classList.add('hidden');
       if (profilePill) profilePill.classList.add('hidden');
-      if (portalBtn) portalBtn.classList.add('hidden');
+      if (portalBtn) {
+        portalBtn.classList.add('hidden');
+        portalBtn.style.setProperty('display', 'none', 'important');
+      }
     }
   }
 
-  // Update Portal Switcher Button in Header
+  // Update Portal Switcher Button appearance if admin
   const switchBtn = document.getElementById('portal-switch-btn');
   const switchText = document.getElementById('portal-switch-text');
   const switchIcon = document.getElementById('portal-switch-icon');
   if (switchBtn && switchText) {
+    const isActuallyAdmin = currentUser && currentUser.role === 'admin' && viewName !== 'login' && viewName !== 'register';
     if (viewName === 'admin') {
       switchText.textContent = 'User Portal';
-      switchBtn.className = 'px-2.5 py-1 rounded-full text-[11px] font-bold flex items-center gap-1.5 shadow-sm transition bg-cyan-500/15 border border-cyan-500/40 text-cyan-400 hover:bg-cyan-500/25 active:scale-95';
+      switchBtn.className = `px-2.5 py-1 rounded-full text-[11px] font-bold flex items-center gap-1.5 shadow-sm transition bg-cyan-500/15 border border-cyan-500/40 text-cyan-400 hover:bg-cyan-500/25 active:scale-95 ${!isActuallyAdmin ? 'hidden' : ''}`.trim();
       if (switchIcon) switchIcon.setAttribute('data-lucide', 'user');
     } else {
       switchText.textContent = 'Admin Portal';
-      switchBtn.className = 'px-2.5 py-1 rounded-full text-[11px] font-bold flex items-center gap-1.5 shadow-sm transition bg-amber-500/15 border border-amber-500/40 text-amber-400 hover:bg-amber-500/25 active:scale-95';
+      switchBtn.className = `px-2.5 py-1 rounded-full text-[11px] font-bold flex items-center gap-1.5 shadow-sm transition bg-amber-500/15 border border-amber-500/40 text-amber-400 hover:bg-amber-500/25 active:scale-95 ${!isActuallyAdmin ? 'hidden' : ''}`.trim();
       if (switchIcon) switchIcon.setAttribute('data-lucide', 'shield-check');
+    }
+    if (!isActuallyAdmin) {
+      switchBtn.style.setProperty('display', 'none', 'important');
+    } else {
+      switchBtn.style.removeProperty('display');
     }
     if (window.lucide) lucide.createIcons();
   }
