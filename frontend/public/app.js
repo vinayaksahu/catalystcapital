@@ -2536,15 +2536,39 @@ async function handleDepositSubmit(e) {
   }
 }
 
+let isWithdrawSubmitting = false;
+
 async function handleWithdrawSubmit(e) {
   e.preventDefault();
+  if (isWithdrawSubmitting) return;
+
+  const submitBtn = e.target.querySelector('button[type="submit"]') || document.getElementById('btn-submit-withdraw');
   const amount = document.getElementById('withdraw-amount').value;
   const usdtAddress = (document.getElementById('withdraw-address').value || '').trim();
   const walletSource = document.getElementById('withdraw-source').value;
 
-  if (!amount || Number(amount) < 15) {
+  const numAmount = Number(amount);
+  if (!amount || isNaN(numAmount) || numAmount < 15) {
     showToast('Minimum withdrawal amount is 15 USDT', 'error');
     return;
+  }
+
+  // Client-side balance check to prevent over-withdrawing or negative balances
+  if (currentUser) {
+    let available = 0;
+    const roiBal = Math.max(0, currentUser.roi_balance || 0);
+    const commBal = Math.max(0, currentUser.commission_balance || 0);
+    const walBal = Math.max(0, currentUser.wallet_balance || 0);
+
+    if (walletSource === 'roi_balance') available = roiBal;
+    else if (walletSource === 'commission_balance') available = commBal;
+    else if (walletSource === 'wallet_balance') available = walBal;
+    else available = roiBal + commBal + walBal;
+
+    if (numAmount > available) {
+      showToast(`Insufficient balance ($${available.toFixed(2)} USDT available in selected source)`, 'error');
+      return;
+    }
   }
 
   // Validate BEP-20 address (42 chars, 0x + 40 hex chars)
@@ -2556,6 +2580,13 @@ async function handleWithdrawSubmit(e) {
     return;
   }
 
+  isWithdrawSubmitting = true;
+  const origBtnText = submitBtn ? submitBtn.innerHTML : 'Submit Withdrawal';
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Processing Withdrawal...';
+  }
+
   try {
     const res = await fetch(`${API_BASE}/wallet/withdraw`, {
       method: 'POST',
@@ -2563,7 +2594,7 @@ async function handleWithdrawSubmit(e) {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`
       },
-      body: JSON.stringify({ amount: Number(amount), usdtAddress, network: 'USDT-BEP20', walletSource })
+      body: JSON.stringify({ amount: numAmount, usdtAddress, network: 'USDT-BEP20', walletSource })
     });
     const data = await res.json();
     if (!res.ok || !data.success) {
@@ -2574,8 +2605,16 @@ async function handleWithdrawSubmit(e) {
     showToast(`Withdrawal of $${data.amount} USDT submitted! 0% Fee applied.`, 'success');
     await fetchUserProfile();
     if (activeViewName === 'assets') await loadAssetsData();
+    if (activeViewName === 'home') await loadAssetsData();
+    if (activeViewName === 'history') await loadHistoryData();
   } catch (err) {
     showToast(err.message, 'error');
+  } finally {
+    isWithdrawSubmitting = false;
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = origBtnText;
+    }
   }
 }
 

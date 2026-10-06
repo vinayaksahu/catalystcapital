@@ -2,6 +2,8 @@ const { db } = require('../db/database');
 const mlmService = require('./mlmService');
 const notificationService = require('./notificationService');
 
+const userWithdrawalLocks = new Set();
+
 class WalletService {
   /**
    * Process a Deposit (USDT)
@@ -175,110 +177,150 @@ class WalletService {
       throw new Error('Please enter a valid withdrawal amount');
     }
 
-    const minWithdrawalSetting = await db.get("SELECT value FROM system_settings WHERE key = 'min_withdrawal'");
-    const minWithdrawal = minWithdrawalSetting ? parseFloat(minWithdrawalSetting.value) : 15.0;
-
-    if (amount < minWithdrawal) {
-      throw new Error(`Minimum withdrawal is ${minWithdrawal} USDT`);
+    // Concurrency Lock: prevent rapid double-clicks/spamming for the same user
+    if (userWithdrawalLocks.has(userId)) {
+      throw new Error('A withdrawal transaction is currently being processed. Please wait a moment.');
     }
+    userWithdrawalLocks.add(userId);
 
-    const bep20AddressRegex = /^0x[a-fA-F0-9]{40}$/i;
-    if (!usdtAddress || typeof usdtAddress !== 'string' || !bep20AddressRegex.test(usdtAddress.trim())) {
-      throw new Error('Please provide a valid 42-character USDT (BEP-20) wallet address starting with 0x');
-    }
+    try {
+      const minWithdrawalSetting = await db.get("SELECT value FROM system_settings WHERE key = 'min_withdrawal'");
+      const minWithdrawal = minWithdrawalSetting ? parseFloat(minWithdrawalSetting.value) : 15.0;
 
-    const user = await db.get('SELECT id, wallet_balance, roi_balance, commission_balance, status FROM users WHERE id = ?', [userId]);
-    if (!user || user.status !== 'active') {
-      throw new Error('User not found or account inactive');
-    }
-
-    let available = 0;
-    if (walletSource === 'roi_balance') {
-      available = user.roi_balance;
-    } else if (walletSource === 'commission_balance') {
-      available = user.commission_balance;
-    } else if (walletSource === 'wallet_balance') {
-      available = user.wallet_balance;
-    } else if (walletSource === 'all') {
-      available = (user.roi_balance || 0) + (user.commission_balance || 0) + (user.wallet_balance || 0);
-    } else {
-      throw new Error('Invalid withdrawal source wallet');
-    }
-
-    if (available < amount) {
-      throw new Error(`Insufficient balance ($${available.toFixed(2)} available in selected source)`);
-    }
-
-    // Deduct from appropriate wallet(s)
-    if (walletSource === 'roi_balance') {
-      await db.run('UPDATE users SET roi_balance = roi_balance - ? WHERE id = ?', [amount, userId]);
-    } else if (walletSource === 'commission_balance') {
-      await db.run('UPDATE users SET commission_balance = commission_balance - ? WHERE id = ?', [amount, userId]);
-    } else if (walletSource === 'wallet_balance') {
-      await db.run('UPDATE users SET wallet_balance = wallet_balance - ? WHERE id = ?', [amount, userId]);
-    } else {
-      // Deduct from roi_balance first, then commission_balance, then wallet_balance
-      let rem = amount;
-      if (user.roi_balance > 0) {
-        const takeRoi = Math.min(user.roi_balance, rem);
-        await db.run('UPDATE users SET roi_balance = roi_balance - ? WHERE id = ?', [takeRoi, userId]);
-        rem -= takeRoi;
+      if (amount < minWithdrawal) {
+        throw new Error(`Minimum withdrawal is ${minWithdrawal} USDT`);
       }
-      if (rem > 0 && user.commission_balance > 0) {
-        const takeComm = Math.min(user.commission_balance, rem);
-        await db.run('UPDATE users SET commission_balance = commission_balance - ? WHERE id = ?', [takeComm, userId]);
-        rem -= takeComm;
+
+      const bep20AddressRegex = /^0x[a-fA-F0-9]{40}$/i;
+      if (!usdtAddress || typeof usdtAddress !== 'string' || !bep20AddressRegex.test(usdtAddress.trim())) {
+        throw new Error('Please provide a valid 42-character USDT (BEP-20) wallet address starting with 0x');
       }
-      if (rem > 0 && user.wallet_balance > 0) {
-        const takeWal = Math.min(user.wallet_balance, rem);
-        await db.run('UPDATE users SET wallet_balance = wallet_balance - ? WHERE id = ?', [takeWal, userId]);
-        rem -= takeWal;
+
+      const user = await db.get('SELECT id, username, wallet_balance, roi_balance, commission_balance, status FROM users WHERE id = ?', [userId]);
+      if (!user || user.status !== 'active') {
+        throw new Error('User not found or account inactive');
       }
+
+      const roiBal = Math.max(0, parseFloat(user.roi_balance) || 0);
+      const commBal = Math.max(0, parseFloat(user.commission_balance) || 0);
+      const walBal = Math.max(0, parseFloat(user.wallet_balance) || 0);
+
+      let available = 0;
+      if (walletSource === 'roi_balance') {
+        available = roiBal;
+      } else if (walletSource === 'commission_balance') {
+        available = commBal;
+      } else if (walletSource === 'wallet_balance') {
+        available = walBal;
+      } else if (walletSource === 'all') {
+        available = parseFloat((roiBal + commBal + walBal).toFixed(4));
+      } else {
+        throw new Error('Invalid withdrawal source wallet');
+      }
+
+      if (available < amount) {
+        throw new Error(`Insufficient balance ($${available.toFixed(2)} available in selected source)`);
+      }
+
+      // Deduct atomically: enforce WHERE balance >= amount so balance can NEVER become negative
+      if (walletSource === 'roi_balance') {
+        const upd = await db.run('UPDATE users SET roi_balance = roi_balance - ? WHERE id = ? AND roi_balance >= ?', [amount, userId, amount]);
+        if (upd.changes === 0 || (db.isPostgres && upd.rowCount === 0)) {
+          throw new Error('Insufficient balance in ROI Wallet for withdrawal');
+        }
+      } else if (walletSource === 'commission_balance') {
+        const upd = await db.run('UPDATE users SET commission_balance = commission_balance - ? WHERE id = ? AND commission_balance >= ?', [amount, userId, amount]);
+        if (upd.changes === 0 || (db.isPostgres && upd.rowCount === 0)) {
+          throw new Error('Insufficient balance in Commission Wallet for withdrawal');
+        }
+      } else if (walletSource === 'wallet_balance') {
+        const upd = await db.run('UPDATE users SET wallet_balance = wallet_balance - ? WHERE id = ? AND wallet_balance >= ?', [amount, userId, amount]);
+        if (upd.changes === 0 || (db.isPostgres && upd.rowCount === 0)) {
+          throw new Error('Insufficient balance in Deposit/Principal Wallet for withdrawal');
+        }
+      } else {
+        // Combined 'all': deduct from roi_balance first, then commission_balance, then wallet_balance
+        let rem = amount;
+        if (roiBal > 0) {
+          const takeRoi = Math.min(roiBal, rem);
+          const upd = await db.run('UPDATE users SET roi_balance = roi_balance - ? WHERE id = ? AND roi_balance >= ?', [takeRoi, userId, takeRoi]);
+          if (upd.changes === 0 || (db.isPostgres && upd.rowCount === 0)) {
+            throw new Error('Insufficient ROI balance');
+          }
+          rem = parseFloat((rem - takeRoi).toFixed(4));
+        }
+        if (rem > 0 && commBal > 0) {
+          const takeComm = Math.min(commBal, rem);
+          const upd = await db.run('UPDATE users SET commission_balance = commission_balance - ? WHERE id = ? AND commission_balance >= ?', [takeComm, userId, takeComm]);
+          if (upd.changes === 0 || (db.isPostgres && upd.rowCount === 0)) {
+            throw new Error('Insufficient Commission balance');
+          }
+          rem = parseFloat((rem - takeComm).toFixed(4));
+        }
+        if (rem > 0 && walBal > 0) {
+          const takeWal = Math.min(walBal, rem);
+          const upd = await db.run('UPDATE users SET wallet_balance = wallet_balance - ? WHERE id = ? AND wallet_balance >= ?', [takeWal, userId, takeWal]);
+          if (upd.changes === 0 || (db.isPostgres && upd.rowCount === 0)) {
+            throw new Error('Insufficient Deposit balance');
+          }
+          rem = parseFloat((rem - takeWal).toFixed(4));
+        }
+        if (rem > 0) {
+          throw new Error(`Insufficient combined balance to withdraw $${amount}`);
+        }
+      }
+
+      // Safety guard: ensure no wallet balance is negative
+      await db.run('UPDATE users SET wallet_balance = 0 WHERE id = ? AND wallet_balance < 0', [userId]);
+      await db.run('UPDATE users SET roi_balance = 0 WHERE id = ? AND roi_balance < 0', [userId]);
+      await db.run('UPDATE users SET commission_balance = 0 WHERE id = ? AND commission_balance < 0', [userId]);
+
+      // Update saved USDT address
+      await db.run('UPDATE users SET usdt_address = ? WHERE id = ?', [usdtAddress.trim(), userId]);
+
+      // Fee is 0%
+      const fee = 0.0;
+      const netAmount = amount;
+
+      const res = await db.run(`
+        INSERT INTO withdrawals (user_id, amount, fee, net_amount, wallet_type, usdt_address, network, status)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')
+      `, [userId, amount, fee, netAmount, walletSource, usdtAddress.trim(), network]);
+
+      // Log transaction
+      await db.run(`
+        INSERT INTO transactions (user_id, amount, type, wallet_type, description, reference_id, status)
+        VALUES (?, ?, 'withdrawal', ?, ?, ?, 'pending')
+      `, [
+        userId,
+        amount,
+        walletSource,
+        `Withdrawal Request to ${usdtAddress.trim()} (Fee: 0%, Processing: 0-24hr)`,
+        `WTH-${res.lastInsertRowid}`
+      ]);
+
+      // Notify Admins about new withdrawal request
+      await notificationService.notifyAdmins({
+        type: 'withdrawal',
+        title: 'New Withdrawal Request!',
+        message: `@${user.username || 'User'} requested withdrawal of $${amount} USDT to ${usdtAddress.trim().substring(0, 10)}...`,
+        amount,
+        referenceId: `WTH-${res.lastInsertRowid}`
+      });
+
+      return {
+        success: true,
+        withdrawalId: res.lastInsertRowid,
+        amount,
+        fee,
+        netAmount,
+        usdtAddress: usdtAddress.trim(),
+        status: 'pending',
+        processingTime: '0 - 24 hours'
+      };
+    } finally {
+      userWithdrawalLocks.delete(userId);
     }
-
-    // Update saved USDT address
-    await db.run('UPDATE users SET usdt_address = ? WHERE id = ?', [usdtAddress.trim(), userId]);
-
-    // Fee is 0%
-    const fee = 0.0;
-    const netAmount = amount;
-
-    const res = await db.run(`
-      INSERT INTO withdrawals (user_id, amount, fee, net_amount, wallet_type, usdt_address, network, status)
-      VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')
-    `, [userId, amount, fee, netAmount, walletSource, usdtAddress.trim(), network]);
-
-    // Log transaction
-    await db.run(`
-      INSERT INTO transactions (user_id, amount, type, wallet_type, description, reference_id, status)
-      VALUES (?, ?, 'withdrawal', ?, ?, ?, 'pending')
-    `, [
-      userId,
-      amount,
-      walletSource,
-      `Withdrawal Request to ${usdtAddress.trim()} (Fee: 0%, Processing: 0-24hr)`,
-      `WTH-${res.lastInsertRowid}`
-    ]);
-
-    // Notify Admins about new withdrawal request
-    await notificationService.notifyAdmins({
-      type: 'withdrawal',
-      title: 'New Withdrawal Request!',
-      message: `@${user.username || 'User'} requested withdrawal of $${amount} USDT to ${usdtAddress.trim().substring(0, 10)}...`,
-      amount,
-      referenceId: `WTH-${res.lastInsertRowid}`
-    });
-
-    return {
-      success: true,
-      withdrawalId: res.lastInsertRowid,
-      amount,
-      fee,
-      netAmount,
-      usdtAddress: usdtAddress.trim(),
-      status: 'pending',
-      processingTime: '0 - 24 hours'
-    };
   }
 
   /**
@@ -320,11 +362,11 @@ class WalletService {
 
     // Withdrawal Approved Notification
     await notificationService.createNotification({
-      userId: withdrawal.user_id,
+      userId: w.user_id,
       type: 'withdrawal',
       title: 'Withdrawal Approved & Sent!',
-      message: `Your withdrawal of $${withdrawal.amount} USDT has been sent to ${withdrawal.usdt_address} (TXID: ${hash}).`,
-      amount: withdrawal.amount,
+      message: `Your withdrawal of $${w.amount} USDT has been sent to ${w.usdt_address} (TXID: ${hash}).`,
+      amount: w.amount,
       referenceId: hash
     });
 
