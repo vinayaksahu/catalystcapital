@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const XLSX = require('xlsx');
 const { db } = require('../db/database');
 const roiEngineService = require('../services/roiEngineService');
 const walletService = require('../services/walletService');
@@ -1049,6 +1050,360 @@ router.post('/settings', async (req, res) => {
     res.json({ success: true, message: 'Setting updated' });
   } catch (err) {
     res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+// =============================================================
+// DATABASE BACKUP & RESTORE (JSON & Multi-Sheet EXCEL)
+// =============================================================
+
+// Helper to gather all 7 core platform tables
+async function fetchCompleteDatabaseSnapshot() {
+  const [
+    users,
+    investments,
+    transactions,
+    deposits,
+    withdrawals,
+    supportTickets,
+    systemSettings
+  ] = await Promise.all([
+    db.all('SELECT * FROM users ORDER BY id ASC'),
+    db.all('SELECT * FROM investments ORDER BY id ASC'),
+    db.all('SELECT * FROM transactions ORDER BY id ASC'),
+    db.all('SELECT * FROM deposits ORDER BY id ASC'),
+    db.all('SELECT * FROM withdrawals ORDER BY id ASC'),
+    db.all('SELECT * FROM support_tickets ORDER BY id ASC'),
+    db.all('SELECT * FROM system_settings ORDER BY key ASC')
+  ]);
+
+  return {
+    meta: {
+      appName: 'Catalyst Capital Platform',
+      version: '2.0',
+      exportedAt: new Date().toISOString(),
+      counts: {
+        users: users.length,
+        investments: investments.length,
+        transactions: transactions.length,
+        deposits: deposits.length,
+        withdrawals: withdrawals.length,
+        supportTickets: supportTickets.length,
+        systemSettings: systemSettings.length
+      }
+    },
+    tables: {
+      users,
+      investments,
+      transactions,
+      deposits,
+      withdrawals,
+      support_tickets: supportTickets,
+      system_settings: systemSettings
+    }
+  };
+}
+
+// 1. Export JSON Full System Backup
+router.get('/backup/export-json', async (req, res) => {
+  try {
+    const snapshot = await fetchCompleteDatabaseSnapshot();
+    const filename = `catalystcapital_backup_${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(JSON.stringify(snapshot, null, 2));
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 2. Export Multi-Sheet Excel (.xlsx) Backup
+router.get('/backup/export-excel', async (req, res) => {
+  try {
+    const snapshot = await fetchCompleteDatabaseSnapshot();
+    const workbook = XLSX.utils.book_new();
+
+    const sheets = [
+      { name: 'Users', data: snapshot.tables.users },
+      { name: 'Investments', data: snapshot.tables.investments },
+      { name: 'Transactions', data: snapshot.tables.transactions },
+      { name: 'Deposits', data: snapshot.tables.deposits },
+      { name: 'Withdrawals', data: snapshot.tables.withdrawals },
+      { name: 'SupportTickets', data: snapshot.tables.support_tickets },
+      { name: 'SystemSettings', data: snapshot.tables.system_settings }
+    ];
+
+    sheets.forEach(({ name, data }) => {
+      const worksheet = XLSX.utils.json_to_sheet(data && data.length > 0 ? data : [{}]);
+      XLSX.utils.book_append_sheet(workbook, worksheet, name);
+    });
+
+    const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+    const filename = `catalystcapital_backup_${new Date().toISOString().replace(/[:.]/g, '-')}.xlsx`;
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(buffer);
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 3. Restore / Populate Database (Supports JSON and Base64 Excel)
+router.post('/backup/restore', async (req, res) => {
+  try {
+    const { mode = 'clean', fileType = 'json', contentBase64, jsonPayload } = req.body;
+    let tablesToRestore = null;
+
+    if (fileType === 'json') {
+      let rawJson = jsonPayload;
+      if (!rawJson && contentBase64) {
+        const decodedStr = Buffer.from(contentBase64, 'base64').toString('utf8');
+        rawJson = JSON.parse(decodedStr);
+      }
+      if (!rawJson) {
+        return res.status(400).json({ success: false, error: 'Valid JSON backup payload or file content required' });
+      }
+      tablesToRestore = rawJson.tables || rawJson;
+    } else if (fileType === 'excel' || fileType === 'xlsx') {
+      if (!contentBase64) {
+        return res.status(400).json({ success: false, error: 'Excel file base64 data required' });
+      }
+      const buffer = Buffer.from(contentBase64, 'base64');
+      const workbook = XLSX.read(buffer, { type: 'buffer' });
+      tablesToRestore = {};
+
+      const sheetMapping = {
+        'Users': 'users',
+        'Investments': 'investments',
+        'Transactions': 'transactions',
+        'Deposits': 'deposits',
+        'Withdrawals': 'withdrawals',
+        'SupportTickets': 'support_tickets',
+        'SystemSettings': 'system_settings'
+      };
+
+      workbook.SheetNames.forEach(sheetName => {
+        const standardKey = sheetMapping[sheetName] || sheetName.toLowerCase();
+        const sheet = workbook.Sheets[sheetName];
+        tablesToRestore[standardKey] = XLSX.utils.sheet_to_json(sheet);
+      });
+    } else {
+      return res.status(400).json({ success: false, error: 'Unsupported file format. Use JSON or Excel (.xlsx)' });
+    }
+
+    if (!tablesToRestore || typeof tablesToRestore !== 'object') {
+      return res.status(400).json({ success: false, error: 'No valid table datasets found in uploaded backup' });
+    }
+
+    // Execution: Clean & Restore vs Safe Merge / Upsert
+    // If 'clean', wipe transaction/log/operational tables while preserving superadmin credentials
+    if (mode === 'clean') {
+      if (db.isPostgres) {
+        await db.query(`
+          TRUNCATE TABLE support_tickets, deposits, withdrawals, transactions, investments CASCADE;
+          DELETE FROM users WHERE role NOT IN ('superadmin');
+        `);
+      } else {
+        await db.run('DELETE FROM support_tickets');
+        await db.run('DELETE FROM deposits');
+        await db.run('DELETE FROM withdrawals');
+        await db.run('DELETE FROM transactions');
+        await db.run('DELETE FROM investments');
+        await db.run("DELETE FROM users WHERE role NOT IN ('superadmin')");
+      }
+    }
+
+    let restoredStats = {
+      users: 0,
+      investments: 0,
+      transactions: 0,
+      deposits: 0,
+      withdrawals: 0,
+      support_tickets: 0,
+      system_settings: 0
+    };
+
+    // 1. Restore Users
+    if (Array.isArray(tablesToRestore.users)) {
+      for (const u of tablesToRestore.users) {
+        if (!u.username || !u.email) continue;
+        const exists = await db.get('SELECT id FROM users WHERE lower(username) = ? OR lower(email) = ?', [
+          u.username.toLowerCase(),
+          u.email.toLowerCase()
+        ]);
+        if (exists) {
+          await db.run(`
+            UPDATE users SET
+              full_name = COALESCE(?, full_name),
+              wallet_balance = COALESCE(?, wallet_balance),
+              roi_balance = COALESCE(?, roi_balance),
+              commission_balance = COALESCE(?, commission_balance),
+              usdt_address = COALESCE(?, usdt_address),
+              team_name = COALESCE(?, team_name),
+              status = COALESCE(?, status)
+            WHERE id = ?
+          `, [
+            u.full_name,
+            u.wallet_balance !== undefined ? parseFloat(u.wallet_balance) : null,
+            u.roi_balance !== undefined ? parseFloat(u.roi_balance) : null,
+            u.commission_balance !== undefined ? parseFloat(u.commission_balance) : null,
+            u.usdt_address,
+            u.team_name,
+            u.status,
+            exists.id
+          ]);
+        } else {
+          await db.run(`
+            INSERT INTO users (username, email, password_hash, full_name, phone, role, referral_code, sponsor_id, team_admin_id, team_name, wallet_balance, roi_balance, commission_balance, usdt_address, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `, [
+            u.username,
+            u.email,
+            u.password_hash || '$2a$10$7zB3VqA6V6L2c6l6G.Z3q.H0QoG1eG1v6M1n1A1b1C1d1E1f1G1h',
+            u.full_name || u.username,
+            u.phone || null,
+            u.role || 'user',
+            u.referral_code || u.username,
+            u.sponsor_id || null,
+            u.team_admin_id || null,
+            u.team_name || null,
+            parseFloat(u.wallet_balance) || 0,
+            parseFloat(u.roi_balance) || 0,
+            parseFloat(u.commission_balance) || 0,
+            u.usdt_address || null,
+            u.status || 'active'
+          ]);
+        }
+        restoredStats.users++;
+      }
+    }
+
+    // 2. Restore Investments
+    if (Array.isArray(tablesToRestore.investments)) {
+      for (const inv of tablesToRestore.investments) {
+        if (!inv.user_id || !inv.amount) continue;
+        await db.run(`
+          INSERT INTO investments (user_id, plan_id, amount, daily_roi, total_days, days_credited, total_earned, status, last_roi_at, completed_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `, [
+          inv.user_id,
+          inv.plan_id || 1,
+          parseFloat(inv.amount) || 0,
+          parseFloat(inv.daily_roi) || 0,
+          parseInt(inv.total_days, 10) || 30,
+          parseInt(inv.days_credited, 10) || 0,
+          parseFloat(inv.total_earned) || 0,
+          inv.status || 'active',
+          inv.last_roi_at || null,
+          inv.completed_at || null
+        ]);
+        restoredStats.investments++;
+      }
+    }
+
+    // 3. Restore Transactions
+    if (Array.isArray(tablesToRestore.transactions)) {
+      for (const tx of tablesToRestore.transactions) {
+        if (!tx.user_id || !tx.amount) continue;
+        await db.run(`
+          INSERT INTO transactions (user_id, amount, type, wallet_type, description, reference_id, from_user_id, level, status)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `, [
+          tx.user_id,
+          parseFloat(tx.amount) || 0,
+          tx.type || 'daily_roi',
+          tx.wallet_type || 'roi_balance',
+          tx.description || 'Restored Transaction',
+          tx.reference_id || `RESTORE_${Date.now()}`,
+          tx.from_user_id || null,
+          tx.level || null,
+          tx.status || 'completed'
+        ]);
+        restoredStats.transactions++;
+      }
+    }
+
+    // 4. Restore Deposits
+    if (Array.isArray(tablesToRestore.deposits)) {
+      for (const dep of tablesToRestore.deposits) {
+        if (!dep.user_id || !dep.amount) continue;
+        await db.run(`
+          INSERT INTO deposits (user_id, amount, tx_hash, network, status)
+          VALUES (?, ?, ?, ?, ?)
+        `, [
+          dep.user_id,
+          parseFloat(dep.amount) || 0,
+          dep.tx_hash || null,
+          dep.network || 'USDT-BEP20',
+          dep.status || 'completed'
+        ]);
+        restoredStats.deposits++;
+      }
+    }
+
+    // 5. Restore Withdrawals
+    if (Array.isArray(tablesToRestore.withdrawals)) {
+      for (const w of tablesToRestore.withdrawals) {
+        if (!w.user_id || !w.amount) continue;
+        await db.run(`
+          INSERT INTO withdrawals (user_id, amount, fee, net_amount, wallet_type, usdt_address, network, tx_hash, status, admin_note, processed_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `, [
+          w.user_id,
+          parseFloat(w.amount) || 0,
+          parseFloat(w.fee) || 0,
+          parseFloat(w.net_amount) || parseFloat(w.amount) || 0,
+          w.wallet_type || 'roi_balance',
+          w.usdt_address || '',
+          w.network || 'USDT-BEP20',
+          w.tx_hash || null,
+          w.status || 'approved',
+          w.admin_note || 'Restored',
+          w.processed_at || null
+        ]);
+        restoredStats.withdrawals++;
+      }
+    }
+
+    // 6. Restore Support Tickets
+    if (Array.isArray(tablesToRestore.support_tickets)) {
+      for (const t of tablesToRestore.support_tickets) {
+        if (!t.user_id || !t.subject) continue;
+        await db.run(`
+          INSERT INTO support_tickets (user_id, subject, category, message, admin_reply, status)
+          VALUES (?, ?, ?, ?, ?, ?)
+        `, [
+          t.user_id,
+          t.subject,
+          t.category || 'General',
+          t.message || '',
+          t.admin_reply || null,
+          t.status || 'open'
+        ]);
+        restoredStats.support_tickets++;
+      }
+    }
+
+    // 7. Restore System Settings
+    if (Array.isArray(tablesToRestore.system_settings)) {
+      for (const s of tablesToRestore.system_settings) {
+        if (!s.key) continue;
+        if (db.isPostgres) {
+          await db.run('INSERT INTO system_settings (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value', [s.key, String(s.value)]);
+        } else {
+          await db.run('INSERT INTO system_settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = ?', [s.key, String(s.value), String(s.value)]);
+        }
+        restoredStats.system_settings++;
+      }
+    }
+
+    res.json({
+      success: true,
+      message: `Database restored successfully (${mode === 'clean' ? 'Clean & Restore' : 'Safe Merge'})!`,
+      restoredStats
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 

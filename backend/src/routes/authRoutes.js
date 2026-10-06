@@ -183,13 +183,15 @@ router.post('/tickets', authenticateToken, async (req, res) => {
       VALUES (?, ?, ?, ?, 'open')
     `, [req.user.id, subject.trim(), category.trim(), message.trim()]);
 
-    // Notify Admins about new support ticket
-    const user = await db.get('SELECT username, full_name FROM users WHERE id = ?', [req.user.id]);
+    // Notify Admins about new support ticket with strict team scoping
+    const user = await db.get('SELECT username, full_name, team_admin_id FROM users WHERE id = ?', [req.user.id]);
     await notificationService.notifyAdmins({
       type: 'ticket',
       title: 'New Support Ticket!',
       message: `@${user?.username || 'User'} opened a ${category.trim()} ticket: "${subject.trim()}"`,
-      referenceId: `TKT-${insert.lastInsertRowid}`
+      referenceId: `TKT-${insert.lastInsertRowid}`,
+      targetUserId: req.user.id,
+      teamAdminId: user?.team_admin_id
     });
 
     res.json({ success: true, message: 'Support ticket submitted successfully!', ticketId: insert.lastInsertRowid });

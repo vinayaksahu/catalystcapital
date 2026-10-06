@@ -5822,3 +5822,224 @@ function initTabSliderControls(containerId) {
 }
 window.initTabSliderControls = initTabSliderControls;
 
+// =============================================================
+// DATABASE BACKUP & RESTORE CLIENT LOGIC (JSON / Excel)
+// =============================================================
+
+let stagedRestoreFile = null;
+let stagedRestoreBase64 = null;
+let stagedRestoreJsonPayload = null;
+
+// 1. Download Backup (JSON or Multi-Sheet Excel)
+async function downloadDatabaseBackup(format = 'json') {
+  if (!token) {
+    showToast('Admin authorization required', 'error');
+    return;
+  }
+  showToast(`Preparing ${format.toUpperCase()} database backup snapshot...`, 'info');
+
+  try {
+    const endpoint = format === 'excel' ? `${API_BASE}/admin/backup/export-excel` : `${API_BASE}/admin/backup/export-json`;
+    const res = await fetch(endpoint, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.error || `Failed to export ${format} backup`);
+    }
+
+    const blob = await res.blob();
+    const downloadUrl = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.style.display = 'none';
+    a.href = downloadUrl;
+    const timestamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+    a.download = `catalystcapital_backup_${timestamp}.${format === 'excel' ? 'xlsx' : 'json'}`;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(downloadUrl);
+    a.remove();
+
+    showToast(`✓ Database snapshot (${format.toUpperCase()}) downloaded successfully!`, 'success');
+  } catch (err) {
+    console.error('Backup download error:', err);
+    showToast(err.message || 'Download failed', 'error');
+  }
+}
+window.downloadDatabaseBackup = downloadDatabaseBackup;
+
+// 2. Update Radio Button Styling for Restoration Mode
+function updateRestoreModeUI() {
+  const cleanRadio = document.querySelector('input[name="restore_mode"][value="clean"]');
+  const cleanLabel = document.getElementById('restore-mode-clean-label');
+  const mergeLabel = document.getElementById('restore-mode-merge-label');
+
+  if (cleanRadio && cleanRadio.checked) {
+    if (cleanLabel) {
+      cleanLabel.className = 'flex items-start gap-2.5 p-3 rounded-xl border border-rose-500/40 bg-rose-500/10 cursor-pointer transition select-none';
+    }
+    if (mergeLabel) {
+      mergeLabel.className = 'flex items-start gap-2.5 p-3 rounded-xl border border-slate-800 bg-slate-950/80 hover:border-slate-700 cursor-pointer transition select-none';
+    }
+  } else {
+    if (cleanLabel) {
+      cleanLabel.className = 'flex items-start gap-2.5 p-3 rounded-xl border border-slate-800 bg-slate-950/80 hover:border-slate-700 cursor-pointer transition select-none';
+    }
+    if (mergeLabel) {
+      mergeLabel.className = 'flex items-start gap-2.5 p-3 rounded-xl border border-cyan-500/40 bg-cyan-500/10 cursor-pointer transition select-none';
+    }
+  }
+}
+window.updateRestoreModeUI = updateRestoreModeUI;
+
+// 3. Handle File Selection (Via Click or Drag & Drop)
+function handleRestoreFileSelected(event) {
+  const file = event.target.files && event.target.files[0];
+  if (file) stageRestoreFile(file);
+}
+window.handleRestoreFileSelected = handleRestoreFileSelected;
+
+function handleRestoreFileDrop(event) {
+  event.preventDefault();
+  const file = event.dataTransfer && event.dataTransfer.files && event.dataTransfer.files[0];
+  if (file) stageRestoreFile(file);
+}
+window.handleRestoreFileDrop = handleRestoreFileDrop;
+
+function stageRestoreFile(file) {
+  const ext = file.name.split('.').pop().toLowerCase();
+  if (!['json', 'xlsx', 'xls'].includes(ext)) {
+    showToast('Please select a valid .json or .xlsx backup file', 'error');
+    return;
+  }
+
+  stagedRestoreFile = file;
+  const titleEl = document.getElementById('restore-drop-title');
+  const subEl = document.getElementById('restore-drop-subtitle');
+  const actionContainer = document.getElementById('restore-action-container');
+  const btnText = document.getElementById('btn-execute-restore-text');
+
+  if (titleEl) {
+    titleEl.textContent = `Selected: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+    titleEl.className = 'font-bold text-xs text-cyan-300';
+  }
+  if (subEl) {
+    subEl.textContent = 'File ready. Click "Proceed With Database Restore" below.';
+  }
+  if (actionContainer) {
+    actionContainer.classList.remove('hidden');
+  }
+  if (btnText) {
+    btnText.textContent = `Restore Database from ${file.name}`;
+  }
+
+  const reader = new FileReader();
+  if (ext === 'json') {
+    reader.onload = (e) => {
+      try {
+        stagedRestoreJsonPayload = JSON.parse(e.target.result);
+        stagedRestoreBase64 = null;
+      } catch (err) {
+        showToast('Invalid JSON file content', 'error');
+        stagedRestoreFile = null;
+      }
+    };
+    reader.readAsText(file);
+  } else {
+    reader.onload = (e) => {
+      const arrayBuffer = e.target.result;
+      const base64 = btoa(
+        new Uint8Array(arrayBuffer).reduce((data, byte) => data + String.fromCharCode(byte), '')
+      );
+      stagedRestoreBase64 = base64;
+      stagedRestoreJsonPayload = null;
+    };
+    reader.readAsArrayBuffer(file);
+  }
+}
+
+// 4. Execute Restore API Call
+async function executeDatabaseRestore() {
+  if (!stagedRestoreFile) {
+    showToast('No backup file selected', 'error');
+    return;
+  }
+
+  const mode = document.querySelector('input[name="restore_mode"]:checked')?.value || 'clean';
+  const ext = stagedRestoreFile.name.split('.').pop().toLowerCase();
+  const fileType = ext === 'json' ? 'json' : 'xlsx';
+
+  const confirmMsg = mode === 'clean'
+    ? '⚠️ WARNING: Clean & Restore will wipe existing transaction logs and replace users with the backup file.\n\nAre you sure you want to proceed?'
+    : 'Proceed with Safe Merge / Upsert? This will update existing records and insert new data without wiping.';
+
+  if (!confirm(confirmMsg)) return;
+
+  const btn = document.getElementById('btn-execute-restore');
+  const origBtnContent = btn ? btn.innerHTML : '';
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Restoring Database...`;
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}/admin/backup/restore`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        mode,
+        fileType,
+        jsonPayload: stagedRestoreJsonPayload,
+        contentBase64: stagedRestoreBase64
+      })
+    });
+
+    const data = await res.json();
+    if (!data.success) {
+      throw new Error(data.error || 'Database restoration failed');
+    }
+
+    showToast(`✓ Database restored successfully! (${data.message})`, 'success');
+
+    // Reset staging state
+    stagedRestoreFile = null;
+    stagedRestoreBase64 = null;
+    stagedRestoreJsonPayload = null;
+    const fileInput = document.getElementById('db-restore-file-input');
+    if (fileInput) fileInput.value = '';
+    const titleEl = document.getElementById('restore-drop-title');
+    const subEl = document.getElementById('restore-drop-subtitle');
+    const actionContainer = document.getElementById('restore-action-container');
+    if (titleEl) {
+      titleEl.textContent = 'Click to select or drag & drop backup file';
+      titleEl.className = 'font-bold text-xs text-white group-hover:text-cyan-300 transition';
+    }
+    if (subEl) {
+      subEl.textContent = 'Supports .json and .xlsx files up to 50MB';
+    }
+    if (actionContainer) {
+      actionContainer.classList.add('hidden');
+    }
+
+    // Refresh admin data
+    setTimeout(async () => {
+      await loadAdminData();
+    }, 1000);
+  } catch (err) {
+    console.error('Restore error:', err);
+    showToast(err.message || 'Restoration failed', 'error');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = origBtnContent;
+      if (window.lucide) lucide.createIcons();
+    }
+  }
+}
+window.executeDatabaseRestore = executeDatabaseRestore;
+
+

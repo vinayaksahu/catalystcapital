@@ -85,7 +85,7 @@ class AuthService {
         throw new Error('Invalid Sponsor / Referral code');
       }
     } else {
-      const defaultAdmin = await db.get("SELECT id FROM users WHERE username = 'DF_TEAM_A' OR role = 'admin' ORDER BY id ASC LIMIT 1");
+      const defaultAdmin = await db.get("SELECT id FROM users WHERE id = 1 OR username = 'admin' LIMIT 1");
       if (defaultAdmin) {
         sponsorId = defaultAdmin.id;
         teamAdminId = defaultAdmin.id;
@@ -111,9 +111,9 @@ class AuthService {
       }
     }
 
-    // Default to first admin if still null
+    // Default to Headquarters admin if still null
     if (!teamAdminId) {
-      const fallbackAdm = await db.get("SELECT id FROM users WHERE role = 'admin' ORDER BY id ASC LIMIT 1");
+      const fallbackAdm = await db.get("SELECT id FROM users WHERE id = 1 OR username = 'admin' LIMIT 1");
       if (fallbackAdm) teamAdminId = fallbackAdm.id;
     }
 
@@ -171,12 +171,14 @@ class AuthService {
       });
     }
 
-    // Notify Admins about new registration
+    // Notify Admins about new registration with strict team scoping
     await notificationService.notifyAdmins({
       type: 'user',
       title: 'New Member Registered!',
       message: `${newUser.full_name || newUser.username} (@${newUser.username}, ID: ${userIdCode}) registered on platform.`,
-      referenceId: userIdCode
+      referenceId: userIdCode,
+      targetUserId: newUser.id,
+      teamAdminId: newUser.team_admin_id
     });
 
     const token = jwt.sign(
@@ -248,10 +250,10 @@ class AuthService {
     // Role vs Portal restriction:
     // 1. Super Root Admin:
     if (portalType === 'superadmin' && user.role !== 'superadmin') {
-      throw new Error('Access denied. Only Super Root Administrator can login through this portal (/superrootadminlogin).');
+      throw new Error('Access denied. Invalid credentials for this portal.');
     }
     if (user.role === 'superadmin' && portalType !== 'superadmin') {
-      throw new Error('Super Root Admin credentials must be used at /superrootadminlogin.');
+      throw new Error('Access denied. Please use your designated portal to login.');
     }
 
     // 2. Team Admin:

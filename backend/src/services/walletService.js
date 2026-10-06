@@ -43,13 +43,15 @@ class WalletService {
     `, [userId, amount, `Deposit request of $${amount} via ${network || 'USDT-BEP20'} (Awaiting Admin Approval)`, cleanHash]);
 
     // Notify Admins about new pending deposit
-    const u = await db.get('SELECT username FROM users WHERE id = ?', [userId]);
+    const u = await db.get('SELECT username, team_admin_id FROM users WHERE id = ?', [userId]);
     await notificationService.notifyAdmins({
       type: 'deposit',
       title: 'New Deposit Request!',
       message: `@${u?.username || 'User'} requested verification for $${amount} USDT deposit.`,
       amount,
-      referenceId: `DEP-${res.lastInsertRowid}`
+      referenceId: `DEP-${res.lastInsertRowid}`,
+      targetUserId: userId,
+      teamAdminId: u?.team_admin_id
     });
 
     return {
@@ -147,7 +149,9 @@ class WalletService {
       title: 'New Plan Activated!',
       message: `@${user.username} activated ${plan.name} ($${plan.price} USDT).`,
       amount: plan.price,
-      referenceId: `INV-${investmentId}`
+      referenceId: `INV-${investmentId}`,
+      targetUserId: userId,
+      teamAdminId: user.team_admin_id
     });
 
     // 4. Distribute Team Commission (One-Time: L1: 6%, L2: 2%, L3: 1%)
@@ -333,7 +337,9 @@ class WalletService {
         title: 'New Withdrawal Request!',
         message: `@${user.username || 'User'} requested withdrawal of $${amount} USDT to ${usdtAddress.trim().substring(0, 10)}...`,
         amount,
-        referenceId: `WTH-${res.lastInsertRowid}`
+        referenceId: `WTH-${res.lastInsertRowid}`,
+        targetUserId: userId,
+        teamAdminId: user.team_admin_id
       });
 
       return {
