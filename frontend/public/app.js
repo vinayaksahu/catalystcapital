@@ -2193,88 +2193,135 @@ function filterHistory(type) {
     let color = 'text-emerald-400';
     let bg = 'bg-emerald-500/10';
     let label = 'Earnings';
+    let mainTitle = 'Transaction';
 
     if (tx.type === 'daily_roi') {
       icon = 'trending-up';
       color = 'text-emerald-400';
       bg = 'bg-emerald-500/10';
-      label = 'Daily ROI Income';
+      mainTitle = 'Daily ROI Income';
     } else if (tx.type === 'referral_roi') {
       icon = 'repeat';
       color = 'text-cyan-400';
       bg = 'bg-cyan-500/10';
-      label = 'Referral Income (ROI of ROI)';
+      mainTitle = 'Referral Income';
     } else if (tx.type === 'team_commission') {
       icon = 'sparkles';
       color = 'text-amber-400';
       bg = 'bg-amber-500/10';
-      label = 'Team Direct Commission';
+      mainTitle = 'Team Direct Commission';
     } else if (tx.type === 'deposit') {
       icon = 'arrow-down-left';
       color = 'text-pink-400';
       bg = 'bg-pink-500/10';
-      label = 'Recharge Deposit';
+      mainTitle = 'Recharge Deposit';
     } else if (tx.type === 'withdrawal') {
       icon = isRejected ? 'x-circle' : 'arrow-up-right';
-      color = 'text-rose-400';
+      color = isRejected ? 'text-rose-400' : 'text-rose-400';
       bg = isRejected ? 'bg-rose-500/20' : 'bg-rose-500/10';
-      label = 'Withdrawal';
+      mainTitle = 'Withdrawal Request';
     } else if (tx.type === 'refund') {
       icon = 'rotate-ccw';
       color = 'text-cyan-400';
       bg = 'bg-cyan-500/10';
-      label = 'Withdrawal Refund';
+      mainTitle = 'Withdrawal Refund';
     } else if (tx.type === 'principal_return') {
       icon = 'shield-check';
       color = 'text-amber-400';
       bg = 'bg-amber-500/15';
-      label = 'Principal Capital Refund';
+      mainTitle = 'Principal Capital Refund';
+    } else if (tx.type === 'investment') {
+      icon = 'zap';
+      color = 'text-cyan-400';
+      bg = 'bg-cyan-500/10';
+      mainTitle = 'Plan Activation';
+    } else {
+      mainTitle = tx.description || 'Transaction';
+    }
+
+    // Format Subtitle details cleanly
+    let subtitleHtml = '';
+    const desc = tx.description || '';
+
+    if (tx.type === 'withdrawal') {
+      const addrMatch = desc.match(/(0x[a-fA-F0-9]{40})/i);
+      const rejMatch = desc.match(/\[Rejected:\s*([^\]]+)\]/i) || desc.match(/Rejected by Admin\s*\(([^)]+)\)/i);
+      const appMatch = desc.match(/\[Approved:\s*([^\]]+)\]/i) || desc.match(/Approved:\s*([^\s)]+)/i);
+
+      let parts = [];
+      if (addrMatch) {
+        const fullAddr = addrMatch[1];
+        const shortAddr = fullAddr.substring(0, 6) + '...' + fullAddr.substring(38);
+        parts.push(`<span class="font-mono text-slate-300">To: ${shortAddr}</span>`);
+      }
+      if (desc.includes('Fee: 0%')) {
+        parts.push(`<span class="text-emerald-400 font-semibold">Fee: 0%</span>`);
+      }
+      if (parts.length > 0) {
+        subtitleHtml += `<div class="text-[10.5px] text-slate-400 flex items-center gap-1.5 flex-wrap">${parts.join(' &bull; ')}</div>`;
+      }
+
+      if (rejMatch) {
+        subtitleHtml += `<div class="text-[10px] text-rose-400 font-medium break-words leading-tight mt-0.5"><span class="font-bold">Reason:</span> ${rejMatch[1]}</div>`;
+      } else if (appMatch) {
+        subtitleHtml += `<div class="text-[10px] text-emerald-400 font-mono mt-0.5 truncate">TXID: ${appMatch[1]}</div>`;
+      }
+    } else if (tx.type === 'refund') {
+      let reasonText = desc.replace(/^Withdrawal Refund:\s*/i, '').trim();
+      if (reasonText) {
+        subtitleHtml += `<div class="text-[10px] text-slate-400 break-words leading-tight mt-0.5">${reasonText}</div>`;
+      }
+    } else if (tx.type === 'deposit') {
+      subtitleHtml += `<div class="text-[10.5px] text-slate-400 font-mono">Network: USDT-BEP20</div>`;
+      if (tx.reference_id && /^0x[a-fA-F0-9]{64}$/i.test(tx.reference_id)) {
+        subtitleHtml += `
+          <div class="mt-0.5">
+            <a href="https://bscscan.com/tx/${tx.reference_id}" target="_blank" rel="noopener noreferrer" class="text-cyan-400 hover:text-cyan-300 font-mono text-[9.5px] underline inline-flex items-center gap-1">
+              <span>TX: ${tx.reference_id.substring(0, 8)}...${tx.reference_id.substring(58)}</span>
+              <i data-lucide="external-link" class="w-2.5 h-2.5"></i>
+            </a>
+          </div>
+        `;
+      }
+    } else if (tx.type === 'investment') {
+      subtitleHtml += `<div class="text-[10.5px] text-slate-400 break-words leading-tight mt-0.5">${desc}</div>`;
     }
 
     let statusBadge = '';
     if (isRejected) {
-      statusBadge = '<span class="text-[9px] font-black uppercase px-2 py-0.5 rounded bg-rose-500/20 text-rose-400 border border-rose-500/40">REJECTED</span>';
+      statusBadge = '<span class="text-[8.5px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-400 border border-rose-500/40 whitespace-nowrap">REJECTED</span>';
     } else if (isPending) {
-      statusBadge = '<span class="text-[9px] font-black uppercase px-2 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/40">PENDING</span>';
+      statusBadge = '<span class="text-[8.5px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/40 whitespace-nowrap">PENDING</span>';
     } else if (isCompleted) {
-      statusBadge = '<span class="text-[9px] font-bold uppercase px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">COMPLETED</span>';
+      statusBadge = '<span class="text-[8.5px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 whitespace-nowrap">COMPLETED</span>';
     }
 
     const amountDisplay = isRejected
       ? `<span class="line-through text-slate-400 opacity-75">-${tx.amount.toFixed(2)} USDT</span>`
       : `<span class="${isDebit ? 'text-rose-400' : 'text-emerald-400'}">${isDebit ? '-' : '+'}${tx.amount.toFixed(2)} USDT</span>`;
 
-    let descText = tx.description || label;
-    if (isRejected && !descText.toLowerCase().includes('reject')) {
-      descText += ' [Rejected]';
-    }
-
     return `
-      <div class="bg-[#11141c] border ${isRejected ? 'border-rose-900/40' : 'border-[#1e2433]'} rounded-xl p-3 flex items-center justify-between text-xs hover:border-slate-700 transition">
-        <div class="flex items-center gap-2.5">
-          <div class="w-8 h-8 rounded-lg ${bg} ${color} flex items-center justify-center shrink-0">
+      <div class="bg-[#11141c] border ${isRejected ? 'border-rose-900/50 bg-rose-950/10' : 'border-[#1e2433]'} rounded-2xl p-3 sm:p-3.5 flex items-start justify-between gap-2.5 text-xs hover:border-slate-700 transition shadow-sm overflow-hidden">
+        <!-- Left Side: Icon + Title + Subtitle -->
+        <div class="flex items-start gap-2.5 min-w-0 flex-1">
+          <div class="w-8 h-8 rounded-xl ${bg} ${color} flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
             <i data-lucide="${icon}" class="w-4 h-4"></i>
           </div>
-          <div>
-            <div class="font-bold text-white text-xs">${descText}</div>
-            <div class="text-[10px] text-slate-500">${new Date(tx.created_at).toLocaleString()}</div>
-            ${tx.reference_id && /^0x[a-fA-F0-9]{64}$/i.test(tx.reference_id) ? `
-              <div class="mt-0.5">
-                <a href="https://bscscan.com/tx/${tx.reference_id}" target="_blank" rel="noopener noreferrer" class="text-cyan-400 hover:text-cyan-300 font-mono text-[9px] underline inline-flex items-center gap-1">
-                  <span>${tx.reference_id.substring(0, 10)}...${tx.reference_id.substring(58)}</span>
-                  <i data-lucide="external-link" class="w-2.5 h-2.5"></i>
-                </a>
-              </div>
-            ` : ''}
+          <div class="min-w-0 flex-1 space-y-0.5 pr-1">
+            <div class="font-bold text-white text-[12.5px] truncate">${mainTitle}</div>
+            ${subtitleHtml}
+            <div class="text-[10px] text-slate-500 font-mono pt-0.5">${new Date(tx.created_at).toLocaleString()}</div>
           </div>
         </div>
-        <div class="text-right flex flex-col items-end gap-1">
-          <div class="font-bold font-mono">
+
+        <!-- Right Side: Amount + Badges (Never squished or overflowing!) -->
+        <div class="text-right shrink-0 flex flex-col items-end gap-1.5 self-start pt-0.5">
+          <div class="font-bold font-mono text-xs sm:text-[13px] whitespace-nowrap">
             ${amountDisplay}
           </div>
-          <div class="flex items-center gap-1.5">
+          <div class="flex items-center gap-1 flex-wrap justify-end">
             ${statusBadge}
-            <span class="text-[9px] uppercase px-1.5 py-0.5 rounded bg-black/60 text-slate-400">${(tx.wallet_type || 'wallet').split('_')[0]}</span>
+            <span class="text-[8.5px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700/60 whitespace-nowrap">${(tx.wallet_type || 'wallet').split('_')[0]}</span>
           </div>
         </div>
       </div>
