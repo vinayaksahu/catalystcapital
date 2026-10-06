@@ -53,15 +53,16 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Start live crypto price pulse
   startCryptoTickerPulse();
 
-  // Background poller for real-time notifications & admin alerts (every 15s)
+  // Background poller for real-time notifications & admin alerts (optimized: 45s interval, skips if tab is hidden)
   setInterval(() => {
+    if (document.hidden) return; // Do not waste network resources when user is on another browser tab
     if (token && currentUser) {
       loadNotificationBadge();
       if (activeViewName === 'admin' && (currentUser.role === 'admin' || currentUser.role === 'superadmin')) {
         loadAdminData();
       }
     }
-  }, 15000);
+  }, 45000);
 
   // Initialize interactive calendar and team stats immediately
   renderInteractiveCalendar();

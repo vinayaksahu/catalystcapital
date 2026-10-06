@@ -616,64 +616,46 @@ router.get('/stats', async (req, res) => {
       userSubquery = "WHERE user_id IN (SELECT id FROM users WHERE (team_admin_id = ? OR sponsor_id = ?) AND role IN ('user', 'member'))";
     }
 
-    const totalUsersRow = await db.get(`SELECT COUNT(*) as c FROM users WHERE ${userFilter}`, userFilterParams);
-    const totalUsers = totalUsersRow ? parseInt(totalUsersRow.c, 10) : 0;
-
     const teamParams = scope.teamAdminId ? [scope.teamAdminId, scope.teamAdminId] : [];
 
-    const totalInvestments = await db.get(
-      `SELECT COUNT(*) as c, COALESCE(SUM(amount), 0) as vol FROM investments ${userSubquery}`,
-      teamParams
-    );
-    const activeInvestments = await db.get(
-      `SELECT COUNT(*) as c, COALESCE(SUM(amount), 0) as vol FROM investments ${userSubquery ? `${userSubquery} AND status = 'active'` : "WHERE status = 'active'"}`,
-      teamParams
-    );
+    // Run all admin aggregate queries in parallel
+    const [
+      totalUsersRow,
+      totalInvestments,
+      activeInvestments,
+      totalDepositsCompleted,
+      pendingDeposits,
+      roiPaidRow,
+      referralRoiPaidRow,
+      teamCommissionPaidRow,
+      pendingWithdrawals,
+      approvedWithdrawals,
+      openTicketsRow,
+      roiClosingTimeRow,
+      lastRoiCycleDateRow,
+      lastRoiCycleAtRow
+    ] = await Promise.all([
+      db.get(`SELECT COUNT(*) as c FROM users WHERE ${userFilter}`, userFilterParams),
+      db.get(`SELECT COUNT(*) as c, COALESCE(SUM(amount), 0) as vol FROM investments ${userSubquery}`, teamParams),
+      db.get(`SELECT COUNT(*) as c, COALESCE(SUM(amount), 0) as vol FROM investments ${userSubquery ? `${userSubquery} AND status = 'active'` : "WHERE status = 'active'"}`, teamParams),
+      db.get(`SELECT COUNT(*) as c, COALESCE(SUM(amount), 0) as vol FROM deposits ${userSubquery ? `${userSubquery} AND status = 'completed'` : "WHERE status = 'completed'"}`, teamParams),
+      db.get(`SELECT COUNT(*) as c, COALESCE(SUM(amount), 0) as vol FROM deposits ${userSubquery ? `${userSubquery} AND status = 'pending'` : "WHERE status = 'pending'"}`, teamParams),
+      db.get(`SELECT COALESCE(SUM(amount), 0) as total FROM transactions ${userSubquery ? `${userSubquery} AND type = 'daily_roi' AND status = 'completed'` : "WHERE type = 'daily_roi' AND status = 'completed'"}`, teamParams),
+      db.get(`SELECT COALESCE(SUM(amount), 0) as total FROM transactions ${userSubquery ? `${userSubquery} AND type = 'referral_roi' AND status = 'completed'` : "WHERE type = 'referral_roi' AND status = 'completed'"}`, teamParams),
+      db.get(`SELECT COALESCE(SUM(amount), 0) as total FROM transactions ${userSubquery ? `${userSubquery} AND type = 'team_commission' AND status = 'completed'` : "WHERE type = 'team_commission' AND status = 'completed'"}`, teamParams),
+      db.get(`SELECT COUNT(*) as c, COALESCE(SUM(amount), 0) as vol FROM withdrawals ${userSubquery ? `${userSubquery} AND status = 'pending'` : "WHERE status = 'pending'"}`, teamParams),
+      db.get(`SELECT COUNT(*) as c, COALESCE(SUM(amount), 0) as vol FROM withdrawals ${userSubquery ? `${userSubquery} AND status = 'approved'` : "WHERE status = 'approved'"}`, teamParams),
+      db.get(`SELECT COUNT(*) as c FROM support_tickets ${userSubquery ? `${userSubquery} AND status = 'open'` : "WHERE status = 'open'"}`, teamParams),
+      db.get("SELECT value FROM system_settings WHERE key = 'roi_closing_time'"),
+      db.get("SELECT value FROM system_settings WHERE key = 'last_roi_cycle_date'"),
+      db.get("SELECT value FROM system_settings WHERE key = 'last_roi_cycle_at'")
+    ]);
 
-    const totalDepositsCompleted = await db.get(
-      `SELECT COUNT(*) as c, COALESCE(SUM(amount), 0) as vol FROM deposits ${userSubquery ? `${userSubquery} AND status = 'completed'` : "WHERE status = 'completed'"}`,
-      teamParams
-    );
-    const pendingDeposits = await db.get(
-      `SELECT COUNT(*) as c, COALESCE(SUM(amount), 0) as vol FROM deposits ${userSubquery ? `${userSubquery} AND status = 'pending'` : "WHERE status = 'pending'"}`,
-      teamParams
-    );
-
-    const roiPaidRow = await db.get(
-      `SELECT COALESCE(SUM(amount), 0) as total FROM transactions ${userSubquery ? `${userSubquery} AND type = 'daily_roi' AND status = 'completed'` : "WHERE type = 'daily_roi' AND status = 'completed'"}`,
-      teamParams
-    );
-    const referralRoiPaidRow = await db.get(
-      `SELECT COALESCE(SUM(amount), 0) as total FROM transactions ${userSubquery ? `${userSubquery} AND type = 'referral_roi' AND status = 'completed'` : "WHERE type = 'referral_roi' AND status = 'completed'"}`,
-      teamParams
-    );
-    const teamCommissionPaidRow = await db.get(
-      `SELECT COALESCE(SUM(amount), 0) as total FROM transactions ${userSubquery ? `${userSubquery} AND type = 'team_commission' AND status = 'completed'` : "WHERE type = 'team_commission' AND status = 'completed'"}`,
-      teamParams
-    );
-
+    const totalUsers = totalUsersRow ? parseInt(totalUsersRow.c, 10) : 0;
     const roiPaid = roiPaidRow ? roiPaidRow.total : 0;
     const referralRoiPaid = referralRoiPaidRow ? referralRoiPaidRow.total : 0;
     const teamCommissionPaid = teamCommissionPaidRow ? teamCommissionPaidRow.total : 0;
 
-    const pendingWithdrawals = await db.get(
-      `SELECT COUNT(*) as c, COALESCE(SUM(amount), 0) as vol FROM withdrawals ${userSubquery ? `${userSubquery} AND status = 'pending'` : "WHERE status = 'pending'"}`,
-      teamParams
-    );
-    const approvedWithdrawals = await db.get(
-      `SELECT COUNT(*) as c, COALESCE(SUM(amount), 0) as vol FROM withdrawals ${userSubquery ? `${userSubquery} AND status = 'approved'` : "WHERE status = 'approved'"}`,
-      teamParams
-    );
-
-    const openTicketsRow = await db.get(
-      `SELECT COUNT(*) as c FROM support_tickets ${userSubquery ? `${userSubquery} AND status = 'open'` : "WHERE status = 'open'"}`,
-      teamParams
-    );
-
-    // Fetch ROI Closing Time & Last Execution
-    const roiClosingTimeRow = await db.get("SELECT value FROM system_settings WHERE key = 'roi_closing_time'");
-    const lastRoiCycleDateRow = await db.get("SELECT value FROM system_settings WHERE key = 'last_roi_cycle_date'");
-    const lastRoiCycleAtRow = await db.get("SELECT value FROM system_settings WHERE key = 'last_roi_cycle_at'");
     const todayStr = new Date().toISOString().split('T')[0];
     const alreadyExecutedToday = lastRoiCycleDateRow?.value === todayStr;
 

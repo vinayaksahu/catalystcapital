@@ -26,30 +26,56 @@ router.get('/deposit-address', async (req, res) => {
 // Get wallet overview & balances
 router.get('/overview', authenticateToken, async (req, res) => {
   try {
-    const user = await db.get(`
-      SELECT wallet_balance, roi_balance, commission_balance, usdt_address
-      FROM users WHERE id = ?
-    `, [req.user.id]);
+    // Run independent database queries in parallel for high performance
+    const [
+      user,
+      totalDepositedRes,
+      activeInvestRes,
+      earningsRows,
+      totalWithdrawnRes,
+      pendingWithdrawnRes,
+      settingsRows
+    ] = await Promise.all([
+      db.get(`
+        SELECT wallet_balance, roi_balance, commission_balance, usdt_address
+        FROM users WHERE id = ?
+      `, [req.user.id]),
 
-    const totalDepositedRes = await db.get(`
-      SELECT COALESCE(SUM(amount), 0) as total
-      FROM deposits
-      WHERE user_id = ? AND status = 'completed'
-    `, [req.user.id]);
+      db.get(`
+        SELECT COALESCE(SUM(amount), 0) as total
+        FROM deposits
+        WHERE user_id = ? AND status = 'completed'
+      `, [req.user.id]),
+
+      db.get(`
+        SELECT COALESCE(SUM(amount), 0) as total
+        FROM investments
+        WHERE user_id = ? AND status = 'active'
+      `, [req.user.id]),
+
+      db.all(`
+        SELECT amount, type, created_at
+        FROM transactions
+        WHERE user_id = ? AND type IN ('daily_roi', 'referral_roi', 'team_commission') AND status = 'completed'
+      `, [req.user.id]),
+
+      db.get(`
+        SELECT COALESCE(SUM(amount), 0) as total
+        FROM withdrawals
+        WHERE user_id = ? AND status = 'approved'
+      `, [req.user.id]),
+
+      db.get(`
+        SELECT COALESCE(SUM(amount), 0) as total
+        FROM withdrawals
+        WHERE user_id = ? AND status = 'pending'
+      `, [req.user.id]),
+
+      db.all('SELECT key, value FROM system_settings')
+    ]);
+
     const totalRecharge = totalDepositedRes ? (parseFloat(totalDepositedRes.total) || 0) : 0;
-
-    const activeInvestRes = await db.get(`
-      SELECT COALESCE(SUM(amount), 0) as total
-      FROM investments
-      WHERE user_id = ? AND status = 'active'
-    `, [req.user.id]);
     const tradingAssets = activeInvestRes ? (parseFloat(activeInvestRes.total) || 0) : 0;
-
-    const earningsRows = await db.all(`
-      SELECT amount, type, created_at
-      FROM transactions
-      WHERE user_id = ? AND type IN ('daily_roi', 'referral_roi', 'team_commission') AND status = 'completed'
-    `, [req.user.id]);
 
     const todayStr = new Date().toISOString().slice(0, 10);
     const yest = new Date(Date.now() - 86400000);
@@ -83,19 +109,6 @@ router.get('/overview', authenticateToken, async (req, res) => {
       }
     }
 
-    const totalWithdrawnRes = await db.get(`
-      SELECT COALESCE(SUM(amount), 0) as total
-      FROM withdrawals
-      WHERE user_id = ? AND status = 'approved'
-    `, [req.user.id]);
-
-    const pendingWithdrawnRes = await db.get(`
-      SELECT COALESCE(SUM(amount), 0) as total
-      FROM withdrawals
-      WHERE user_id = ? AND status = 'pending'
-    `, [req.user.id]);
-
-    const settingsRows = await db.all('SELECT key, value FROM system_settings');
     const settings = settingsRows.reduce((acc, row) => {
       acc[row.key] = row.value;
       return acc;
