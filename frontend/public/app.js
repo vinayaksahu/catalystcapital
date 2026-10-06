@@ -632,8 +632,26 @@ function navigate(viewName, updateHistory = true) {
   const profilePill = document.getElementById('profile-pill-wrapper');
   const portalBtn = document.getElementById('portal-switch-btn');
 
+  // Hide bottom menu on auth pages AND when Admin Portal is active
+  if (viewName === 'login' || viewName === 'adminlogin' || viewName === 'register' || viewName === 'admin') {
+    if (bottomNav) {
+      bottomNav.classList.add('hidden');
+      bottomNav.style.setProperty('display', 'none', 'important');
+    }
+  } else if (currentUser) {
+    if (bottomNav) {
+      bottomNav.classList.remove('hidden');
+      bottomNav.style.removeProperty('display');
+    }
+  } else {
+    if (bottomNav) {
+      bottomNav.classList.add('hidden');
+      bottomNav.style.setProperty('display', 'none', 'important');
+    }
+  }
+
+  // Header pill & portal button visibility
   if (viewName === 'login' || viewName === 'adminlogin' || viewName === 'register') {
-    if (bottomNav) bottomNav.classList.add('hidden');
     if (profilePill) profilePill.classList.add('hidden');
     if (portalBtn) {
       portalBtn.classList.add('hidden');
@@ -641,7 +659,6 @@ function navigate(viewName, updateHistory = true) {
     }
   } else {
     if (currentUser) {
-      if (bottomNav) bottomNav.classList.remove('hidden');
       if (profilePill) profilePill.classList.remove('hidden');
       if (portalBtn) {
         if (currentUser.role === 'admin') {
@@ -653,7 +670,6 @@ function navigate(viewName, updateHistory = true) {
         }
       }
     } else {
-      if (bottomNav) bottomNav.classList.add('hidden');
       if (profilePill) profilePill.classList.add('hidden');
       if (portalBtn) {
         portalBtn.classList.add('hidden');
