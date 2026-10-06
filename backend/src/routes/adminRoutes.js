@@ -17,7 +17,7 @@ router.use(requireAdmin);
  * Team Admin is strictly locked to their own team (req.user.id)
  */
 function getAdminScope(req) {
-  const isSuper = req.user.role === 'superadmin' || req.user.username === 'admin' || req.user.id === 1;
+  const isSuper = (req.user.role === 'superadmin') && !req.user.isImpersonation;
   if (isSuper) {
     const filterId = req.query.teamAdminId ? parseInt(req.query.teamAdminId, 10) : null;
     return {
@@ -41,7 +41,7 @@ async function assertUserInTeam(userId, req) {
     err.status = 404;
     throw err;
   }
-  const isSuper = req.user.role === 'superadmin' || req.user.username === 'admin' || req.user.id === 1;
+  const isSuper = (req.user.role === 'superadmin') && !req.user.isImpersonation;
   if (!isSuper) {
     if (target.team_admin_id !== req.user.id && target.sponsor_id !== req.user.id) {
       const err = new Error('Unauthorized: User does not belong to your team');
@@ -62,10 +62,10 @@ router.get('/me', async (req, res) => {
       FROM users WHERE id = ?
     `, [req.user.id]);
 
-    const isSuper = adminUser.role === 'superadmin' || adminUser.username === 'admin' || adminUser.id === 1;
+    const isSuper = (adminUser.role === 'superadmin') && !req.user.isImpersonation;
     const teamAdmins = isSuper ? await db.all(`
       SELECT id, username, full_name, team_name, referral_code, status
-      FROM users WHERE (role = 'admin' OR username = 'admin') AND id != ? ORDER BY id ASC
+      FROM users WHERE (role = 'admin' OR id = 1) AND id != ? ORDER BY id ASC
     `, [req.user.id]) : [];
 
     res.json({
@@ -369,14 +369,14 @@ router.get('/audit-logs', async (req, res) => {
 router.post('/team-admins/:id/impersonate', requireSuperAdmin, async (req, res) => {
   try {
     const adminId = parseInt(req.params.id, 10);
-    const targetAdmin = await db.get("SELECT * FROM users WHERE id = ? AND (role = 'admin' OR username = 'admin')", [adminId]);
+    const targetAdmin = await db.get("SELECT * FROM users WHERE id = ? AND (role = 'admin' OR username = 'admin' OR id = 1)", [adminId]);
     if (!targetAdmin) return res.status(404).json({ success: false, error: 'Team Admin not found' });
 
     const impersonationToken = jwt.sign(
       {
         id: targetAdmin.id,
         username: targetAdmin.username,
-        role: targetAdmin.role,
+        role: 'admin',
         team_admin_id: targetAdmin.id,
         team_name: targetAdmin.team_name,
         impersonatedBy: req.user.username,
@@ -387,6 +387,7 @@ router.post('/team-admins/:id/impersonate', requireSuperAdmin, async (req, res) 
     );
 
     const { password_hash, ...safeAdmin } = targetAdmin;
+    safeAdmin.role = 'admin';
     res.json({
       success: true,
       token: impersonationToken,

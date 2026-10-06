@@ -995,10 +995,10 @@ function navigate(viewName, updateHistory = true) {
     if (adminBadge) {
       adminBadge.classList.remove('hidden');
       adminBadge.className = 'mb-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-500/15 border border-amber-500/30 text-amber-400';
-      adminBadge.innerHTML = '<i data-lucide="shield-check" class="w-3.5 h-3.5 text-amber-400"></i><span>Team Administrator Portal</span>';
+      adminBadge.innerHTML = '<i data-lucide="shield-check" class="w-3.5 h-3.5 text-amber-400"></i><span>Administrator Portal</span>';
     }
-    if (loginTitle) loginTitle.textContent = 'Team Admin Portal';
-    if (loginSubtitle) loginSubtitle.textContent = 'Isolated Management Portal for Your Dedicated Team';
+    if (loginTitle) loginTitle.textContent = 'Admin Portal';
+    if (loginSubtitle) loginSubtitle.textContent = 'Management Portal for Dedicated Administration';
     if (regSwitch) regSwitch.classList.add('hidden');
   } else {
     if (adminBadge) adminBadge.classList.add('hidden');
@@ -2882,7 +2882,10 @@ async function loadAdminData() {
       const teamTabBtn = document.getElementById('admin-tab-btn-teamadmins');
       const inviteBanner = document.getElementById('team-admin-invite-banner');
 
-      if (adminCurrentScope.isSuperAdmin || currentUser.role === 'superadmin') {
+      const isImpersonatingFromSuper = !!localStorage.getItem('catalyst_superadmin_orig_token');
+      const isSuperRootMode = (adminCurrentScope.isSuperAdmin || currentUser.role === 'superadmin') && !isImpersonatingFromSuper;
+
+      if (isSuperRootMode) {
         const srContainer = document.getElementById('super-root-master-container');
         const teamContainer = document.getElementById('team-admin-container');
         if (srContainer) srContainer.classList.remove('hidden');
@@ -2900,8 +2903,9 @@ async function loadAdminData() {
           roleBadge.textContent = 'TEAM ADMIN';
           roleBadge.className = 'text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 uppercase tracking-wider flex items-center gap-1';
         }
+        const adminObj = meData.admin || meData.user || currentUser;
         if (userTag) {
-          const tName = meData.user.team_name || meData.user.username;
+          const tName = adminObj.team_name || adminObj.username;
           userTag.textContent = `${tName} — Isolated Team Network`;
         }
         if (scopeWrapper) scopeWrapper.classList.add('hidden');
@@ -2909,9 +2913,9 @@ async function loadAdminData() {
         if (inviteBanner) {
           inviteBanner.classList.remove('hidden');
           const tNameEl = document.getElementById('team-admin-banner-name');
-          if (tNameEl) tNameEl.textContent = meData.user.team_name || meData.user.username;
+          if (tNameEl) tNameEl.textContent = adminObj.team_name || adminObj.username;
           const codeEl = document.getElementById('team-admin-banner-code');
-          const myRef = meData.user.referral_code || meData.user.username;
+          const myRef = adminObj.referral_code || adminObj.username;
           if (codeEl) codeEl.textContent = myRef;
           const linkInput = document.getElementById('team-admin-ref-link-input');
           if (linkInput) linkInput.value = `${window.location.origin}/?ref=${encodeURIComponent(myRef)}`;
@@ -4918,6 +4922,7 @@ let universalMemberSearchTimer = null;
 async function enterPortalAsAdmin(adminId) {
   try {
     const origSuperToken = localStorage.getItem('catalyst_superadmin_orig_token');
+    const superTokenToUse = origSuperToken || token;
     if (!origSuperToken) {
       localStorage.setItem('catalyst_superadmin_orig_token', token);
     }
@@ -4926,7 +4931,7 @@ async function enterPortalAsAdmin(adminId) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
+        'Authorization': `Bearer ${superTokenToUse}`
       }
     });
     const data = await res.json();
@@ -4939,6 +4944,9 @@ async function enterPortalAsAdmin(adminId) {
     showToast(`👑 Operating as Sub-Admin @${currentUser.username} (${currentUser.team_name || 'Team Admin'})!`, 'success');
     updateAuthUI();
     navigate('admin');
+    if (typeof switchAdminTab === 'function') {
+      switchAdminTab('users');
+    }
     await loadAdminData();
   } catch (err) {
     showToast(err.message, 'error');

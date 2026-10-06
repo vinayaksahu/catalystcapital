@@ -28,6 +28,13 @@ async function authenticateToken(req, res, next) {
     }
 
     req.user = user;
+    if (decoded.isImpersonation) {
+      req.user.isImpersonation = true;
+      req.user.impersonatedBy = decoded.impersonatedBy;
+      if (decoded.role) {
+        req.user.role = decoded.role;
+      }
+    }
     next();
   } catch (err) {
     return res.status(403).json({ error: 'Invalid or expired token' });
@@ -42,7 +49,7 @@ function requireAdmin(req, res, next) {
 }
 
 function requireSuperAdmin(req, res, next) {
-  if (!req.user || req.user.role !== 'superadmin') {
+  if (!req.user || req.user.role !== 'superadmin' || req.user.isImpersonation) {
     return res.status(403).json({ error: 'Super Root Admin access required' });
   }
   next();
