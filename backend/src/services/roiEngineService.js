@@ -9,6 +9,22 @@ class RoiEngineService {
   async processDailyRoi(force = false) {
     const today = new Date().toISOString().split('T')[0];
 
+    // System-wide Rule: Daily ROI cycle can only execute once per calendar day
+    if (!force) {
+      const lastCycleSetting = await db.get("SELECT value FROM system_settings WHERE key = 'last_roi_cycle_date'");
+      if (lastCycleSetting && lastCycleSetting.value === today) {
+        return {
+          success: false,
+          alreadyExecutedToday: true,
+          message: `Daily ROI cycle has already executed today (${today}). Allowed only once per day.`,
+          processedInvestments: 0,
+          totalRoiDistributed: 0,
+          totalReferralRoiDistributed: 0,
+          details: []
+        };
+      }
+    }
+
     // Find all active investments that still have days remaining
     const activeInvestments = await db.all(`
       SELECT i.*, p.name as plan_name, u.username, u.status as user_status
@@ -143,6 +159,28 @@ class RoiEngineService {
         principalRefunded,
         referralDistributions
       });
+    }
+
+    // Record this execution in system_settings so it can NEVER run more than once per day
+    const nowIso = new Date().toISOString();
+    if (db.isPostgres) {
+      await db.run(
+        "INSERT INTO system_settings (key, value) VALUES ('last_roi_cycle_date', ?) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value",
+        [today]
+      );
+      await db.run(
+        "INSERT INTO system_settings (key, value) VALUES ('last_roi_cycle_at', ?) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value",
+        [nowIso]
+      );
+    } else {
+      await db.run(
+        "INSERT INTO system_settings (key, value) VALUES ('last_roi_cycle_date', ?) ON CONFLICT(key) DO UPDATE SET value = ?",
+        [today, today]
+      );
+      await db.run(
+        "INSERT INTO system_settings (key, value) VALUES ('last_roi_cycle_at', ?) ON CONFLICT(key) DO UPDATE SET value = ?",
+        [nowIso, nowIso]
+      );
     }
 
     return {

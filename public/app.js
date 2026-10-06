@@ -2828,22 +2828,34 @@ async function loadAdminData() {
       // Update ROI Execution schedule display
       const roiTime = s.roiClosingTime || '00:00';
       const roiTimeEl = document.getElementById('admin-roi-closing-time-text');
-      if (roiTimeEl) roiTimeEl.textContent = `${roiTime} Server Time`;
-
       const roiBadgeEl = document.getElementById('admin-roi-badge');
-      if (roiBadgeEl) {
-        roiBadgeEl.textContent = `Auto Scheduled @ ${roiTime}`;
-        roiBadgeEl.className = 'text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20';
-      }
-
       const runRoiBtn = document.getElementById('admin-btn-run-roi');
       const runRoiText = document.getElementById('admin-btn-run-roi-text');
-      if (runRoiBtn) {
-        // Disabled until automatic cycle execution time
-        runRoiBtn.disabled = true;
-        runRoiBtn.className = 'flex-1 sm:flex-initial px-4 py-2 rounded-xl font-extrabold bg-slate-800 text-slate-500 cursor-not-allowed transition text-xs flex items-center justify-center gap-1.5 whitespace-nowrap border border-slate-700/50';
-        runRoiBtn.title = `ROI cycle executes automatically at ${roiTime}. Manual trigger disabled.`;
-        if (runRoiText) runRoiText.textContent = `Locked (${roiTime})`;
+
+      if (s.alreadyExecutedToday) {
+        if (roiTimeEl) roiTimeEl.textContent = `Completed for today (Executed at ${s.lastRoiExecution ? new Date(s.lastRoiExecution).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : roiTime})`;
+        if (roiBadgeEl) {
+          roiBadgeEl.textContent = 'Completed Today ✓';
+          roiBadgeEl.className = 'text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
+        }
+        if (runRoiBtn) {
+          runRoiBtn.disabled = true;
+          runRoiBtn.className = 'flex-1 sm:flex-initial px-4 py-2 rounded-xl font-extrabold bg-slate-800 text-slate-500 cursor-not-allowed transition text-xs flex items-center justify-center gap-1.5 whitespace-nowrap border border-slate-700/50';
+          runRoiBtn.title = 'Daily ROI cycle has already executed for today. 1 execution per day enforced.';
+          if (runRoiText) runRoiText.textContent = 'Done For Today (1/Day)';
+        }
+      } else {
+        if (roiTimeEl) roiTimeEl.textContent = `${roiTime} Server Time`;
+        if (roiBadgeEl) {
+          roiBadgeEl.textContent = `Auto Scheduled @ ${roiTime}`;
+          roiBadgeEl.className = 'text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20';
+        }
+        if (runRoiBtn) {
+          runRoiBtn.disabled = true;
+          runRoiBtn.className = 'flex-1 sm:flex-initial px-4 py-2 rounded-xl font-extrabold bg-slate-800 text-slate-500 cursor-not-allowed transition text-xs flex items-center justify-center gap-1.5 whitespace-nowrap border border-slate-700/50';
+          runRoiBtn.title = `ROI cycle executes automatically once daily at ${roiTime}.`;
+          if (runRoiText) runRoiText.textContent = `Locked (${roiTime})`;
+        }
       }
 
       // Also refresh admin notification badge

@@ -157,6 +157,9 @@ router.post('/trigger-daily-roi', async (req, res) => {
     }
 
     const result = await roiEngineService.processDailyRoi(force);
+    if (!result.success && result.alreadyExecutedToday) {
+      return res.status(400).json(result);
+    }
     res.json(result);
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -201,7 +204,10 @@ router.get('/stats', async (req, res) => {
 
     // Fetch ROI Closing Time & Last Execution
     const roiClosingTimeRow = await db.get("SELECT value FROM system_settings WHERE key = 'roi_closing_time'");
-    const lastRoiTx = await db.get("SELECT created_at FROM transactions WHERE type = 'daily_roi' ORDER BY id DESC LIMIT 1");
+    const lastRoiCycleDateRow = await db.get("SELECT value FROM system_settings WHERE key = 'last_roi_cycle_date'");
+    const lastRoiCycleAtRow = await db.get("SELECT value FROM system_settings WHERE key = 'last_roi_cycle_at'");
+    const todayStr = new Date().toISOString().split('T')[0];
+    const alreadyExecutedToday = lastRoiCycleDateRow?.value === todayStr;
 
     const totalInvestmentVol = totalInvestments ? totalInvestments.vol : 0;
     const totalDepositVol = totalDepositsCompleted ? totalDepositsCompleted.vol : 0;
@@ -230,7 +236,9 @@ router.get('/stats', async (req, res) => {
         approvedWithdrawalsVolume: approvedWithdrawals ? approvedWithdrawals.vol : 0,
         openTicketsCount: openTicketsRow ? parseInt(openTicketsRow.c, 10) : 0,
         roiClosingTime: roiClosingTimeRow ? roiClosingTimeRow.value : '00:00',
-        lastRoiExecution: lastRoiTx ? lastRoiTx.created_at : null
+        lastRoiCycleDate: lastRoiCycleDateRow ? lastRoiCycleDateRow.value : null,
+        lastRoiExecution: lastRoiCycleAtRow ? lastRoiCycleAtRow.value : null,
+        alreadyExecutedToday
       }
     });
   } catch (err) {
