@@ -2147,7 +2147,11 @@ function filterHistory(type) {
 
   let filtered = allHistoryTransactions;
   if (type !== 'all') {
-    filtered = allHistoryTransactions.filter(t => t.type === type);
+    if (type === 'withdrawal') {
+      filtered = allHistoryTransactions.filter(t => t.type === 'withdrawal' || t.type === 'refund');
+    } else {
+      filtered = allHistoryTransactions.filter(t => t.type === type);
+    }
   }
 
   if (filtered.length === 0) {
@@ -2164,6 +2168,10 @@ function filterHistory(type) {
 
   container.innerHTML = filtered.map(tx => {
     const isDebit = tx.type === 'withdrawal' || tx.type === 'investment';
+    const isRejected = (tx.status === 'rejected');
+    const isPending = (tx.status === 'pending');
+    const isCompleted = (tx.status === 'completed');
+
     let icon = 'trending-up';
     let color = 'text-emerald-400';
     let bg = 'bg-emerald-500/10';
@@ -2190,10 +2198,15 @@ function filterHistory(type) {
       bg = 'bg-pink-500/10';
       label = 'Recharge Deposit';
     } else if (tx.type === 'withdrawal') {
-      icon = 'arrow-up-right';
+      icon = isRejected ? 'x-circle' : 'arrow-up-right';
       color = 'text-rose-400';
-      bg = 'bg-rose-500/10';
+      bg = isRejected ? 'bg-rose-500/20' : 'bg-rose-500/10';
       label = 'Withdrawal';
+    } else if (tx.type === 'refund') {
+      icon = 'rotate-ccw';
+      color = 'text-cyan-400';
+      bg = 'bg-cyan-500/10';
+      label = 'Withdrawal Refund';
     } else if (tx.type === 'principal_return') {
       icon = 'shield-check';
       color = 'text-amber-400';
@@ -2201,14 +2214,32 @@ function filterHistory(type) {
       label = 'Principal Capital Refund';
     }
 
+    let statusBadge = '';
+    if (isRejected) {
+      statusBadge = '<span class="text-[9px] font-black uppercase px-2 py-0.5 rounded bg-rose-500/20 text-rose-400 border border-rose-500/40">REJECTED</span>';
+    } else if (isPending) {
+      statusBadge = '<span class="text-[9px] font-black uppercase px-2 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/40">PENDING</span>';
+    } else if (isCompleted) {
+      statusBadge = '<span class="text-[9px] font-bold uppercase px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">COMPLETED</span>';
+    }
+
+    const amountDisplay = isRejected
+      ? `<span class="line-through text-slate-400 opacity-75">-${tx.amount.toFixed(2)} USDT</span>`
+      : `<span class="${isDebit ? 'text-rose-400' : 'text-emerald-400'}">${isDebit ? '-' : '+'}${tx.amount.toFixed(2)} USDT</span>`;
+
+    let descText = tx.description || label;
+    if (isRejected && !descText.toLowerCase().includes('reject')) {
+      descText += ' [Rejected]';
+    }
+
     return `
-      <div class="bg-[#11141c] border border-[#1e2433] rounded-xl p-3 flex items-center justify-between text-xs hover:border-slate-700 transition">
+      <div class="bg-[#11141c] border ${isRejected ? 'border-rose-900/40' : 'border-[#1e2433]'} rounded-xl p-3 flex items-center justify-between text-xs hover:border-slate-700 transition">
         <div class="flex items-center gap-2.5">
           <div class="w-8 h-8 rounded-lg ${bg} ${color} flex items-center justify-center shrink-0">
             <i data-lucide="${icon}" class="w-4 h-4"></i>
           </div>
           <div>
-            <div class="font-bold text-white text-xs">${tx.description || label}</div>
+            <div class="font-bold text-white text-xs">${descText}</div>
             <div class="text-[10px] text-slate-500">${new Date(tx.created_at).toLocaleString()}</div>
             ${tx.reference_id && /^0x[a-fA-F0-9]{64}$/i.test(tx.reference_id) ? `
               <div class="mt-0.5">
@@ -2220,11 +2251,14 @@ function filterHistory(type) {
             ` : ''}
           </div>
         </div>
-        <div class="text-right">
-          <div class="font-bold font-mono ${isDebit ? 'text-rose-400' : 'text-emerald-400'}">
-            ${isDebit ? '-' : '+'}${tx.amount.toFixed(2)} USDT
+        <div class="text-right flex flex-col items-end gap-1">
+          <div class="font-bold font-mono">
+            ${amountDisplay}
           </div>
-          <span class="text-[9px] uppercase px-1.5 py-0.5 rounded bg-black/60 text-slate-400">${tx.wallet_type.split('_')[0]}</span>
+          <div class="flex items-center gap-1.5">
+            ${statusBadge}
+            <span class="text-[9px] uppercase px-1.5 py-0.5 rounded bg-black/60 text-slate-400">${(tx.wallet_type || 'wallet').split('_')[0]}</span>
+          </div>
         </div>
       </div>
     `;

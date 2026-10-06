@@ -382,7 +382,10 @@ class WalletService {
     if (!w) throw new Error('Withdrawal record not found');
     if (w.status !== 'pending') throw new Error(`Withdrawal is already ${w.status}`);
 
-    const refundWallet = w.wallet_type === 'commission_balance' ? 'commission_balance' : 'roi_balance';
+    let refundWallet = 'roi_balance';
+    if (w.wallet_type === 'commission_balance') refundWallet = 'commission_balance';
+    else if (w.wallet_type === 'wallet_balance') refundWallet = 'wallet_balance';
+
     await db.run(`UPDATE users SET ${refundWallet} = ${refundWallet} + ? WHERE id = ?`, [w.amount, w.user_id]);
 
     const nowExpr = db.isPostgres ? 'CURRENT_TIMESTAMP' : "datetime('now')";
@@ -400,7 +403,13 @@ class WalletService {
       VALUES (?, ?, 'refund', ?, ?, ?, 'completed')
     `, [w.user_id, w.amount, refundWallet, `Withdrawal Refund: ${reason}`, `REF-${withdrawalId}`]);
 
-    await db.run("UPDATE transactions SET status = 'rejected' WHERE reference_id = ?", [`WTH-${withdrawalId}`]);
+    const descAppend = ` [Rejected: ${reason}]`;
+    await db.run(`
+      UPDATE transactions
+      SET status = 'rejected',
+          description = description || ?
+      WHERE reference_id = ?
+    `, [descAppend, `WTH-${withdrawalId}`]);
 
     // Withdrawal Rejected Notification
     await notificationService.createNotification({
