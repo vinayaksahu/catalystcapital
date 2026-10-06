@@ -12,26 +12,25 @@ class WalletService {
 
     const cleanHash = txHash || 'TX-' + Math.random().toString(36).substring(2, 10).toUpperCase();
 
-    // Insert deposit record
+    // Insert deposit record with 'pending' status
     const res = await db.run(`
       INSERT INTO deposits (user_id, amount, network, tx_hash, status)
-      VALUES (?, ?, ?, ?, 'completed')
+      VALUES (?, ?, ?, ?, 'pending')
     `, [userId, amount, network, cleanHash]);
 
-    // Credit user's wallet_balance
-    await db.run('UPDATE users SET wallet_balance = wallet_balance + ? WHERE id = ?', [amount, userId]);
-
-    // Record transaction
+    // Record pending transaction (Do NOT update wallet_balance until admin approves)
     await db.run(`
       INSERT INTO transactions (user_id, amount, type, wallet_type, description, reference_id, status)
-      VALUES (?, ?, 'deposit', 'wallet_balance', ?, ?, 'completed')
-    `, [userId, amount, `Deposit of $${amount} via ${network}`, cleanHash]);
+      VALUES (?, ?, 'deposit', 'wallet_balance', ?, ?, 'pending')
+    `, [userId, amount, `Deposit request of $${amount} via ${network} (Awaiting Admin Approval)`, cleanHash]);
 
     return {
       success: true,
+      pending: true,
       depositId: res.lastInsertRowid,
       amount,
-      txHash: cleanHash
+      txHash: cleanHash,
+      message: 'Deposit request submitted successfully! Funds will be credited once verified and approved by Admin.'
     };
   }
 

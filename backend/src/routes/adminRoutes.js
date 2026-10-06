@@ -284,10 +284,16 @@ router.post('/deposits/:id/approve', async (req, res) => {
     await db.run("UPDATE deposits SET status = 'completed' WHERE id = ?", [req.params.id]);
     await db.run('UPDATE users SET wallet_balance = wallet_balance + ? WHERE id = ?', [deposit.amount, deposit.user_id]);
 
-    await db.run(`
-      INSERT INTO transactions (user_id, amount, type, wallet_type, description, reference_id, status)
-      VALUES (?, ?, 'deposit', 'wallet_balance', ?, ?, 'completed')
-    `, [deposit.user_id, deposit.amount, `Deposit Approved by Admin ($${deposit.amount})`, deposit.tx_hash || `DEP-${deposit.id}`]);
+    // Update existing pending transaction or insert completed one
+    const existingTx = deposit.tx_hash ? await db.get("SELECT id FROM transactions WHERE reference_id = ? AND user_id = ?", [deposit.tx_hash, deposit.user_id]) : null;
+    if (existingTx) {
+      await db.run("UPDATE transactions SET status = 'completed', description = ? WHERE id = ?", [`Deposit Approved by Admin ($${deposit.amount})`, existingTx.id]);
+    } else {
+      await db.run(`
+        INSERT INTO transactions (user_id, amount, type, wallet_type, description, reference_id, status)
+        VALUES (?, ?, 'deposit', 'wallet_balance', ?, ?, 'completed')
+      `, [deposit.user_id, deposit.amount, `Deposit Approved by Admin ($${deposit.amount})`, deposit.tx_hash || `DEP-${deposit.id}`]);
+    }
 
     res.json({ success: true, message: `Deposit #${deposit.id} approved and credited` });
   } catch (err) {
@@ -304,6 +310,9 @@ router.post('/deposits/:id/reject', async (req, res) => {
     if (deposit.status === 'completed') return res.status(400).json({ success: false, error: 'Completed deposits cannot be rejected' });
 
     await db.run("UPDATE deposits SET status = 'rejected' WHERE id = ?", [req.params.id]);
+    if (deposit.tx_hash) {
+      await db.run("UPDATE transactions SET status = 'failed', description = ? WHERE reference_id = ? AND user_id = ?", [`Deposit Rejected by Admin (${reason})`, deposit.tx_hash, deposit.user_id]);
+    }
     res.json({ success: true, message: `Deposit #${deposit.id} rejected (${reason})` });
   } catch (err) {
     res.status(400).json({ success: false, error: err.message });

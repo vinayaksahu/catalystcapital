@@ -1713,9 +1713,15 @@ async function handleDepositSubmit(e) {
     }
 
     closeModal('rechargeModal');
-    showToast(`✅ Recharge of $${data.amount} USDT confirmed!`, 'success');
+    const depositInput = document.getElementById('deposit-amount');
+    const hashInput = document.getElementById('deposit-txhash');
+    if (depositInput) depositInput.value = '';
+    if (hashInput) hashInput.value = '';
+
+    showToast(`⏳ Deposit request of $${data.amount} USDT submitted! Funds will be credited upon Admin approval.`, 'info');
     await fetchUserProfile();
     if (activeViewName === 'assets') await loadAssetsData();
+    if (activeViewName === 'history') await loadHistoryData();
   } catch (err) {
     showToast(err.message, 'error');
   }

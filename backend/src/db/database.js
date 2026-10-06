@@ -163,7 +163,7 @@ async function initDatabase() {
         amount NUMERIC(18, 4) NOT NULL,
         tx_hash VARCHAR(255),
         network VARCHAR(50) DEFAULT 'USDT-TRC20',
-        status VARCHAR(50) DEFAULT 'completed',
+        status VARCHAR(50) DEFAULT 'pending',
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       );
 
@@ -268,7 +268,7 @@ async function initDatabase() {
         amount REAL NOT NULL,
         tx_hash TEXT,
         network TEXT DEFAULT 'USDT-TRC20',
-        status TEXT DEFAULT 'completed',
+        status TEXT DEFAULT 'pending',
         created_at TEXT DEFAULT (datetime('now'))
       );
 
