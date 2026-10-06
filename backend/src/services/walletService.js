@@ -5,24 +5,39 @@ class WalletService {
   /**
    * Process a Deposit (USDT)
    */
-  async deposit(userId, amount, network = 'USDT-TRC20', txHash = null) {
-    if (amount <= 0) {
+  async deposit(userId, amount, network = 'USDT-BEP20', txHash = null) {
+    if (!amount || amount <= 0) {
       throw new Error('Deposit amount must be greater than 0');
     }
 
-    const cleanHash = txHash || 'TX-' + Math.random().toString(36).substring(2, 10).toUpperCase();
+    if (!txHash || typeof txHash !== 'string' || !txHash.trim()) {
+      throw new Error('Transaction Hash / TXID is required for deposit verification');
+    }
+
+    const cleanHash = txHash.trim();
+    // Validate BSC BEP20 Tx Hash format: 66 chars, starts with 0x, followed by 64 hex characters
+    const txHashRegex = /^0x[a-fA-F0-9]{64}$/i;
+    if (!txHashRegex.test(cleanHash)) {
+      throw new Error('Invalid Transaction Hash. Must be a valid 66-character BEP-20 transaction hash (e.g. 0x followed by 64 hex characters)');
+    }
+
+    // Check for duplicate transaction hash
+    const existing = await db.get('SELECT id FROM deposits WHERE tx_hash = ?', [cleanHash]);
+    if (existing) {
+      throw new Error('This transaction hash has already been submitted for deposit verification');
+    }
 
     // Insert deposit record with 'pending' status
     const res = await db.run(`
       INSERT INTO deposits (user_id, amount, network, tx_hash, status)
       VALUES (?, ?, ?, ?, 'pending')
-    `, [userId, amount, network, cleanHash]);
+    `, [userId, amount, network || 'USDT-BEP20', cleanHash]);
 
     // Record pending transaction (Do NOT update wallet_balance until admin approves)
     await db.run(`
       INSERT INTO transactions (user_id, amount, type, wallet_type, description, reference_id, status)
       VALUES (?, ?, 'deposit', 'wallet_balance', ?, ?, 'pending')
-    `, [userId, amount, `Deposit request of $${amount} via ${network} (Awaiting Admin Approval)`, cleanHash]);
+    `, [userId, amount, `Deposit request of $${amount} via ${network || 'USDT-BEP20'} (Awaiting Admin Approval)`, cleanHash]);
 
     return {
       success: true,
@@ -125,7 +140,7 @@ class WalletService {
    * - Fee: 0%
    * - Processing time: 0 - 24 hours
    */
-  async requestWithdrawal(userId, { amount, usdtAddress, network = 'USDT-TRC20', walletSource = 'roi_balance' }) {
+  async requestWithdrawal(userId, { amount, usdtAddress, network = 'USDT-BEP20', walletSource = 'roi_balance' }) {
     if (!amount || amount <= 0) {
       throw new Error('Please enter a valid withdrawal amount');
     }
@@ -137,8 +152,9 @@ class WalletService {
       throw new Error(`Minimum withdrawal is ${minWithdrawal} USDT`);
     }
 
-    if (!usdtAddress || usdtAddress.trim().length < 10) {
-      throw new Error('Please provide a valid USDT destination address');
+    const bep20AddressRegex = /^0x[a-fA-F0-9]{40}$/i;
+    if (!usdtAddress || typeof usdtAddress !== 'string' || !bep20AddressRegex.test(usdtAddress.trim())) {
+      throw new Error('Please provide a valid 42-character USDT (BEP-20) wallet address starting with 0x');
     }
 
     const user = await db.get('SELECT id, wallet_balance, roi_balance, commission_balance, status FROM users WHERE id = ?', [userId]);

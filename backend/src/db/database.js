@@ -162,7 +162,7 @@ async function initDatabase() {
         user_id INTEGER NOT NULL REFERENCES users(id),
         amount NUMERIC(18, 4) NOT NULL,
         tx_hash VARCHAR(255),
-        network VARCHAR(50) DEFAULT 'USDT-TRC20',
+        network VARCHAR(50) DEFAULT 'USDT-BEP20',
         status VARCHAR(50) DEFAULT 'pending',
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       );
@@ -175,7 +175,7 @@ async function initDatabase() {
         net_amount NUMERIC(18, 4) NOT NULL,
         wallet_type VARCHAR(50) DEFAULT 'roi_balance',
         usdt_address VARCHAR(255) NOT NULL,
-        network VARCHAR(50) DEFAULT 'USDT-TRC20',
+        network VARCHAR(50) DEFAULT 'USDT-BEP20',
         tx_hash VARCHAR(255),
         status VARCHAR(50) DEFAULT 'pending',
         admin_note TEXT,
@@ -276,7 +276,7 @@ async function initDatabase() {
         user_id INTEGER NOT NULL REFERENCES users(id),
         amount REAL NOT NULL,
         tx_hash TEXT,
-        network TEXT DEFAULT 'USDT-TRC20',
+        network TEXT DEFAULT 'USDT-BEP20',
         status TEXT DEFAULT 'pending',
         created_at TEXT DEFAULT (datetime('now'))
       );
@@ -289,7 +289,7 @@ async function initDatabase() {
         net_amount REAL NOT NULL,
         wallet_type TEXT DEFAULT 'roi_balance',
         usdt_address TEXT NOT NULL,
-        network TEXT DEFAULT 'USDT-TRC20',
+        network TEXT DEFAULT 'USDT-BEP20',
         tx_hash TEXT,
         status TEXT DEFAULT 'pending',
         admin_note TEXT,
@@ -359,7 +359,7 @@ async function initDatabase() {
     { key: 'referral_roi_level_1', value: '10' },
     { key: 'referral_roi_level_2', value: '4' },
     { key: 'referral_roi_level_3', value: '2' },
-    { key: 'usdt_deposit_address', value: 'TYDzsXDvGgT3vXkX7q5sK8y1jN9pLmQ6wZ' },
+    { key: 'usdt_deposit_address', value: '0x71C87050fA86BD1b297bB3B6a8d6C9081B1A53b5' },
     { key: 'company_name', value: 'Catalyst Capital Partners Private Limited' }
   ];
 
@@ -370,6 +370,9 @@ async function initDatabase() {
       await db.run('INSERT OR IGNORE INTO system_settings (key, value) VALUES (?, ?)', [s.key, s.value]);
     }
   }
+
+  // Ensure deposit address is updated to BEP-20 if previously set to TRC20 address
+  await db.run("UPDATE system_settings SET value = '0x71C87050fA86BD1b297bB3B6a8d6C9081B1A53b5' WHERE key = 'usdt_deposit_address' AND (value LIKE 'TYD%' OR value LIKE 'T%')");
 }
 
 module.exports = { db, initDatabase, pool };

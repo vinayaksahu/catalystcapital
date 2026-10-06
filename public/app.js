@@ -1861,6 +1861,14 @@ function filterHistory(type) {
           <div>
             <div class="font-bold text-white text-xs">${tx.description || label}</div>
             <div class="text-[10px] text-slate-500">${new Date(tx.created_at).toLocaleString()}</div>
+            ${tx.reference_id && /^0x[a-fA-F0-9]{64}$/i.test(tx.reference_id) ? `
+              <div class="mt-0.5">
+                <a href="https://bscscan.com/tx/${tx.reference_id}" target="_blank" rel="noopener noreferrer" class="text-cyan-400 hover:text-cyan-300 font-mono text-[9px] underline inline-flex items-center gap-1">
+                  <span>${tx.reference_id.substring(0, 10)}...${tx.reference_id.substring(58)}</span>
+                  <i data-lucide="external-link" class="w-2.5 h-2.5"></i>
+                </a>
+              </div>
+            ` : ''}
           </div>
         </div>
         <div class="text-right">
@@ -1994,7 +2002,35 @@ window.setRechargeAmount = setRechargeAmount;
 async function handleDepositSubmit(e) {
   e.preventDefault();
   const amount = document.getElementById('deposit-amount').value;
-  const txHash = document.getElementById('deposit-txhash').value;
+  let txHash = (document.getElementById('deposit-txhash').value || '').trim();
+
+  if (!amount || Number(amount) <= 0) {
+    showToast('Please enter a valid deposit amount', 'error');
+    return;
+  }
+
+  if (!txHash) {
+    showToast('Transaction Hash / TXID is required for deposit verification', 'error');
+    const hashInput = document.getElementById('deposit-txhash');
+    if (hashInput) hashInput.focus();
+    return;
+  }
+
+  // Auto-prepend 0x if user pasted 64 hex characters without prefix
+  if (/^[a-fA-F0-9]{64}$/.test(txHash)) {
+    txHash = '0x' + txHash;
+    const hashInput = document.getElementById('deposit-txhash');
+    if (hashInput) hashInput.value = txHash;
+  }
+
+  // Validate BSC BEP-20 Transaction Hash (66 chars, 0x + 64 hex chars)
+  const txHashRegex = /^0x[a-fA-F0-9]{64}$/i;
+  if (!txHashRegex.test(txHash)) {
+    showToast('Please enter a valid 66-character BEP-20 Transaction Hash (starting with 0x)', 'error');
+    const hashInput = document.getElementById('deposit-txhash');
+    if (hashInput) hashInput.focus();
+    return;
+  }
 
   try {
     const res = await fetch(`${API_BASE}/wallet/deposit`, {
@@ -2003,7 +2039,7 @@ async function handleDepositSubmit(e) {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`
       },
-      body: JSON.stringify({ amount, network: 'USDT-TRC20', txHash })
+      body: JSON.stringify({ amount: Number(amount), network: 'USDT-BEP20', txHash })
     });
     const data = await res.json();
     if (!res.ok || !data.success) {
@@ -2028,8 +2064,22 @@ async function handleDepositSubmit(e) {
 async function handleWithdrawSubmit(e) {
   e.preventDefault();
   const amount = document.getElementById('withdraw-amount').value;
-  const usdtAddress = document.getElementById('withdraw-address').value;
+  const usdtAddress = (document.getElementById('withdraw-address').value || '').trim();
   const walletSource = document.getElementById('withdraw-source').value;
+
+  if (!amount || Number(amount) < 15) {
+    showToast('Minimum withdrawal amount is 15 USDT', 'error');
+    return;
+  }
+
+  // Validate BEP-20 address (42 chars, 0x + 40 hex chars)
+  const bep20AddressRegex = /^0x[a-fA-F0-9]{40}$/i;
+  if (!bep20AddressRegex.test(usdtAddress)) {
+    showToast('Please enter a valid 42-character USDT (BEP-20) address starting with 0x', 'error');
+    const addrInput = document.getElementById('withdraw-address');
+    if (addrInput) addrInput.focus();
+    return;
+  }
 
   try {
     const res = await fetch(`${API_BASE}/wallet/withdraw`, {
@@ -2038,7 +2088,7 @@ async function handleWithdrawSubmit(e) {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`
       },
-      body: JSON.stringify({ amount, usdtAddress, walletSource })
+      body: JSON.stringify({ amount: Number(amount), usdtAddress, network: 'USDT-BEP20', walletSource })
     });
     const data = await res.json();
     if (!res.ok || !data.success) {
@@ -2424,11 +2474,31 @@ async function loadAdminWithdrawals() {
         </div>
 
         <div class="p-2.5 rounded-xl bg-slate-950/60 border border-slate-800/80 text-[11px] font-mono">
-          <div class="text-[10px] text-slate-400 flex items-center justify-between">
-            <span>Destination Address:</span>
-            <span class="text-slate-500 text-[9px]">BEP-20 / TRC-20</span>
+          <div class="text-[10px] text-slate-400 flex items-center justify-between mb-1">
+            <span>Destination Address (BEP-20):</span>
+            <span class="text-cyan-400 text-[10px] font-bold">${w.network || 'USDT-BEP20'}</span>
           </div>
-          <div class="text-slate-200 font-bold break-all select-all mt-1 text-[11px]">${w.usdt_address || 'No address provided'}</div>
+          ${w.usdt_address && /^0x[a-fA-F0-9]{40}$/i.test(w.usdt_address) ? `
+            <div class="space-y-1.5">
+              <div class="text-slate-200 font-bold break-all select-all text-[11px]">${w.usdt_address}</div>
+              <div class="flex items-center gap-2 flex-wrap pt-0.5">
+                <a href="https://bscscan.com/address/${w.usdt_address}" target="_blank" rel="noopener noreferrer" class="px-2.5 py-1 rounded-lg bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 hover:bg-cyan-500/30 text-[10px] font-bold inline-flex items-center gap-1 transition shadow-sm">
+                  <i data-lucide="external-link" class="w-3 h-3"></i> View Address on BscScan
+                </a>
+                <button type="button" onclick="copyToClipboard('${w.usdt_address}')" class="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-sans font-bold transition">Copy</button>
+              </div>
+            </div>
+          ` : `
+            <div class="text-slate-200 font-bold break-all select-all text-[11px]">${w.usdt_address || 'No address provided'}</div>
+          `}
+          ${w.tx_hash ? `
+            <div class="mt-2 pt-2 border-t border-slate-800/80 flex items-center justify-between flex-wrap gap-1 text-[10px]">
+              <span class="text-slate-400">Payout TXID:</span>
+              <a href="https://bscscan.com/tx/${w.tx_hash}" target="_blank" rel="noopener noreferrer" class="text-emerald-400 hover:text-emerald-300 underline font-mono inline-flex items-center gap-1 break-all">
+                <span>${w.tx_hash.length > 20 ? w.tx_hash.substring(0, 10) + '...' + w.tx_hash.substring(w.tx_hash.length - 8) : w.tx_hash}</span> <i data-lucide="external-link" class="w-2.5 h-2.5"></i>
+              </a>
+            </div>
+          ` : ''}
         </div>
 
         ${w.status === 'pending' ? `
@@ -2452,7 +2522,7 @@ async function loadAdminWithdrawals() {
 }
 
 async function approveWithdrawal(id) {
-  const txHash = prompt('Optional: Enter Blockchain Transaction Hash (or leave empty to auto-generate):');
+  const txHash = prompt('Optional: Enter BEP-20 Blockchain Transaction Hash (0x...) or leave empty to auto-generate:');
   try {
     const res = await fetch(`${API_BASE}/admin/withdrawals/${id}/approve`, {
       method: 'POST',
@@ -2531,11 +2601,23 @@ async function loadAdminDeposits() {
         </div>
 
         <div class="p-2.5 rounded-xl bg-slate-950/60 border border-slate-800/80 text-[11px] font-mono">
-          <div class="text-[10px] text-slate-400 flex items-center justify-between">
-            <span>Tx Hash / Reference:</span>
-            <span class="text-cyan-400 text-[10px] font-bold">${d.network || 'USDT'}</span>
+          <div class="text-[10px] text-slate-400 flex items-center justify-between mb-1.5">
+            <span>Tx Hash / Verification:</span>
+            <span class="text-cyan-400 text-[10px] font-bold">${d.network || 'USDT-BEP20'}</span>
           </div>
-          <div class="text-slate-200 font-bold break-all select-all mt-1 text-[11px]">${d.tx_hash || 'Internal Admin Credit'}</div>
+          ${d.tx_hash && /^0x[a-fA-F0-9]{64}$/i.test(d.tx_hash) ? `
+            <div class="space-y-1.5">
+              <div class="text-slate-300 font-bold break-all select-all text-[11px]">${d.tx_hash}</div>
+              <div class="flex items-center gap-2 flex-wrap pt-0.5">
+                <a href="https://bscscan.com/tx/${d.tx_hash}" target="_blank" rel="noopener noreferrer" class="px-2.5 py-1 rounded-lg bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 hover:bg-cyan-500/30 text-[10px] font-bold inline-flex items-center gap-1 transition shadow-sm">
+                  <i data-lucide="external-link" class="w-3 h-3"></i> Verify on BscScan
+                </a>
+                <button type="button" onclick="copyToClipboard('${d.tx_hash}')" class="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-sans font-bold transition">Copy TXID</button>
+              </div>
+            </div>
+          ` : `
+            <div class="text-slate-200 font-bold break-all select-all text-[11px]">${d.tx_hash || 'Internal Admin Credit'}</div>
+          `}
         </div>
 
         ${d.status === 'pending' ? `

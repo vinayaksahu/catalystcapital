@@ -111,7 +111,7 @@ router.get('/overview', authenticateToken, async (req, res) => {
         minWithdrawal: parseFloat(settings.min_withdrawal || '15'),
         withdrawalFee: parseFloat(settings.withdrawal_fee_percent || '0'),
         processingTime: settings.withdrawal_processing_time || '0 - 24 Hours',
-        depositAddress: settings.usdt_deposit_address || 'TYDzsXDvGgT3vXkX7q5sK8y1jN9pLmQ6wZ',
+        depositAddress: settings.usdt_deposit_address || '0x71C87050fA86BD1b297bB3B6a8d6C9081B1A53b5',
         announcementTicker: settings.announcement_ticker || 'Welcome to the official Catalyst Capital trading platform • High Frequency AI Trading • Instant 0% Withdrawal Payouts • Daily ROI Active •',
         popupImageUrl: settings.popup_image_url || '',
         popupImageActive: settings.popup_image_active === '1' || settings.popup_image_active === 'true',
@@ -123,10 +123,10 @@ router.get('/overview', authenticateToken, async (req, res) => {
   }
 });
 
-// Deposit USDT
+// Deposit USDT (BEP-20)
 router.post('/deposit', authenticateToken, async (req, res) => {
   try {
-    const { amount, network, txHash } = req.body;
+    const { amount, network = 'USDT-BEP20', txHash } = req.body;
     if (!amount || Number(amount) <= 0) {
       return res.status(400).json({ success: false, error: 'Valid deposit amount required' });
     }
@@ -149,10 +149,10 @@ router.post('/transfer', authenticateToken, async (req, res) => {
   }
 });
 
-// Request Withdrawal (Min 15 USDT, 0% Fee, 0-24hr)
+// Request Withdrawal (Min 15 USDT, 0% Fee, 0-24hr, BEP-20)
 router.post('/withdraw', authenticateToken, async (req, res) => {
   try {
-    const { amount, usdtAddress, network, walletSource } = req.body;
+    const { amount, usdtAddress, network = 'USDT-BEP20', walletSource } = req.body;
     const result = await walletService.requestWithdrawal(req.user.id, {
       amount: Number(amount),
       usdtAddress,
