@@ -1851,19 +1851,22 @@
         </div>
 
         <!-- Security OTP Container (Shown only when Email Address is being changed) -->
-        <div id="edit-prof-otp-container" class="hidden p-3 rounded-xl bg-amber-500/10 border border-amber-500/25 space-y-2">
-          <div class="text-[11px] text-amber-300 flex items-start gap-1.5 leading-snug">
-            <i data-lucide="alert-circle" class="w-4 h-4 flex-shrink-0 mt-0.5 text-amber-400"></i>
+        <div id="edit-prof-otp-container" class="hidden p-3.5 rounded-2xl bg-amber-500/15 border border-amber-500/40 space-y-2.5 shadow-inner">
+          <div class="text-[11px] text-amber-200 flex items-start gap-2 leading-relaxed">
+            <i data-lucide="shield-alert" class="w-4 h-4 flex-shrink-0 mt-0.5 text-amber-400"></i>
             <div>
-              <span>Security Check: To change your email, enter OTP sent to your current registered email: </span>
-              <strong id="edit-prof-old-email-display" class="font-mono text-amber-200 break-all"></strong>
+              <span class="font-bold text-amber-300">Security Verification:</span> Email change karne ke liye aapke existing registered email (<strong id="edit-prof-old-email-display" class="font-mono text-white underline break-all"></strong>) par OTP bheja jayega:
             </div>
           </div>
-          <div class="flex gap-2 pt-1">
-            <input type="text" id="edit-prof-otp" maxlength="6" placeholder="6-digit OTP" class="flex-1 px-3.5 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white font-mono placeholder-slate-500 focus:outline-none focus:border-amber-400 text-xs tracking-widest text-center">
-            <button type="button" id="btn-edit-prof-send-otp" onclick="handleSendEmailChangeOtp()" class="px-3 py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-400 font-bold text-[11px] whitespace-nowrap active:scale-95 transition cursor-pointer">
-              Send OTP
+          <div class="flex gap-2 pt-1 items-center">
+            <input type="text" id="edit-prof-otp" maxlength="6" placeholder="Enter 6-Digit OTP" class="flex-1 px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white font-mono placeholder-slate-500 focus:outline-none focus:border-amber-400 text-xs tracking-widest text-center font-bold">
+            <button type="button" id="btn-edit-prof-send-otp" onclick="handleSendEmailChangeOtp()" class="px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-extrabold text-xs whitespace-nowrap active:scale-95 transition shadow-md shadow-amber-500/20 cursor-pointer flex items-center gap-1.5 shrink-0">
+              <i data-lucide="send" class="w-3.5 h-3.5"></i>
+              <span>Send OTP</span>
             </button>
+          </div>
+          <div id="edit-prof-otp-status" class="text-[10px] text-slate-400 italic text-center hidden">
+            OTP sent! Please check your spam/junk folder if not in inbox.
           </div>
         </div>
 
@@ -2538,6 +2541,6 @@
   <div id="toast-container" class="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-2 w-11/12 max-w-sm pointer-events-none"></div>
 
   <!-- Main JavaScript App -->
-  <script src="app.js?v=5.7"></script>
+  <script src="app.js?v=5.8"></script>
 </body>
 </html>

@@ -281,6 +281,7 @@ async function handleSendEmailChangeOtp() {
   if (!currentUser) return;
   const btn = document.getElementById('btn-edit-prof-send-otp');
   const oldEmail = currentUser.email;
+  const statusEl = document.getElementById('edit-prof-otp-status');
 
   if (!oldEmail) {
     showToast('No registered email found to send OTP', 'error');
@@ -289,7 +290,8 @@ async function handleSendEmailChangeOtp() {
 
   if (btn) {
     btn.disabled = true;
-    btn.textContent = 'Sending...';
+    btn.innerHTML = '<i data-lucide="loader" class="w-3.5 h-3.5 animate-spin"></i><span>Sending...</span>';
+    if (window.lucide) lucide.createIcons();
   }
 
   try {
@@ -302,19 +304,24 @@ async function handleSendEmailChangeOtp() {
     });
     const data = await res.json();
     if (data.success) {
-      showToast(`Security OTP sent to your old registered email (${oldEmail})! Check inbox/spam.`, 'success');
-      if (btn) btn.textContent = 'OTP Sent';
+      showToast(`Security OTP sent to your registered email (${oldEmail})! Check inbox/spam.`, 'success');
+      if (statusEl) statusEl.classList.remove('hidden');
+      if (btn) {
+        btn.innerHTML = '<i data-lucide="check" class="w-3.5 h-3.5"></i><span>OTP Sent</span>';
+        if (window.lucide) lucide.createIcons();
+      }
       // 60-second cooldown timer
       let countdown = 60;
       const interval = setInterval(() => {
         countdown--;
         if (countdown > 0) {
-          if (btn) btn.textContent = `Resend (${countdown}s)`;
+          if (btn) btn.innerHTML = `<span>Resend (${countdown}s)</span>`;
         } else {
           clearInterval(interval);
           if (btn) {
             btn.disabled = false;
-            btn.textContent = 'Send OTP';
+            btn.innerHTML = '<i data-lucide="send" class="w-3.5 h-3.5"></i><span>Send OTP</span>';
+            if (window.lucide) lucide.createIcons();
           }
         }
       }, 1000);
@@ -322,14 +329,16 @@ async function handleSendEmailChangeOtp() {
       showToast(data.error || 'Failed to send OTP to old email', 'error');
       if (btn) {
         btn.disabled = false;
-        btn.textContent = 'Send OTP';
+        btn.innerHTML = '<i data-lucide="send" class="w-3.5 h-3.5"></i><span>Send OTP</span>';
+        if (window.lucide) lucide.createIcons();
       }
     }
   } catch (err) {
     showToast(err.message, 'error');
     if (btn) {
       btn.disabled = false;
-      btn.textContent = 'Send OTP';
+      btn.innerHTML = '<i data-lucide="send" class="w-3.5 h-3.5"></i><span>Send OTP</span>';
+      if (window.lucide) lucide.createIcons();
     }
   }
 }
