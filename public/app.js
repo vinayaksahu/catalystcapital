@@ -2271,14 +2271,16 @@ function renderAdminUsersList(users) {
 
       <!-- Actions Bar: Equal Width, Always within card container -->
       <div class="flex items-center gap-2 pt-1 border-t border-slate-800/80">
-        <button onclick="inspectAdminUser(${u.id})" class="flex-1 py-2 px-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition flex items-center justify-center gap-1.5 border border-slate-700 cursor-pointer active:scale-95" title="View Portfolio & Adjust">
+        <button onclick="inspectAdminUser(${u.id})" class="${u.role === 'admin' ? 'w-full' : 'flex-1'} py-2 px-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition flex items-center justify-center gap-1.5 border border-slate-700 cursor-pointer active:scale-95" title="View Portfolio & Adjust">
           <i data-lucide="eye" class="w-3.5 h-3.5 text-amber-400"></i>
           <span>Inspect</span>
         </button>
+        ${u.role !== 'admin' ? `
         <button onclick="adminImpersonateUser(${u.id})" class="flex-1 py-2 px-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black text-xs font-black transition flex items-center justify-center gap-1.5 shadow-md shadow-amber-500/20 cursor-pointer active:scale-95" title="Open member's live portal directly">
           <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
           <span>Open Portal</span>
         </button>
+        ` : ''}
       </div>
     </div>
   `).join('');
@@ -2348,6 +2350,13 @@ async function inspectAdminUser(userId) {
         `).join('');
       } else {
         invContainer.innerHTML = `<div class="text-center py-2 text-slate-500">No investment plans active</div>`;
+      }
+    const impBtn = document.getElementById('aud-impersonate-btn');
+    if (impBtn) {
+      if (u.role === 'admin') {
+        impBtn.classList.add('hidden');
+      } else {
+        impBtn.classList.remove('hidden');
       }
     }
 

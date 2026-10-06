@@ -178,6 +178,10 @@ router.post('/impersonate/:id', async (req, res) => {
       return res.status(404).json({ success: false, error: 'User not found' });
     }
 
+    if (targetUser.role === 'admin') {
+      return res.status(400).json({ success: false, error: 'Cannot open portal for administrator account' });
+    }
+
     const { JWT_SECRET } = require('../middleware/authMiddleware');
     const jwt = require('jsonwebtoken');
 
