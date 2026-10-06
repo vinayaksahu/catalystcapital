@@ -24,11 +24,19 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Load official investment plans
   await loadPlans();
 
-  // Authenticate current user or auto-login with Master Admin
+  // Authenticate current user or direct to login page
   if (token) {
     await fetchUserProfile();
   } else {
-    await quickLogin('admin');
+    updateAuthUI();
+    const urlParams = new URLSearchParams(window.location.search);
+    const ref = urlParams.get('ref');
+    const action = urlParams.get('action');
+    if (ref || action === 'register') {
+      navigate('register');
+    } else {
+      navigate('login');
+    }
   }
 
   // Start live crypto price pulse
@@ -84,11 +92,11 @@ function setupEventListeners() {
   if (ref) {
     const regSponsor = document.getElementById('reg-sponsor');
     if (regSponsor) regSponsor.value = ref;
-    openModal('registerModal');
+    navigate('register');
   } else if (action === 'register' || hash === '#register' || path === '/register') {
-    openModal('registerModal');
+    navigate('register');
   } else if (action === 'login' || hash === '#login' || path === '/login') {
-    openModal('loginModal');
+    navigate('login');
   } else if (action === 'admin' || view === 'admin' || hash === '#admin' || path === '/admin') {
     navigate('admin');
   }
@@ -403,8 +411,10 @@ async function quickLogin(username) {
 
 async function handleLogin(e) {
   e.preventDefault();
-  const loginId = document.getElementById('login-id').value;
-  const password = document.getElementById('login-password').value;
+  const loginIdInput = document.getElementById('login-id');
+  const passwordInput = document.getElementById('login-password');
+  const loginId = loginIdInput ? loginIdInput.value.trim() : '';
+  const password = passwordInput ? passwordInput.value : '';
 
   try {
     const res = await fetch(`${API_BASE}/auth/login`, {
@@ -421,10 +431,15 @@ async function handleLogin(e) {
     currentUser = data.user;
     localStorage.setItem('catalyst_token', token);
 
-    closeModal('loginModal');
     updateAuthUI();
     showToast(`Welcome ${currentUser.full_name || currentUser.username}!`, 'success');
     await refreshCurrentViewData();
+
+    if (currentUser.role === 'admin') {
+      navigate('admin');
+    } else {
+      navigate('home');
+    }
   } catch (err) {
     showToast(err.message, 'error');
   }
@@ -432,17 +447,18 @@ async function handleLogin(e) {
 
 async function handleRegister(e) {
   e.preventDefault();
-  const fullName = document.getElementById('reg-fullname').value;
-  const username = document.getElementById('reg-username').value;
-  const email = document.getElementById('reg-email').value;
-  const sponsorCode = document.getElementById('reg-sponsor').value;
-  const password = document.getElementById('reg-password').value;
+  const fullName = (document.getElementById('reg-fullname')?.value || '').trim();
+  const username = (document.getElementById('reg-username')?.value || '').trim();
+  const email = (document.getElementById('reg-email')?.value || '').trim();
+  const sponsorCode = (document.getElementById('reg-sponsor')?.value || '').trim();
+  const phone = (document.getElementById('reg-phone')?.value || '').trim();
+  const password = document.getElementById('reg-password')?.value || '';
 
   try {
     const res = await fetch(`${API_BASE}/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ fullName, username, email, sponsorCode, password })
+      body: JSON.stringify({ fullName, username, email, sponsorCode, phone, password })
     });
     const data = await res.json();
     if (!res.ok || !data.success) {
@@ -453,10 +469,10 @@ async function handleRegister(e) {
     currentUser = data.user;
     localStorage.setItem('catalyst_token', token);
 
-    closeModal('registerModal');
     updateAuthUI();
     showToast(`Account created! Welcome ${currentUser.full_name}`, 'success');
     await refreshCurrentViewData();
+    navigate('home');
   } catch (err) {
     showToast(err.message, 'error');
   }
@@ -468,8 +484,20 @@ function logout() {
   localStorage.removeItem('catalyst_token');
   updateAuthUI();
   showToast('Logged out successfully', 'info');
-  navigate('home');
+  navigate('login');
 }
+
+function togglePasswordVisibility(inputId, btn) {
+  const input = document.getElementById(inputId);
+  if (!input) return;
+  const isPass = input.type === 'password';
+  input.type = isPass ? 'text' : 'password';
+  if (btn) {
+    btn.innerHTML = isPass ? '<i data-lucide="eye-off" class="w-4 h-4"></i>' : '<i data-lucide="eye" class="w-4 h-4"></i>';
+    if (window.lucide) lucide.createIcons();
+  }
+}
+window.togglePasswordVisibility = togglePasswordVisibility;
 
 // ==================== NAVIGATION (5 TABS) ====================
 
@@ -484,8 +512,13 @@ function toggleAdminPortal() {
 }
 
 function navigate(viewName) {
+  // If user is not logged in, force navigation to login or register
+  if (!token && !currentUser && viewName !== 'login' && viewName !== 'register') {
+    viewName = 'login';
+  }
+
   activeViewName = viewName;
-  const views = ['home', 'quotes', 'invest', 'team', 'history', 'assets', 'admin'];
+  const views = ['home', 'quotes', 'invest', 'team', 'history', 'assets', 'admin', 'login', 'register'];
   views.forEach(v => {
     const el = document.getElementById(`view-${v}`);
     if (el) el.classList.add('hidden');
@@ -493,6 +526,26 @@ function navigate(viewName) {
 
   const targetView = document.getElementById(`view-${viewName}`);
   if (targetView) targetView.classList.remove('hidden');
+
+  // Control Header elements and Bottom Nav Bar visibility
+  const bottomNav = document.getElementById('global-bottom-nav');
+  const profilePill = document.getElementById('profile-pill-wrapper');
+  const portalBtn = document.getElementById('portal-switch-btn');
+
+  if (viewName === 'login' || viewName === 'register') {
+    if (bottomNav) bottomNav.classList.add('hidden');
+    if (profilePill) profilePill.classList.add('hidden');
+    if (portalBtn) portalBtn.classList.add('hidden');
+  } else {
+    if (currentUser) {
+      if (bottomNav) bottomNav.classList.remove('hidden');
+      if (profilePill) profilePill.classList.remove('hidden');
+      if (portalBtn) {
+        if (currentUser.role === 'admin') portalBtn.classList.remove('hidden');
+        else portalBtn.classList.add('hidden');
+      }
+    }
+  }
 
   // Update Portal Switcher Button in Header
   const switchBtn = document.getElementById('portal-switch-btn');
@@ -660,7 +713,7 @@ async function openLuckyRedEnvelope() {
 // Quick Circular Actions Handlers
 function openRechargeModal() {
   if (!currentUser) {
-    openModal('loginModal');
+    navigate('login');
     return;
   }
   openModal('rechargeModal');
@@ -668,7 +721,7 @@ function openRechargeModal() {
 
 function openWithdrawModal() {
   if (!currentUser) {
-    openModal('loginModal');
+    navigate('login');
     return;
   }
   openModal('withdrawModal');
@@ -685,7 +738,7 @@ function openServiceModal() {
 
 function openInviteModal() {
   if (!currentUser) {
-    openModal('loginModal');
+    navigate('login');
     return;
   }
   openModal('inviteModal');
@@ -705,7 +758,7 @@ function openDedicatedSupportModal(type) {
 async function claimDailyCheckin() {
   const btn = document.getElementById('btn-daily-checkin');
   if (!currentUser) {
-    openModal('loginModal');
+    navigate('login');
     return;
   }
 
@@ -814,8 +867,8 @@ function renderPresentationPlans() {
 
 function promptPurchasePlan(planId) {
   if (!currentUser) {
-    showToast('Please log in or switch to a demo account to activate', 'info');
-    openModal('loginModal');
+    showToast('Please log in to activate an investment package', 'info');
+    navigate('login');
     return;
   }
 
