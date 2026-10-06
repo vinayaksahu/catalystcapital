@@ -21,10 +21,10 @@ async function seed() {
   if (!admin) {
     await db.run(`
       INSERT INTO users (username, email, password_hash, full_name, phone, role, referral_code, wallet_balance, roi_balance, commission_balance, status)
-      VALUES ('admin', 'admin@catalystcapital.com', ?, 'Catalyst Administrator', '+91 9876543210', 'admin', 'CATADMIN', 10000.0, 0, 0, 'active')
+      VALUES ('admin', 'vinayaksahu293@gmail.com', ?, 'Catalyst Administrator', '+91 9876543210', 'admin', 'CATADMIN', 10000.0, 0, 0, 'active')
     `, [passwordHash]);
     admin = await getUserByUsername('admin');
-    console.log('✅ Created Admin: admin@catalystcapital.com / Password@123 (Ref: CATADMIN)');
+    console.log('✅ Created Admin: vinayaksahu293@gmail.com / Password@123 (Ref: CATADMIN)');
   } else {
     console.log('ℹ️ Admin already exists');
   }
