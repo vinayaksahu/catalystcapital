@@ -30,9 +30,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   } else {
     updateAuthUI();
     const urlParams = new URLSearchParams(window.location.search);
+    const path = window.location.pathname.toLowerCase().replace(/\/+$/, '');
     const ref = urlParams.get('ref');
     const action = urlParams.get('action');
-    if (ref || action === 'register') {
+
+    if (path === '/adminlogin') {
+      navigate('adminlogin');
+    } else if (ref || action === 'register' || path === '/register') {
       navigate('register');
     } else {
       navigate('login');
@@ -83,7 +87,7 @@ function applyTheme(theme) {
 // Setup global event listeners
 function setupEventListeners() {
   const urlParams = new URLSearchParams(window.location.search);
-  const path = window.location.pathname.toLowerCase();
+  const path = window.location.pathname.toLowerCase().replace(/\/+$/, '');
   const hash = window.location.hash.toLowerCase();
   const action = urlParams.get('action');
   const view = urlParams.get('view');
@@ -92,8 +96,11 @@ function setupEventListeners() {
   if (ref) {
     const regSponsor = document.getElementById('reg-sponsor');
     if (regSponsor) regSponsor.value = ref;
-    navigate('register');
-  } else if (action === 'register' || hash === '#register' || path === '/register') {
+  }
+
+  if (path === '/adminlogin') {
+    navigate('adminlogin');
+  } else if (ref || action === 'register' || hash === '#register' || path === '/register') {
     navigate('register');
   } else if (action === 'login' || hash === '#login' || path === '/login') {
     navigate('login');
@@ -108,14 +115,18 @@ function setupEventListeners() {
       navigate(state.view, false);
     } else {
       const currentParams = new URLSearchParams(window.location.search);
+      const currPath = window.location.pathname.toLowerCase().replace(/\/+$/, '');
       const currRef = currentParams.get('ref');
       const currAction = currentParams.get('action');
       const currView = currentParams.get('view');
-      if (currRef || currAction === 'register') {
+
+      if (currPath === '/adminlogin') {
+        navigate('adminlogin', false);
+      } else if (currPath === '/register' || currRef || currAction === 'register') {
         navigate('register', false);
-      } else if (currAction === 'login') {
+      } else if (currPath === '/login' || currAction === 'login') {
         navigate('login', false);
-      } else if (currView === 'admin' || currAction === 'admin') {
+      } else if (currPath === '/admin' || currView === 'admin' || currAction === 'admin') {
         navigate('admin', false);
       } else {
         navigate('home', false);
@@ -318,6 +329,13 @@ async function fetchUserProfile() {
   }
 }
 
+function getAppBaseUrl() {
+  if (window.location.origin && window.location.origin.includes('catalystcapital.fit')) {
+    return window.location.origin;
+  }
+  return 'https://www.catalystcapital.fit';
+}
+
 function updateAuthUI() {
   const btnLogin = document.getElementById('btn-login-modal');
   const btnProfile = document.getElementById('btn-user-profile');
@@ -378,15 +396,8 @@ function updateAuthUI() {
       else profAdminBtn.classList.add('hidden');
     }
 
-function getAppBaseUrl() {
-  if (window.location.origin && window.location.origin.includes('catalystcapital.fit')) {
-    return window.location.origin;
-  }
-  return 'https://www.catalystcapital.fit';
-}
-
     // Referral links
-    const refLink = `${getAppBaseUrl()}/?ref=${currentUser.referral_code}`;
+    const refLink = `${getAppBaseUrl()}/register?ref=${currentUser.referral_code}`;
     const teamInput = document.getElementById('team-referral-input');
     if (teamInput) teamInput.value = refLink;
     const modalInput = document.getElementById('modal-ref-input');
@@ -546,32 +557,37 @@ function toggleAdminPortal() {
 }
 
 function navigate(viewName, updateHistory = true) {
-  // If user is not logged in, force navigation to login or register
-  if (!token && !currentUser && viewName !== 'login' && viewName !== 'register') {
+  // If user is not logged in, force navigation to login, adminlogin, or register
+  if (!token && !currentUser && viewName !== 'login' && viewName !== 'register' && viewName !== 'adminlogin') {
     viewName = 'login';
   }
 
+  // Handle adminlogin as a specialized mode of the login view
+  const isAdminLoginMode = (viewName === 'adminlogin');
+  const targetViewKey = isAdminLoginMode ? 'login' : viewName;
   activeViewName = viewName;
 
   // Update browser URL in address bar if requested
   if (updateHistory) {
     try {
       const urlParams = new URLSearchParams(window.location.search);
-      if (viewName === 'login') {
-        window.history.pushState({ view: 'login' }, '', '/?action=login');
+      if (viewName === 'adminlogin') {
+        window.history.pushState({ view: 'adminlogin' }, '', '/adminlogin');
+      } else if (viewName === 'login') {
+        window.history.pushState({ view: 'login' }, '', '/login');
       } else if (viewName === 'register') {
         const ref = urlParams.get('ref') || (document.getElementById('reg-sponsor')?.value || '').trim();
         if (ref) {
-          window.history.pushState({ view: 'register' }, '', `/?ref=${encodeURIComponent(ref)}`);
+          window.history.pushState({ view: 'register' }, '', `/register?ref=${encodeURIComponent(ref)}`);
         } else {
-          window.history.pushState({ view: 'register' }, '', '/?action=register');
+          window.history.pushState({ view: 'register' }, '', '/register');
         }
       } else if (viewName === 'admin') {
-        window.history.pushState({ view: 'admin' }, '', '/?view=admin');
+        window.history.pushState({ view: 'admin' }, '', '/admin');
       } else if (viewName === 'home') {
         window.history.pushState({ view: 'home' }, '', '/');
       } else {
-        window.history.pushState({ view: viewName }, '', `/?tab=${encodeURIComponent(viewName)}`);
+        window.history.pushState({ view: viewName }, '', `/${encodeURIComponent(viewName)}`);
       }
     } catch (e) {
       console.warn('History pushState error:', e);
@@ -584,15 +600,29 @@ function navigate(viewName, updateHistory = true) {
     if (el) el.classList.add('hidden');
   });
 
-  const targetView = document.getElementById(`view-${viewName}`);
+  const targetView = document.getElementById(`view-${targetViewKey}`);
   if (targetView) targetView.classList.remove('hidden');
+
+  // Configure Login Page presentation based on adminlogin vs regular login
+  const adminBadge = document.getElementById('login-admin-badge');
+  const loginTitle = document.getElementById('login-page-title');
+  const loginSubtitle = document.getElementById('login-page-subtitle');
+  if (isAdminLoginMode) {
+    if (adminBadge) adminBadge.classList.remove('hidden');
+    if (loginTitle) loginTitle.textContent = 'Admin Portal Login';
+    if (loginSubtitle) loginSubtitle.textContent = 'Authorized administrators and staff credentials only';
+  } else {
+    if (adminBadge) adminBadge.classList.add('hidden');
+    if (loginTitle) loginTitle.textContent = 'Account Login';
+    if (loginSubtitle) loginSubtitle.textContent = 'Sign in to access your investment dashboard';
+  }
 
   // Control Header elements and Bottom Nav Bar visibility
   const bottomNav = document.getElementById('global-bottom-nav');
   const profilePill = document.getElementById('profile-pill-wrapper');
   const portalBtn = document.getElementById('portal-switch-btn');
 
-  if (viewName === 'login' || viewName === 'register') {
+  if (viewName === 'login' || viewName === 'adminlogin' || viewName === 'register') {
     if (bottomNav) bottomNav.classList.add('hidden');
     if (profilePill) profilePill.classList.add('hidden');
     if (portalBtn) {

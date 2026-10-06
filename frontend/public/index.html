@@ -1174,8 +1174,12 @@
           <div class="inline-flex items-center justify-center p-2 rounded-2xl bg-[#090d16] border border-slate-800 shadow-md mb-3">
             <img src="logo.png" alt="Catalyst Capital" class="h-8 w-auto object-contain">
           </div>
-          <h2 class="text-xl font-extrabold text-slate-900 dark:text-white tracking-tight">Account Login</h2>
-          <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Sign in to access your investment dashboard</p>
+          <div id="login-admin-badge" class="hidden mb-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-rose-500/15 border border-rose-500/30 text-rose-400">
+            <i data-lucide="shield-check" class="w-3.5 h-3.5"></i>
+            <span>Administrator Access</span>
+          </div>
+          <h2 id="login-page-title" class="text-xl font-extrabold text-slate-900 dark:text-white tracking-tight">Account Login</h2>
+          <p id="login-page-subtitle" class="text-xs text-slate-500 dark:text-slate-400 mt-1">Sign in to access your investment dashboard</p>
         </div>
 
         <!-- Login Form -->
@@ -2310,6 +2314,6 @@
   <div id="toast-container" class="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-2 w-11/12 max-w-sm pointer-events-none"></div>
 
   <!-- Main JavaScript App -->
-  <script src="app.js?v=5.0"></script>
+  <script src="app.js?v=5.1"></script>
 </body>
 </html>
