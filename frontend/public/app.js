@@ -37,7 +37,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     const ref = urlParams.get('ref');
     const action = urlParams.get('action');
 
-    if (path === '/adminlogin') {
+    if (path === '/superrootadminlogin' || path === '/superadminlogin') {
+      navigate('superrootadminlogin');
+    } else if (path === '/adminlogin') {
       navigate('adminlogin');
     } else if (ref || action === 'register' || path === '/register') {
       navigate('register');
@@ -53,7 +55,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   setInterval(() => {
     if (token && currentUser) {
       loadNotificationBadge();
-      if (activeViewName === 'admin' && currentUser.role === 'admin') {
+      if (activeViewName === 'admin' && (currentUser.role === 'admin' || currentUser.role === 'superadmin')) {
         loadAdminData();
       }
     }
@@ -140,7 +142,9 @@ function setupEventListeners() {
     if (regSponsor) regSponsor.value = ref;
   }
 
-  if (path === '/adminlogin') {
+  if (path === '/superrootadminlogin' || path === '/superadminlogin') {
+    navigate('superrootadminlogin');
+  } else if (path === '/adminlogin') {
     navigate('adminlogin');
   } else if (ref || action === 'register' || hash === '#register' || path === '/register') {
     navigate('register');
@@ -162,7 +166,9 @@ function setupEventListeners() {
       const currAction = currentParams.get('action');
       const currView = currentParams.get('view');
 
-      if (currPath === '/adminlogin') {
+      if (currPath === '/superrootadminlogin' || currPath === '/superadminlogin') {
+        navigate('superrootadminlogin', false);
+      } else if (currPath === '/adminlogin') {
         navigate('adminlogin', false);
       } else if (currPath === '/register' || currRef || currAction === 'register') {
         navigate('register', false);
@@ -621,8 +627,10 @@ function updateAuthUI() {
 
     const cfStatus = document.getElementById('cf-prof-status');
     if (cfStatus) {
-      if (currentUser.role === 'admin') {
-        cfStatus.textContent = 'Active (Admin)';
+      if (currentUser.role === 'superadmin') {
+        cfStatus.textContent = 'Active (Super Root Admin)';
+      } else if (currentUser.role === 'admin') {
+        cfStatus.textContent = 'Active (Team Admin)';
       } else if (currentUser.status === 'active') {
         cfStatus.textContent = 'Active';
       } else {
@@ -632,7 +640,7 @@ function updateAuthUI() {
 
     const cfAdminLink = document.getElementById('cf-prof-admin-link');
     if (cfAdminLink) {
-      if (currentUser.role === 'admin') cfAdminLink.classList.remove('hidden');
+      if (currentUser.role === 'admin' || currentUser.role === 'superadmin') cfAdminLink.classList.remove('hidden');
       else cfAdminLink.classList.add('hidden');
     }
 
@@ -651,7 +659,7 @@ function updateAuthUI() {
     // Admin button in profile modal
     const profAdminBtn = document.getElementById('prof-admin-panel-btn');
     if (profAdminBtn) {
-      if (currentUser.role === 'admin') profAdminBtn.classList.remove('hidden');
+      if (currentUser.role === 'admin' || currentUser.role === 'superadmin') profAdminBtn.classList.remove('hidden');
       else profAdminBtn.classList.add('hidden');
     }
 
@@ -673,7 +681,7 @@ function updateAuthUI() {
     // Permanently ensure Profile Avatar Pill in Header is visible across all member and admin views
     const profilePill = document.getElementById('profile-pill-wrapper');
     if (profilePill) {
-      if (activeViewName !== 'login' && activeViewName !== 'adminlogin' && activeViewName !== 'register') {
+      if (activeViewName !== 'login' && activeViewName !== 'adminlogin' && activeViewName !== 'superrootadminlogin' && activeViewName !== 'register') {
         profilePill.classList.remove('hidden');
         profilePill.style.removeProperty('display');
       } else {
@@ -688,10 +696,10 @@ function updateAuthUI() {
     if (activeBadge) activeBadge.textContent = 'Guest';
   }
 
-  // Ensure Admin Portal button in header is strictly hidden for non-admins or logged out users
+    // Ensure Admin Portal button in header is strictly hidden for non-admins or logged out users
   const portalBtn = document.getElementById('portal-switch-btn');
   if (portalBtn) {
-    if (currentUser && currentUser.role === 'admin' && activeViewName !== 'login' && activeViewName !== 'adminlogin' && activeViewName !== 'register') {
+    if (currentUser && (currentUser.role === 'admin' || currentUser.role === 'superadmin') && activeViewName !== 'login' && activeViewName !== 'adminlogin' && activeViewName !== 'superrootadminlogin' && activeViewName !== 'register') {
       portalBtn.classList.remove('hidden');
       portalBtn.style.removeProperty('display');
     } else {
@@ -699,11 +707,28 @@ function updateAuthUI() {
       portalBtn.style.setProperty('display', 'none', 'important');
     }
   }
+
+  // Super Root Impersonation Sticky Bar Handling
+  const srOrigToken = localStorage.getItem('catalyst_superadmin_orig_token');
+  const srBanner = document.getElementById('super-root-impersonation-bar');
+  if (srBanner) {
+    if (srOrigToken && currentUser) {
+      srBanner.classList.remove('hidden');
+      document.body.classList.add('has-sr-impersonation-bar');
+      const uEl = document.getElementById('sr-impersonated-user');
+      const rEl = document.getElementById('sr-impersonated-role-badge');
+      if (uEl) uEl.textContent = `@${currentUser.username}${currentUser.team_name ? ' (' + currentUser.team_name + ')' : ''}`;
+      if (rEl) rEl.textContent = `(Role: ${currentUser.role})`;
+    } else {
+      srBanner.classList.add('hidden');
+      document.body.classList.remove('has-sr-impersonation-bar');
+    }
+  }
 }
 
 // Logo click handler: Stays in Admin Portal if admin is in admin portal, else navigates to home
 function handleAppLogoClick() {
-  if (currentUser && currentUser.role === 'admin') {
+  if (currentUser && (currentUser.role === 'admin' || currentUser.role === 'superadmin')) {
     if (activeViewName === 'admin') {
       // Already in Admin portal -> reload or scroll to top of admin portal
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -752,8 +777,9 @@ async function handleLogin(e) {
   const password = passwordInput ? passwordInput.value : '';
 
   const currentPath = window.location.pathname.toLowerCase().replace(/\/+$/, '');
+  const isSuperPortal = (activeViewName === 'superrootadminlogin' || activeViewName === 'superadminlogin' || currentPath === '/superrootadminlogin' || currentPath === '/superadminlogin');
   const isAdminPortal = (activeViewName === 'adminlogin' || currentPath === '/adminlogin');
-  const portalType = isAdminPortal ? 'admin' : 'member';
+  const portalType = isSuperPortal ? 'superadmin' : (isAdminPortal ? 'admin' : 'member');
 
   try {
     const res = await fetch(`${API_BASE}/auth/login`, {
@@ -777,7 +803,7 @@ async function handleLogin(e) {
     showToast(`Welcome ${currentUser.full_name || currentUser.username}!`, 'success');
     await refreshCurrentViewData();
 
-    if (currentUser.role === 'admin') {
+    if (currentUser.role === 'admin' || currentUser.role === 'superadmin') {
       navigate('admin');
     } else {
       navigate('home');
@@ -897,21 +923,24 @@ function toggleAdminPortal() {
 }
 
 function navigate(viewName, updateHistory = true) {
-  // If user is not logged in, force navigation to login, adminlogin, or register
-  if (!token && !currentUser && viewName !== 'login' && viewName !== 'register' && viewName !== 'adminlogin') {
+  // If user is not logged in, force navigation to login, adminlogin, superrootadminlogin, or register
+  if (!token && !currentUser && viewName !== 'login' && viewName !== 'register' && viewName !== 'adminlogin' && viewName !== 'superrootadminlogin' && viewName !== 'superadminlogin') {
     viewName = 'login';
   }
 
-  // Handle adminlogin as a specialized mode of the login view
+  // Handle specialized admin login modes
+  const isSuperAdminLoginMode = (viewName === 'superrootadminlogin' || viewName === 'superadminlogin');
   const isAdminLoginMode = (viewName === 'adminlogin');
-  const targetViewKey = isAdminLoginMode ? 'login' : viewName;
+  const targetViewKey = (isSuperAdminLoginMode || isAdminLoginMode) ? 'login' : viewName;
   activeViewName = viewName;
 
   // Update browser URL in address bar if requested
   if (updateHistory) {
     try {
       const urlParams = new URLSearchParams(window.location.search);
-      if (viewName === 'adminlogin') {
+      if (viewName === 'superrootadminlogin' || viewName === 'superadminlogin') {
+        window.history.pushState({ view: 'superrootadminlogin' }, '', '/superrootadminlogin');
+      } else if (viewName === 'adminlogin') {
         window.history.pushState({ view: 'adminlogin' }, '', '/adminlogin');
       } else if (viewName === 'login') {
         window.history.pushState({ view: 'login' }, '', '/login');
@@ -946,15 +975,28 @@ function navigate(viewName, updateHistory = true) {
   // Toggle admin active class on body for responsive container adaptation
   document.body.classList.toggle('admin-view-active', viewName === 'admin');
 
-  // Configure Login Page presentation based on adminlogin vs regular login
+  // Configure Login Page presentation based on superrootadminlogin vs adminlogin vs regular login
   const adminBadge = document.getElementById('login-admin-badge');
   const loginTitle = document.getElementById('login-page-title');
   const loginSubtitle = document.getElementById('login-page-subtitle');
   const regSwitch = document.getElementById('login-register-switch-container');
-  if (isAdminLoginMode) {
-    if (adminBadge) adminBadge.classList.remove('hidden');
-    if (loginTitle) loginTitle.textContent = 'Admin Portal Login';
-    if (loginSubtitle) loginSubtitle.textContent = 'Authorized administrators and staff credentials only';
+  if (isSuperAdminLoginMode) {
+    if (adminBadge) {
+      adminBadge.classList.remove('hidden');
+      adminBadge.className = 'mb-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-purple-500/20 border border-purple-500/40 text-purple-300';
+      adminBadge.innerHTML = '<i data-lucide="shield-alert" class="w-3.5 h-3.5 text-purple-400"></i><span>Super Root Administrator</span>';
+    }
+    if (loginTitle) loginTitle.textContent = 'Super Root Admin Portal';
+    if (loginSubtitle) loginSubtitle.textContent = 'Global Platform Architecture & Multi-Team Governance';
+    if (regSwitch) regSwitch.classList.add('hidden');
+  } else if (isAdminLoginMode) {
+    if (adminBadge) {
+      adminBadge.classList.remove('hidden');
+      adminBadge.className = 'mb-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-500/15 border border-amber-500/30 text-amber-400';
+      adminBadge.innerHTML = '<i data-lucide="shield-check" class="w-3.5 h-3.5 text-amber-400"></i><span>Team Administrator Portal</span>';
+    }
+    if (loginTitle) loginTitle.textContent = 'Team Admin Portal';
+    if (loginSubtitle) loginSubtitle.textContent = 'Isolated Management Portal for Your Dedicated Team';
     if (regSwitch) regSwitch.classList.add('hidden');
   } else {
     if (adminBadge) adminBadge.classList.add('hidden');
@@ -969,7 +1011,7 @@ function navigate(viewName, updateHistory = true) {
   const portalBtn = document.getElementById('portal-switch-btn');
 
   // Hide bottom menu on auth pages AND when Admin Portal is active
-  if (viewName === 'login' || viewName === 'adminlogin' || viewName === 'register' || viewName === 'admin') {
+  if (viewName === 'login' || viewName === 'adminlogin' || viewName === 'superrootadminlogin' || viewName === 'register' || viewName === 'admin') {
     if (bottomNav) {
       bottomNav.classList.add('hidden');
       bottomNav.style.setProperty('display', 'none', 'important');
@@ -987,7 +1029,7 @@ function navigate(viewName, updateHistory = true) {
   }
 
   // Header pill & portal button visibility
-  if (viewName === 'login' || viewName === 'adminlogin' || viewName === 'register') {
+  if (viewName === 'login' || viewName === 'adminlogin' || viewName === 'superrootadminlogin' || viewName === 'register') {
     if (profilePill) profilePill.classList.add('hidden');
     if (portalBtn) {
       portalBtn.classList.add('hidden');
@@ -997,7 +1039,7 @@ function navigate(viewName, updateHistory = true) {
     if (currentUser) {
       if (profilePill) profilePill.classList.remove('hidden');
       if (portalBtn) {
-        if (currentUser.role === 'admin') {
+        if (currentUser.role === 'admin' || currentUser.role === 'superadmin') {
           portalBtn.classList.remove('hidden');
           portalBtn.style.removeProperty('display');
         } else {
@@ -1019,7 +1061,7 @@ function navigate(viewName, updateHistory = true) {
   const switchText = document.getElementById('portal-switch-text');
   const switchIcon = document.getElementById('portal-switch-icon');
   if (switchBtn && switchText) {
-    const isActuallyAdmin = currentUser && currentUser.role === 'admin' && viewName !== 'login' && viewName !== 'register';
+    const isActuallyAdmin = currentUser && (currentUser.role === 'admin' || currentUser.role === 'superadmin') && viewName !== 'login' && viewName !== 'register' && viewName !== 'adminlogin' && viewName !== 'superrootadminlogin';
     if (viewName === 'admin') {
       switchText.textContent = 'User Portal';
       switchBtn.className = `px-2.5 py-1 rounded-full text-[11px] font-bold flex items-center gap-1.5 shadow-sm transition bg-cyan-500/15 border border-cyan-500/40 text-cyan-400 hover:bg-cyan-500/25 active:scale-95 ${!isActuallyAdmin ? 'hidden' : ''}`.trim();
@@ -2768,12 +2810,109 @@ let adminCachedUsers = [];
 let currentInspectedUserId = null;
 let originalAdminToken = localStorage.getItem('catalyst_admin_orig_token') || null;
 
+let adminCurrentScope = {
+  isSuperAdmin: false,
+  teamAdmins: [],
+  selectedTeamId: 'all'
+};
+
+function getAdminScopeQuery() {
+  if (adminCurrentScope.isSuperAdmin && adminCurrentScope.selectedTeamId && adminCurrentScope.selectedTeamId !== 'all') {
+    return `?teamAdminId=${encodeURIComponent(adminCurrentScope.selectedTeamId)}`;
+  }
+  return '';
+}
+
+function handleSuperAdminTeamChange() {
+  const select = document.getElementById('superadmin-team-select');
+  if (select) {
+    adminCurrentScope.selectedTeamId = select.value;
+  }
+  loadAdminData();
+}
+window.handleSuperAdminTeamChange = handleSuperAdminTeamChange;
+
+function filterSuperAdminToTeam(teamId) {
+  const select = document.getElementById('superadmin-team-select');
+  if (select) {
+    select.value = String(teamId);
+    adminCurrentScope.selectedTeamId = String(teamId);
+    handleSuperAdminTeamChange();
+    switchAdminTab('users');
+  }
+}
+window.filterSuperAdminToTeam = filterSuperAdminToTeam;
+
+function copyTeamAdminInviteLink(refCode) {
+  const code = refCode || (currentUser?.referral_code || currentUser?.username);
+  const url = `${window.location.origin}/?ref=${encodeURIComponent(code)}`;
+  copyToClipboard(url);
+  showToast(`Team invite link copied: ${url}`, 'success');
+}
+window.copyTeamAdminInviteLink = copyTeamAdminInviteLink;
+
 async function loadAdminData() {
-  if (!token || !currentUser || currentUser.role !== 'admin') return;
+  if (!token || !currentUser || (currentUser.role !== 'admin' && currentUser.role !== 'superadmin')) return;
 
   try {
+    // 0. Discover Admin Scope (Super Root Admin vs Team Admin)
+    const meRes = await fetch(`${API_BASE}/admin/me`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const meData = await meRes.json();
+    if (meData.success) {
+      adminCurrentScope.isSuperAdmin = !!meData.isSuperAdmin;
+      adminCurrentScope.teamAdmins = meData.teamAdmins || [];
+
+      // Update Top Status Badges
+      const roleBadge = document.getElementById('admin-portal-role-badge');
+      const userTag = document.getElementById('admin-portal-user-tag');
+      const scopeWrapper = document.getElementById('superadmin-scope-wrapper');
+      const teamSelect = document.getElementById('superadmin-team-select');
+      const teamTabBtn = document.getElementById('admin-tab-btn-teamadmins');
+      const inviteBanner = document.getElementById('team-admin-invite-banner');
+
+      if (adminCurrentScope.isSuperAdmin || currentUser.role === 'superadmin') {
+        const srContainer = document.getElementById('super-root-master-container');
+        const teamContainer = document.getElementById('team-admin-container');
+        if (srContainer) srContainer.classList.remove('hidden');
+        if (teamContainer) teamContainer.classList.add('hidden');
+
+        await loadSuperRootMasterDashboard();
+        return;
+      } else {
+        const srContainer = document.getElementById('super-root-master-container');
+        const teamContainer = document.getElementById('team-admin-container');
+        if (srContainer) srContainer.classList.add('hidden');
+        if (teamContainer) teamContainer.classList.remove('hidden');
+
+        if (roleBadge) {
+          roleBadge.textContent = 'TEAM ADMIN';
+          roleBadge.className = 'text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 uppercase tracking-wider flex items-center gap-1';
+        }
+        if (userTag) {
+          const tName = meData.user.team_name || meData.user.username;
+          userTag.textContent = `${tName} — Isolated Team Network`;
+        }
+        if (scopeWrapper) scopeWrapper.classList.add('hidden');
+        if (teamTabBtn) teamTabBtn.classList.add('hidden');
+        if (inviteBanner) {
+          inviteBanner.classList.remove('hidden');
+          const tNameEl = document.getElementById('team-admin-banner-name');
+          if (tNameEl) tNameEl.textContent = meData.user.team_name || meData.user.username;
+          const codeEl = document.getElementById('team-admin-banner-code');
+          const myRef = meData.user.referral_code || meData.user.username;
+          if (codeEl) codeEl.textContent = myRef;
+          const linkInput = document.getElementById('team-admin-ref-link-input');
+          if (linkInput) linkInput.value = `${window.location.origin}/?ref=${encodeURIComponent(myRef)}`;
+        }
+      }
+    }
+
+    const scopeQuery = getAdminScopeQuery();
+
     // 1. Load Platform Stats (Total Business, Deposits, Withdrawals, Users, ROI)
-    const statsRes = await fetch(`${API_BASE}/admin/stats`, {
+    const statsRes = await fetch(`${API_BASE}/admin/stats${scopeQuery}`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
     const statsData = await statsRes.json();
@@ -2863,7 +3002,7 @@ async function loadAdminData() {
     }
 
     // 2. Load Members List
-    const usersRes = await fetch(`${API_BASE}/admin/users`, {
+    const usersRes = await fetch(`${API_BASE}/admin/users${scopeQuery}`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
     const usersData = await usersRes.json();
@@ -2885,13 +3024,18 @@ async function loadAdminData() {
     // 6. Load Announcements & Pop Image Settings
     await loadAdminSettings();
 
+    // 7. Load Team Admins (if Super Root Admin)
+    if (adminCurrentScope.isSuperAdmin) {
+      await loadTeamAdminsList();
+    }
+
   } catch (err) {
     console.error('Error loading admin data:', err);
   }
 }
 
 function switchAdminTab(tabName) {
-  const tabs = ['users', 'withdrawals', 'deposits', 'tickets', 'announcements', 'settings'];
+  const tabs = ['users', 'withdrawals', 'deposits', 'tickets', 'announcements', 'settings', 'teamadmins'];
   tabs.forEach(t => {
     const btn = document.getElementById(`admin-tab-btn-${t}`);
     const content = document.getElementById(`admin-tab-content-${t}`);
@@ -2910,6 +3054,7 @@ function switchAdminTab(tabName) {
     }
   });
   if (tabName === 'settings') loadAdminPlatformSettings();
+  if (tabName === 'teamadmins') loadTeamAdminsList();
   if (window.lucide) lucide.createIcons();
 }
 window.switchAdminTab = switchAdminTab;
@@ -3149,7 +3294,8 @@ window.handleAdminAdjustBalance = handleAdminAdjustBalance;
 // ==================== ADMIN DEPOSITS & WITHDRAWALS ====================
 
 async function loadAdminWithdrawals() {
-  const withRes = await fetch(`${API_BASE}/admin/withdrawals`, {
+  const scopeQuery = getAdminScopeQuery();
+  const withRes = await fetch(`${API_BASE}/admin/withdrawals${scopeQuery}`, {
     headers: { 'Authorization': `Bearer ${token}` }
   });
   const withData = await withRes.json();
@@ -3290,7 +3436,8 @@ async function rejectWithdrawal(id) {
 window.rejectWithdrawal = rejectWithdrawal;
 
 async function loadAdminDeposits() {
-  const depRes = await fetch(`${API_BASE}/admin/deposits`, {
+  const scopeQuery = getAdminScopeQuery();
+  const depRes = await fetch(`${API_BASE}/admin/deposits${scopeQuery}`, {
     headers: { 'Authorization': `Bearer ${token}` }
   });
   const depData = await depRes.json();
@@ -4454,3 +4601,1034 @@ function loadAdminPlatformSettings() {
     }
   }).catch(err => console.error('Failed to load platform settings:', err));
 }
+
+// ==================== SUPER ROOT ADMIN: TEAM ADMINS MANAGEMENT ====================
+
+async function loadTeamAdminsList() {
+  const container = document.getElementById('team-admins-list');
+  if (!container) return;
+
+  try {
+    const res = await fetch(`${API_BASE}/admin/team-admins`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const data = await res.json();
+    if (!data.success || !data.teamAdmins) {
+      container.innerHTML = `<div class="text-center py-8 text-slate-500 bg-slate-900/50 rounded-2xl border border-slate-800">Failed to load team administrators</div>`;
+      return;
+    }
+
+    const teamAdmins = data.teamAdmins;
+    const badgeEl = document.getElementById('admin-badge-teamadmins');
+    if (badgeEl) {
+      badgeEl.textContent = teamAdmins.length;
+      badgeEl.classList.remove('hidden');
+    }
+
+    if (teamAdmins.length === 0) {
+      container.innerHTML = `<div class="text-center py-8 text-slate-500 bg-slate-900/50 rounded-2xl border border-slate-800">No team administrators configured yet. Click "Add New Team Admin" above.</div>`;
+      return;
+    }
+
+    container.innerHTML = teamAdmins.map(ta => {
+      const inviteUrl = `${window.location.origin}/?ref=${encodeURIComponent(ta.referral_code || ta.username)}`;
+      const isSelected = String(adminCurrentScope.selectedTeamId) === String(ta.id);
+      return `
+        <div class="p-4 rounded-2xl bg-slate-900/90 border ${isSelected ? 'border-purple-500/80 shadow-purple-500/10' : 'border-slate-800'} hover:border-slate-700 transition space-y-3.5 shadow-md">
+          <div class="flex items-start justify-between gap-3">
+            <div class="flex items-center gap-3 min-w-0">
+              <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-purple-600 to-indigo-600 text-white font-extrabold text-sm flex items-center justify-center shrink-0 shadow-md shadow-purple-500/20">
+                ${(ta.team_name || ta.username || 'T')[0].toUpperCase()}
+              </div>
+              <div class="min-w-0">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <h4 class="font-extrabold text-white text-sm truncate">${ta.team_name || 'Unnamed Team'}</h4>
+                  <span class="text-slate-400 font-mono text-xs">(@${ta.username})</span>
+                </div>
+                <div class="text-[11px] text-slate-400 font-mono flex items-center gap-2 mt-0.5 flex-wrap">
+                  <span>Ref: <strong class="text-amber-400">${ta.referral_code || ta.username}</strong></span>
+                  <span class="text-slate-600">&bull;</span>
+                  <span>Email: <span class="text-slate-300">${ta.email || 'None'}</span></span>
+                </div>
+              </div>
+            </div>
+            <div class="flex flex-col items-end gap-1.5 shrink-0">
+              <span class="text-[9px] uppercase px-2 py-0.5 rounded-full font-bold font-mono ${ta.status === 'active' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'} flex items-center gap-1">
+                <span class="w-1.5 h-1.5 rounded-full ${ta.status === 'active' ? 'bg-emerald-400' : 'bg-rose-400'}"></span>
+                ${ta.status}
+              </span>
+              <span class="text-[9px] text-slate-500 font-mono">Admin ID #${ta.id}</span>
+            </div>
+          </div>
+
+          <!-- Team Metric Chips -->
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 text-xs">
+            <div class="p-2.5 rounded-xl bg-slate-950/60 border border-slate-800/80">
+              <span class="text-[10px] text-slate-500 font-semibold block uppercase tracking-wider">Team Members</span>
+              <span class="text-sm font-extrabold text-white font-mono mt-0.5 block">${ta.team_member_count || 0}</span>
+            </div>
+            <div class="p-2.5 rounded-xl bg-slate-950/60 border border-slate-800/80">
+              <span class="text-[10px] text-slate-500 font-semibold block uppercase tracking-wider">Deposits Volume</span>
+              <span class="text-sm font-extrabold text-emerald-400 font-mono mt-0.5 block">$${parseFloat(ta.team_deposit_volume || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+            </div>
+            <div class="p-2.5 rounded-xl bg-slate-950/60 border border-slate-800/80">
+              <span class="text-[10px] text-slate-500 font-semibold block uppercase tracking-wider">Active Investments</span>
+              <span class="text-sm font-extrabold text-amber-400 font-mono mt-0.5 block">$${parseFloat(ta.team_active_investments || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+            </div>
+            <div class="p-2.5 rounded-xl bg-slate-950/60 border border-slate-800/80">
+              <span class="text-[10px] text-slate-500 font-semibold block uppercase tracking-wider">Withdrawals</span>
+              <span class="text-sm font-extrabold text-rose-400 font-mono mt-0.5 block">$${parseFloat(ta.team_withdrawal_volume || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+            </div>
+          </div>
+
+          <!-- Team Invite Link Row -->
+          <div class="p-2.5 rounded-xl bg-purple-950/20 border border-purple-500/20 flex items-center justify-between gap-2">
+            <div class="min-w-0 flex items-center gap-2">
+              <i data-lucide="link" class="w-3.5 h-3.5 text-purple-400 shrink-0"></i>
+              <span class="font-mono text-[11px] text-purple-200 truncate select-all">${inviteUrl}</span>
+            </div>
+            <button type="button" onclick="copyTeamAdminInviteLink('${ta.referral_code || ta.username}')" class="px-2.5 py-1 rounded-lg bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 font-bold text-[10px] shrink-0 transition active:scale-95 cursor-pointer">
+              Copy Link
+            </button>
+          </div>
+
+          <!-- Actions Row -->
+          <div class="flex items-center gap-2 pt-1 border-t border-slate-800/80 flex-wrap">
+            <button type="button" onclick="filterSuperAdminToTeam(${ta.id})" class="flex-1 min-w-[120px] py-2 px-3 rounded-xl ${isSelected ? 'bg-purple-500 text-white' : 'bg-purple-500/20 text-purple-300 border border-purple-500/30 hover:bg-purple-500/30'} font-bold text-xs transition flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer">
+              <i data-lucide="filter" class="w-3.5 h-3.5"></i>
+              <span>${isSelected ? 'Viewing Scope ✓' : 'Filter Scope'}</span>
+            </button>
+            <button type="button" onclick="openEditTeamAdminModal(${ta.id}, '${ta.username}', '${ta.team_name || ''}', '${ta.status}', '${ta.usdt_address || ''}')" class="py-2 px-3.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs transition flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer border border-slate-700">
+              <i data-lucide="settings" class="w-3.5 h-3.5"></i>
+              <span>Configure</span>
+            </button>
+            <button type="button" onclick="openQuickVaultAddressModal(${ta.id}, '${ta.username}', '${ta.usdt_address || ''}')" class="py-2 px-3 rounded-xl bg-amber-500/15 border border-amber-500/30 hover:bg-amber-500/25 text-amber-300 font-bold text-xs transition flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer">
+              <i data-lucide="wallet" class="w-3.5 h-3.5"></i>
+              <span>Vault</span>
+            </button>
+            <button type="button" onclick="impersonateTeamAdmin(${ta.id})" class="py-2 px-3.5 rounded-xl bg-amber-500/20 border border-amber-500/30 hover:bg-amber-500/30 text-amber-300 font-bold text-xs transition flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer">
+              <i data-lucide="log-in" class="w-3.5 h-3.5"></i>
+              <span>Impersonate</span>
+            </button>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    if (window.lucide) lucide.createIcons();
+  } catch (err) {
+    console.error('Error loading team admins:', err);
+    container.innerHTML = `<div class="text-center py-8 text-slate-500 bg-slate-900/50 rounded-2xl border border-slate-800">Error loading team admins: ${err.message}</div>`;
+  }
+}
+window.loadTeamAdminsList = loadTeamAdminsList;
+
+function openCreateTeamAdminModal() {
+  const form = document.getElementById('create-team-admin-form');
+  if (form) form.reset();
+  openModal('createTeamAdminModal');
+}
+window.openCreateTeamAdminModal = openCreateTeamAdminModal;
+
+async function handleCreateTeamAdminSubmit(e) {
+  e.preventDefault();
+  const username = document.getElementById('cta-username')?.value.trim();
+  const team_name = document.getElementById('cta-team-name')?.value.trim();
+  const email = document.getElementById('cta-email')?.value.trim();
+  const referral_code = document.getElementById('cta-refcode')?.value.trim();
+  const password = document.getElementById('cta-password')?.value;
+  const btn = document.getElementById('btn-create-team-admin-submit');
+
+  if (!username || !team_name || !email || !password) {
+    showToast('Please fill all required fields', 'error');
+    return;
+  }
+
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Creating Team Admin...';
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}/admin/team-admins`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ username, team_name, email, referral_code, password })
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast(`Team Admin @${username} created successfully!`, 'success');
+      closeModal('createTeamAdminModal');
+      await loadAdminData();
+      await loadTeamAdminsList();
+    } else {
+      showToast(data.error || 'Failed to create team admin', 'error');
+    }
+  } catch (err) {
+    showToast(err.message, 'error');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = 'Create Team Admin Account';
+    }
+  }
+}
+window.handleCreateTeamAdminSubmit = handleCreateTeamAdminSubmit;
+
+function openEditTeamAdminModal(id, username, teamName, status, usdtAddress = '') {
+  document.getElementById('eta-admin-id').value = id;
+  document.getElementById('eta-target-username').textContent = `Configuring @${username}`;
+  document.getElementById('eta-team-name').value = teamName || '';
+  document.getElementById('eta-status').value = status || 'active';
+  document.getElementById('eta-password').value = '';
+  const addrInp = document.getElementById('eta-usdt-address');
+  if (addrInp) addrInp.value = usdtAddress || '';
+  openModal('editTeamAdminModal');
+}
+window.openEditTeamAdminModal = openEditTeamAdminModal;
+
+async function handleEditTeamAdminSubmit(e) {
+  e.preventDefault();
+  const id = document.getElementById('eta-admin-id')?.value;
+  const team_name = document.getElementById('eta-team-name')?.value.trim();
+  const status = document.getElementById('eta-status')?.value;
+  const password = document.getElementById('eta-password')?.value;
+  const usdt_address = document.getElementById('eta-usdt-address')?.value.trim();
+  const btn = document.getElementById('btn-edit-team-admin-submit');
+
+  if (!id) return;
+
+  if (usdt_address && !/^0x[a-fA-F0-9]{40}$/.test(usdt_address)) {
+    showToast('Invalid BEP-20 address. Must start with 0x and be 42 characters hex.', 'error');
+    return;
+  }
+
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Updating...';
+  }
+
+  try {
+    const payload = { team_name, status };
+    if (password && password.trim().length >= 6) {
+      payload.password = password.trim();
+    }
+    if (usdt_address !== undefined) {
+      payload.usdt_address = usdt_address;
+    }
+
+    const res = await fetch(`${API_BASE}/admin/team-admins/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast('Team Admin updated successfully!', 'success');
+      closeModal('editTeamAdminModal');
+      await loadAdminData();
+      await loadTeamAdminsList();
+      if (typeof loadSuperRootMasterDashboard === 'function') {
+        await loadSuperRootMasterDashboard();
+      }
+    } else {
+      showToast(data.error || 'Failed to update team admin', 'error');
+    }
+  } catch (err) {
+    showToast(err.message, 'error');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = 'Update Team Admin';
+    }
+  }
+}
+window.handleEditTeamAdminSubmit = handleEditTeamAdminSubmit;
+
+async function impersonateTeamAdmin(id) {
+  if (!confirm('Switch session and enter this Team Admin portal? You will operate as this team admin.')) return;
+  try {
+    const res = await fetch(`${API_BASE}/admin/team-admins/${id}/impersonate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    const data = await res.json();
+    if (data.success) {
+      token = data.token;
+      currentUser = data.user;
+      localStorage.setItem('catalyst_token', token);
+      showToast(`Switched into ${currentUser.team_name || currentUser.username} Admin Portal!`, 'success');
+      updateAuthUI();
+      navigate('admin');
+      await loadAdminData();
+    } else {
+      showToast(data.error || 'Failed to impersonate team admin', 'error');
+    }
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+window.impersonateTeamAdmin = impersonateTeamAdmin;
+
+// ========================================================
+// SUPER ROOT ADMIN: MASTER COMMANDER DASHBOARD SYSTEM
+// (Dubai Finance & Seoralink Reference Implementations)
+// ========================================================
+
+function escapeHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+window.escapeHtml = escapeHtml;
+
+let cachedSuperRootBranches = [];
+let currentInspectedBranchId = null;
+let universalMemberSearchTimer = null;
+
+// 1. Enter Portal As Admin (Super Root Impersonation of any Sub-Admin)
+async function enterPortalAsAdmin(adminId) {
+  try {
+    const origSuperToken = localStorage.getItem('catalyst_superadmin_orig_token');
+    if (!origSuperToken) {
+      localStorage.setItem('catalyst_superadmin_orig_token', token);
+    }
+
+    const res = await fetch(`${API_BASE}/admin/team-admins/${adminId}/impersonate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    const data = await res.json();
+    if (!data.success || !data.token) throw new Error(data.error || 'Failed to switch into branch portal');
+
+    token = data.token;
+    currentUser = data.user;
+    localStorage.setItem('catalyst_token', token);
+
+    showToast(`👑 Operating as Sub-Admin @${currentUser.username} (${currentUser.team_name || 'Team Admin'})!`, 'success');
+    updateAuthUI();
+    navigate('admin');
+    await loadAdminData();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+window.enterPortalAsAdmin = enterPortalAsAdmin;
+
+// 2. Enter Portal As Member (Super Root or Admin Impersonation of any Member)
+async function enterPortalAsMember(memberId) {
+  try {
+    if (currentUser?.role === 'superadmin') {
+      const origSuperToken = localStorage.getItem('catalyst_superadmin_orig_token');
+      if (!origSuperToken) {
+        localStorage.setItem('catalyst_superadmin_orig_token', token);
+      }
+    } else if (currentUser?.role === 'admin') {
+      if (!originalAdminToken) {
+        originalAdminToken = token;
+        localStorage.setItem('catalyst_admin_orig_token', originalAdminToken);
+      }
+    }
+
+    const res = await fetch(`${API_BASE}/admin/impersonate/${memberId}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    const data = await res.json();
+    if (!data.success || !data.token) throw new Error(data.error || 'Failed to switch into member portal');
+
+    token = data.token;
+    currentUser = data.user;
+    localStorage.setItem('catalyst_token', token);
+
+    closeModal('adminUserDetailModal');
+    showToast(`👑 Operating as Member @${currentUser.username}!`, 'info');
+    updateAuthUI();
+    navigate('home');
+    await refreshCurrentViewData();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+window.enterPortalAsMember = enterPortalAsMember;
+
+// 3. Exit Super Root Impersonation (Return to Super Root Master Commander)
+async function exitSuperRootImpersonation() {
+  const origSuperToken = localStorage.getItem('catalyst_superadmin_orig_token');
+  if (!origSuperToken) return;
+
+  token = origSuperToken;
+  localStorage.setItem('catalyst_token', token);
+  localStorage.removeItem('catalyst_superadmin_orig_token');
+
+  const banner = document.getElementById('super-root-impersonation-bar');
+  if (banner) banner.classList.add('hidden');
+  document.body.classList.remove('has-sr-impersonation-bar');
+
+  await fetchUserProfile();
+  showToast('Returned to Super Root Master Commander!', 'success');
+  navigate('admin');
+  await loadAdminData();
+}
+window.exitSuperRootImpersonation = exitSuperRootImpersonation;
+
+// 4. Load Super Root Master Dashboard
+async function loadSuperRootMasterDashboard() {
+  try {
+    const res = await fetch(`${API_BASE}/admin/team-admins`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error || 'Failed to load branch records');
+
+    cachedSuperRootBranches = data.teamAdmins || [];
+
+    const totalBranches = cachedSuperRootBranches.length;
+    const activeBranches = cachedSuperRootBranches.filter(b => b.status === 'active').length;
+    const totalMembers = cachedSuperRootBranches.reduce((s, b) => s + (parseInt(b.total_members) || 0), 0);
+    const activeInvestors = cachedSuperRootBranches.reduce((s, b) => s + (parseInt(b.active_investors) || 0), 0);
+    const totalDeposits = cachedSuperRootBranches.reduce((s, b) => s + (parseFloat(b.total_deposits) || 0), 0);
+    const totalWithdrawals = cachedSuperRootBranches.reduce((s, b) => s + (parseFloat(b.total_withdrawals) || 0), 0);
+
+    // Update 4 Hero Metric Cards
+    const elBranches = document.getElementById('sr-stat-branches');
+    if (elBranches) elBranches.textContent = totalBranches;
+    const elMembers = document.getElementById('sr-stat-members');
+    if (elMembers) elMembers.textContent = totalMembers;
+    const elActiveInv = document.getElementById('sr-stat-active-investors');
+    if (elActiveInv) elActiveInv.textContent = activeInvestors;
+    const elDeposits = document.getElementById('sr-stat-deposits');
+    if (elDeposits) elDeposits.textContent = `$${totalDeposits.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    const elPayouts = document.getElementById('sr-stat-payouts');
+    if (elPayouts) elPayouts.textContent = `$${totalWithdrawals.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+    const badgeBranches = document.getElementById('sr-badge-branches-count');
+    if (badgeBranches) badgeBranches.textContent = totalBranches;
+    const activeBadge = document.getElementById('sr-branches-active-badge');
+    if (activeBadge) activeBadge.textContent = `(${activeBranches} Active Branches)`;
+    const headerUser = document.getElementById('sr-header-user');
+    if (headerUser && currentUser) headerUser.textContent = `SUPER ROOT (@${currentUser.username})`;
+
+    // Populate Inspector Select Dropdown
+    const inspectSelect = document.getElementById('sr-inspector-branch-select');
+    if (inspectSelect) {
+      inspectSelect.innerHTML = `<option value="">Choose a branch to inspect...</option>` +
+        cachedSuperRootBranches.map(b => `<option value="${b.id}">${b.team_name || b.username} (@${b.username})</option>`).join('');
+      if (currentInspectedBranchId) inspectSelect.value = String(currentInspectedBranchId);
+    }
+
+    // Populate Branch Status Quick Controls in Tab 7
+    const quickControls = document.getElementById('sr-branch-quick-controls');
+    if (quickControls) {
+      quickControls.innerHTML = cachedSuperRootBranches.map(b => `
+        <div class="flex items-center justify-between p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs">
+          <div class="min-w-0">
+            <span class="font-bold text-white">${b.team_name || b.username}</span>
+            <span class="text-[10px] text-slate-400 font-mono ml-1">(@${b.username})</span>
+          </div>
+          <button onclick="toggleTeamAdminStatus(${b.id})" class="px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase transition ${b.status === 'active' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-rose-500/20 text-rose-300 border border-rose-500/30'}">
+            ${b.status === 'active' ? 'Active' : 'Suspended'}
+          </button>
+        </div>
+      `).join('');
+    }
+
+    renderSuperRootBranchesTable(cachedSuperRootBranches);
+    if (window.lucide) lucide.createIcons();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+window.loadSuperRootMasterDashboard = loadSuperRootMasterDashboard;
+
+// 5. Render Super Root Branches Table (Tab 1)
+function renderSuperRootBranchesTable(branches) {
+  const tbody = document.getElementById('sr-branches-table-body');
+  if (!tbody) return;
+
+  if (!branches || branches.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="7" class="py-8 text-center text-slate-500">No sub-admin branches registered yet</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = branches.map((b, idx) => {
+    const num = String(idx + 1).padStart(2, '0');
+    const isAct = (b.status === 'active');
+    const depVol = parseFloat(b.total_deposits || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const wthVol = parseFloat(b.total_withdrawals || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const vaultShort = b.usdt_address ? `${b.usdt_address.substring(0, 6)}...${b.usdt_address.substring(b.usdt_address.length - 4)}` : null;
+
+    return `
+      <tr class="hover:bg-slate-800/40 transition">
+        <td class="py-3 px-4">
+          <div class="flex items-center gap-2.5">
+            <span class="w-7 h-7 rounded-lg bg-slate-800 text-slate-300 font-mono text-[11px] font-bold flex items-center justify-center shrink-0 border border-slate-700/60">${num}</span>
+            <div class="min-w-0">
+              <div class="font-extrabold text-white text-xs truncate">${b.team_name || b.username}</div>
+              <div class="flex items-center gap-2 mt-0.5 flex-wrap">
+                <span class="text-[10px] text-slate-400 font-mono">@${b.username}</span>
+                <button onclick="enterPortalAsAdmin(${b.id})" class="text-[10px] text-cyan-400 hover:text-cyan-300 font-bold flex items-center gap-1 bg-cyan-500/10 hover:bg-cyan-500/20 px-2 py-0.5 rounded border border-cyan-500/30 transition cursor-pointer">
+                  <i data-lucide="external-link" class="w-3 h-3"></i>
+                  <span>Portal</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </td>
+        <td class="py-3 px-4">
+          <div class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400 font-mono text-[11px] font-bold">
+            <span>${b.referral_code || b.username}</span>
+          </div>
+        </td>
+        <td class="py-3 px-4">
+          <div class="text-[11px] text-slate-300 font-mono truncate max-w-[170px]">${b.email || 'N/A'}</div>
+          <div class="text-[10px] text-slate-400 font-mono">${b.phone || 'N/A'}</div>
+          ${vaultShort ? `
+            <div class="mt-1">
+              <button onclick="openQuickVaultAddressModal(${b.id}, '${escapeHtml(b.username)}', '${escapeHtml(b.usdt_address || '')}')" title="Click to modify Vault: ${b.usdt_address}" class="text-[9px] text-amber-300 hover:text-amber-200 font-mono flex items-center gap-1 bg-amber-500/10 hover:bg-amber-500/20 px-1.5 py-0.5 rounded border border-amber-500/30 transition cursor-pointer">
+                <i data-lucide="wallet" class="w-2.5 h-2.5 shrink-0 text-amber-400"></i>
+                <span class="truncate">Vault: ${vaultShort}</span>
+              </button>
+            </div>
+          ` : `
+            <div class="mt-1">
+              <button onclick="openQuickVaultAddressModal(${b.id}, '${escapeHtml(b.username)}', '')" title="Assign Vault Address" class="text-[9px] text-slate-400 hover:text-amber-300 font-mono flex items-center gap-1 bg-slate-800/80 hover:bg-amber-500/15 px-1.5 py-0.5 rounded border border-slate-700/60 hover:border-amber-500/30 transition cursor-pointer">
+                <i data-lucide="wallet" class="w-2.5 h-2.5 shrink-0 text-amber-400"></i>
+                <span>+ Set Vault</span>
+              </button>
+            </div>
+          `}
+        </td>
+        <td class="py-3 px-4">
+          <div class="font-bold text-white text-xs">${b.total_members || 0} Members</div>
+          <div class="text-[10px] text-emerald-400 font-semibold">${b.active_investors || 0} Active</div>
+        </td>
+        <td class="py-3 px-4">
+          <div class="font-extrabold text-emerald-400 font-mono text-xs">$${depVol}</div>
+          <div class="text-[10px] text-slate-400 font-mono">Payouts: $${wthVol}</div>
+        </td>
+        <td class="py-3 px-4">
+          <span class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider inline-flex items-center gap-1 ${isAct ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' : 'bg-rose-500/15 text-rose-400 border border-rose-500/30'}">
+            <span>${isAct ? '● ACTIVE' : '⛔ SUSPENDED'}</span>
+          </span>
+        </td>
+        <td class="py-3 px-4 text-right">
+          <div class="inline-flex items-center gap-1.5 justify-end flex-wrap">
+            <button onclick="enterPortalAsAdmin(${b.id})" title="Enter Sub-Admin Portal" class="px-2.5 py-1.5 rounded-xl bg-amber-500/15 border border-amber-500/40 text-amber-300 hover:bg-amber-500/25 transition text-xs font-bold flex items-center gap-1 active:scale-95 cursor-pointer">
+              <i data-lucide="log-in" class="w-3.5 h-3.5"></i>
+              <span>Enter Portal</span>
+            </button>
+            <button onclick="inspectBranchFromBranchesTab(${b.id})" title="Inspect Branch" class="px-2.5 py-1.5 rounded-xl bg-cyan-500/15 border border-cyan-500/40 text-cyan-300 hover:bg-cyan-500/25 transition text-xs font-bold flex items-center gap-1 active:scale-95 cursor-pointer">
+              <i data-lucide="eye" class="w-3.5 h-3.5"></i>
+              <span>Inspect</span>
+            </button>
+            <button onclick="openEditTeamAdminModal(${b.id}, '${escapeHtml(b.username)}', '${escapeHtml(b.team_name || '')}', '${b.status}', '${escapeHtml(b.usdt_address || '')}')" title="Configure Branch" class="p-1.5 rounded-xl bg-rose-500/15 border border-rose-500/40 text-rose-300 hover:bg-rose-500/25 transition text-xs font-bold flex items-center gap-1 active:scale-95 cursor-pointer">
+              <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
+            </button>
+            <button onclick="openQuickVaultAddressModal(${b.id}, '${escapeHtml(b.username)}', '${escapeHtml(b.usdt_address || '')}')" title="Modify Vault Address (BEP-20)" class="p-1.5 rounded-xl bg-amber-500/15 border border-amber-500/40 text-amber-300 hover:bg-amber-500/25 transition text-xs font-bold flex items-center gap-1 active:scale-95 cursor-pointer">
+              <i data-lucide="wallet" class="w-3.5 h-3.5"></i>
+            </button>
+            <button onclick="openQuickPasswordResetModal(${b.id}, '${escapeHtml(b.username)}')" title="Reset Password" class="p-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition text-xs border border-slate-700 active:scale-95 cursor-pointer">
+              <i data-lucide="key" class="w-3.5 h-3.5"></i>
+            </button>
+            <button onclick="toggleTeamAdminStatus(${b.id})" title="${isAct ? 'Suspend Branch' : 'Activate Branch'}" class="p-1.5 rounded-xl ${isAct ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30' : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'} transition text-xs active:scale-95 cursor-pointer">
+              <i data-lucide="${isAct ? 'lock' : 'unlock'}" class="w-3.5 h-3.5"></i>
+            </button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
+
+  if (window.lucide) lucide.createIcons();
+}
+
+// 6. Switch Super Root Tab
+function switchSuperRootTab(tabName) {
+  const tabs = ['branches', 'inspector', 'universal', 'config', 'credit-debit', 'logs', 'bep20'];
+  tabs.forEach(t => {
+    const btn = document.getElementById(`sr-tab-btn-${t}`);
+    const content = document.getElementById(`sr-tab-content-${t}`);
+    if (btn) btn.classList.toggle('active', t === tabName);
+    if (content) content.classList.toggle('hidden', t !== tabName);
+  });
+
+  if (tabName === 'universal') searchUniversalMembers('');
+  if (tabName === 'logs') loadSuperRootAuditLogs();
+  if (tabName === 'config') {
+    // Load config into inputs
+    loadAdminPlatformSettings().then(() => {
+      const srcRoi = document.getElementById('admin-roi-closing-time')?.value;
+      const srcMin = document.getElementById('admin-min-withdrawal')?.value;
+      const targetRoi = document.getElementById('sr-config-roi-time');
+      const targetMin = document.getElementById('sr-config-min-withdrawal');
+      if (targetRoi && srcRoi) targetRoi.value = srcRoi;
+      if (targetMin && srcMin) targetMin.value = srcMin;
+    });
+  }
+  if (tabName === 'bep20') {
+    const addr = currentUser?.usdt_address || document.getElementById('admin-deposit-address-input')?.value;
+    const inp = document.getElementById('sr-bep20-address-input');
+    const link = document.getElementById('sr-bep20-bscscan-link');
+    if (inp && addr) inp.value = addr;
+    if (link && addr) link.href = `https://bscscan.com/address/${addr}`;
+  }
+
+  if (window.lucide) lucide.createIcons();
+}
+window.switchSuperRootTab = switchSuperRootTab;
+
+// 7. Filter Branches (Search Input in Tab 1)
+function filterSuperRootBranches() {
+  const q = document.getElementById('sr-branch-search-input')?.value.trim().toLowerCase() || '';
+  if (!q) {
+    renderSuperRootBranchesTable(cachedSuperRootBranches);
+    return;
+  }
+  const filtered = cachedSuperRootBranches.filter(b =>
+    (b.username && b.username.toLowerCase().includes(q)) ||
+    (b.team_name && b.team_name.toLowerCase().includes(q)) ||
+    (b.referral_code && b.referral_code.toLowerCase().includes(q)) ||
+    (b.email && b.email.toLowerCase().includes(q)) ||
+    (b.phone && b.phone.includes(q))
+  );
+  renderSuperRootBranchesTable(filtered);
+}
+window.filterSuperRootBranches = filterSuperRootBranches;
+
+// 8. Inspect Branch from Tab 1
+function inspectBranchFromBranchesTab(branchId) {
+  currentInspectedBranchId = branchId;
+  switchSuperRootTab('inspector');
+  const sel = document.getElementById('sr-inspector-branch-select');
+  if (sel) sel.value = String(branchId);
+  loadBranchInspectorData(branchId);
+}
+window.inspectBranchFromBranchesTab = inspectBranchFromBranchesTab;
+
+// 9. Load Branch Inspector Data (Tab 2)
+async function loadBranchInspectorData(branchId) {
+  if (!branchId) return;
+  currentInspectedBranchId = branchId;
+  const container = document.getElementById('sr-inspector-content-container');
+  if (!container) return;
+
+  container.innerHTML = `<div class="py-12 text-center text-slate-500">Loading branch records...</div>`;
+
+  try {
+    const res = await fetch(`${API_BASE}/admin/branch-inspector/${branchId}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error || 'Failed to inspect branch');
+
+    const { branchAdmin, stats, members, deposits, withdrawals } = data;
+
+    container.innerHTML = `
+      <!-- Leader & Stats Grid -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <!-- Branch Leader Info Card -->
+        <div class="p-4 rounded-3xl bg-slate-900/90 border border-cyan-500/30 space-y-2.5">
+          <div class="flex items-center justify-between">
+            <span class="text-[10px] uppercase font-bold text-cyan-400">Branch Leader</span>
+            <span class="px-2 py-0.5 rounded-full text-[9px] font-bold ${branchAdmin.status === 'active' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'}">${branchAdmin.status.toUpperCase()}</span>
+          </div>
+          <div class="text-base font-extrabold text-white">${branchAdmin.team_name || branchAdmin.username}</div>
+          <div class="text-xs text-slate-300 font-mono">@${branchAdmin.username} (ID: ${branchAdmin.id})</div>
+          <div class="text-xs text-slate-400 font-mono">${branchAdmin.email || 'N/A'} • ${branchAdmin.phone || 'N/A'}</div>
+          <div class="flex items-center justify-between gap-2 pt-1 border-t border-slate-800/80">
+            <span class="text-[11px] text-amber-400/90 font-mono truncate" title="${branchAdmin.usdt_address || 'Not Set'}">Vault: ${branchAdmin.usdt_address ? `${branchAdmin.usdt_address.substring(0, 6)}...${branchAdmin.usdt_address.substring(branchAdmin.usdt_address.length - 4)}` : 'None'}</span>
+            <button onclick="openQuickVaultAddressModal(${branchAdmin.id}, '${escapeHtml(branchAdmin.username)}', '${escapeHtml(branchAdmin.usdt_address || '')}')" title="Modify Vault Address" class="px-2 py-0.5 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-300 hover:bg-amber-500/25 text-[10px] font-bold flex items-center gap-1 transition cursor-pointer">
+              <i data-lucide="wallet" class="w-3 h-3"></i>
+              <span>Edit Vault</span>
+            </button>
+          </div>
+          <div class="pt-2 border-t border-slate-800 flex items-center justify-between">
+            <span class="text-xs text-slate-400">Wallet Balance:</span>
+            <span class="text-sm font-extrabold text-emerald-400 font-mono">$${parseFloat(branchAdmin.wallet_balance || 0).toFixed(2)}</span>
+          </div>
+          <button onclick="enterPortalAsAdmin(${branchAdmin.id})" class="w-full mt-2 py-2 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-300 hover:bg-amber-500/30 font-bold text-xs transition flex items-center justify-center gap-1.5 cursor-pointer">
+            <i data-lucide="log-in" class="w-3.5 h-3.5"></i>
+            <span>Enter @${branchAdmin.username} Admin Portal</span>
+          </button>
+        </div>
+
+        <!-- Branch Metrics Cards (2 Columns) -->
+        <div class="md:col-span-2 grid grid-cols-2 gap-3">
+          <div class="p-3.5 rounded-2xl bg-slate-900/90 border border-slate-800 flex flex-col justify-between">
+            <div class="text-[10px] uppercase font-bold text-cyan-400">Total Members</div>
+            <div class="text-2xl font-black text-white font-mono mt-1">${stats.totalMembers}</div>
+            <div class="text-[10px] text-slate-400 mt-1">Branch Community</div>
+          </div>
+          <div class="p-3.5 rounded-2xl bg-slate-900/90 border border-slate-800 flex flex-col justify-between">
+            <div class="text-[10px] uppercase font-bold text-emerald-400">Active Investors</div>
+            <div class="text-2xl font-black text-emerald-400 font-mono mt-1">${stats.activeMembers}</div>
+            <div class="text-[10px] text-slate-400 mt-1">With Live Contracts</div>
+          </div>
+          <div class="p-3.5 rounded-2xl bg-slate-900/90 border border-slate-800 flex flex-col justify-between">
+            <div class="text-[10px] uppercase font-bold text-emerald-400">Total Deposits Volume</div>
+            <div class="text-2xl font-black text-emerald-400 font-mono mt-1">$${parseFloat(stats.totalDepositsVolume || 0).toFixed(2)}</div>
+            <div class="text-[10px] text-slate-400 mt-1">Total Inflow</div>
+          </div>
+          <div class="p-3.5 rounded-2xl bg-slate-900/90 border border-slate-800 flex flex-col justify-between">
+            <div class="text-[10px] uppercase font-bold text-rose-400">Total Withdrawals Volume</div>
+            <div class="text-2xl font-black text-rose-400 font-mono mt-1">$${parseFloat(stats.totalWithdrawalsVolume || 0).toFixed(2)}</div>
+            <div class="text-[10px] text-slate-400 mt-1">Total Payouts</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Branch Members Directory Table -->
+      <div class="p-4 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-3">
+        <div class="flex items-center justify-between">
+          <h4 class="text-sm font-extrabold text-white flex items-center gap-2">
+            <i data-lucide="users" class="w-4 h-4 text-amber-400"></i>
+            <span>Branch Members Directory (${members.length})</span>
+          </h4>
+        </div>
+        <div class="overflow-x-auto rounded-2xl border border-slate-800">
+          <table class="w-full text-left text-xs text-slate-300">
+            <thead class="bg-slate-950 text-[10px] uppercase font-bold text-slate-400 border-b border-slate-800">
+              <tr>
+                <th class="py-2.5 px-3">Member Info</th>
+                <th class="py-2.5 px-3">Sponsor</th>
+                <th class="py-2.5 px-3">Balances (Wallet / ROI / Comm)</th>
+                <th class="py-2.5 px-3">Active Invested</th>
+                <th class="py-2.5 px-3">Status</th>
+                <th class="py-2.5 px-3 text-right">Master Actions</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-800/80">
+              ${members.length === 0 ? `<tr><td colspan="6" class="py-6 text-center text-slate-500">No members in this branch yet</td></tr>` : members.map(m => `
+                <tr class="hover:bg-slate-800/40 transition">
+                  <td class="py-2.5 px-3">
+                    <div class="font-bold text-white">${m.full_name || m.username}</div>
+                    <div class="text-[10px] text-slate-400 font-mono">@${m.username} (ID: ${m.id}) • ${m.email || 'N/A'}</div>
+                  </td>
+                  <td class="py-2.5 px-3 text-slate-300 font-mono text-[11px]">${m.sponsor_username ? '@' + m.sponsor_username : 'None'}</td>
+                  <td class="py-2.5 px-3 font-mono text-[11px]">
+                    <span class="text-emerald-400 font-bold">$${parseFloat(m.wallet_balance || 0).toFixed(2)}</span> /
+                    <span class="text-amber-400">$${parseFloat(m.roi_balance || 0).toFixed(2)}</span> /
+                    <span class="text-purple-400">$${parseFloat(m.commission_balance || 0).toFixed(2)}</span>
+                  </td>
+                  <td class="py-2.5 px-3 font-mono font-bold ${parseFloat(m.active_invested || 0) > 0 ? 'text-emerald-400' : 'text-slate-400'}">
+                    $${parseFloat(m.active_invested || 0).toFixed(2)}
+                  </td>
+                  <td class="py-2.5 px-3">
+                    <span class="px-2 py-0.5 rounded-full text-[9px] font-bold ${m.status === 'active' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'}">${m.status.toUpperCase()}</span>
+                  </td>
+                  <td class="py-2.5 px-3 text-right">
+                    <div class="inline-flex items-center gap-1.5 justify-end">
+                      <button onclick="enterPortalAsMember(${m.id})" class="px-2 py-1 rounded-lg bg-amber-500/20 border border-amber-500/40 text-amber-300 hover:bg-amber-500/30 text-[11px] font-bold transition flex items-center gap-1 cursor-pointer">
+                        <i data-lucide="log-in" class="w-3.5 h-3.5"></i>
+                        <span>Enter Member Portal</span>
+                      </button>
+                      <button onclick="openQuickVaultAddressModal(${m.id}, '${escapeHtml(m.username)}', '${escapeHtml(m.usdt_address || '')}')" title="Modify Vault Address" class="p-1 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-300 hover:bg-amber-500/25 transition text-xs cursor-pointer">
+                        <i data-lucide="wallet" class="w-3.5 h-3.5"></i>
+                      </button>
+                      <button onclick="openQuickPasswordResetModal(${m.id}, '${escapeHtml(m.username)}')" title="Reset Password" class="p-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition text-xs border border-slate-700 cursor-pointer">
+                        <i data-lucide="key" class="w-3.5 h-3.5"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+
+    if (window.lucide) lucide.createIcons();
+  } catch (err) {
+    container.innerHTML = `<div class="py-8 text-center text-rose-400 bg-rose-500/10 rounded-2xl border border-rose-500/30">${err.message}</div>`;
+  }
+}
+window.loadBranchInspectorData = loadBranchInspectorData;
+
+// 10. Universal Member Search (Tab 3)
+function debounceUniversalMemberSearch() {
+  clearTimeout(universalMemberSearchTimer);
+  universalMemberSearchTimer = setTimeout(() => {
+    const q = document.getElementById('sr-universal-search-input')?.value.trim() || '';
+    searchUniversalMembers(q);
+  }, 350);
+}
+window.debounceUniversalMemberSearch = debounceUniversalMemberSearch;
+
+async function searchUniversalMembers(q = '') {
+  const tbody = document.getElementById('sr-universal-members-table-body');
+  if (!tbody) return;
+
+  try {
+    const res = await fetch(`${API_BASE}/admin/universal-members?q=${encodeURIComponent(q)}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error || 'Failed to search members');
+
+    const members = data.members || [];
+    if (members.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="7" class="py-8 text-center text-slate-500">No members match your search criteria</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = members.map(m => `
+      <tr class="hover:bg-slate-800/40 transition">
+        <td class="py-3 px-4">
+          <div class="font-extrabold text-white text-xs">${m.full_name || m.username}</div>
+          <div class="text-[10px] text-slate-400 font-mono">@${m.username} (ID: ${m.id}) • ${m.email || 'N/A'} • ${m.phone || 'N/A'}</div>
+          <div class="flex items-center gap-2 mt-0.5 flex-wrap">
+            <span class="text-[9px] text-amber-400/90 font-mono">Ref: ${m.referral_code}</span>
+            ${m.usdt_address ? `<span class="text-[9px] text-amber-300 font-mono" title="${m.usdt_address}">Vault: ${m.usdt_address.substring(0, 6)}...${m.usdt_address.slice(-4)}</span>` : ''}
+          </div>
+        </td>
+        <td class="py-3 px-4">
+          <div class="text-xs font-bold text-purple-300">${m.team_admin_team_name || m.team_admin_username || 'Default'}</div>
+          <div class="text-[10px] text-slate-400 font-mono">@${m.team_admin_username || 'admin'}</div>
+        </td>
+        <td class="py-3 px-4 text-slate-300 font-mono text-[11px]">${m.sponsor_username ? '@' + m.sponsor_username : 'None'}</td>
+        <td class="py-3 px-4 font-mono text-[11px]">
+          <div class="text-emerald-400 font-bold">W: $${parseFloat(m.wallet_balance || 0).toFixed(2)}</div>
+          <div class="text-amber-400">ROI: $${parseFloat(m.roi_balance || 0).toFixed(2)}</div>
+          <div class="text-purple-400">Comm: $${parseFloat(m.commission_balance || 0).toFixed(2)}</div>
+        </td>
+        <td class="py-3 px-4 font-mono font-bold ${parseFloat(m.active_invested || 0) > 0 ? 'text-emerald-400' : 'text-slate-400'}">
+          $${parseFloat(m.active_invested || 0).toFixed(2)}
+        </td>
+        <td class="py-3 px-4">
+          <span class="px-2 py-0.5 rounded-full text-[9px] font-bold ${m.status === 'active' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'}">${m.status.toUpperCase()}</span>
+        </td>
+        <td class="py-3 px-4 text-right">
+          <div class="inline-flex items-center gap-1.5 justify-end">
+            <button onclick="enterPortalAsMember(${m.id})" class="px-2.5 py-1.5 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-300 hover:bg-amber-500/30 text-xs font-bold transition flex items-center gap-1 active:scale-95 cursor-pointer">
+              <i data-lucide="log-in" class="w-3.5 h-3.5"></i>
+              <span>Enter Portal</span>
+            </button>
+            <button onclick="openQuickVaultAddressModal(${m.id}, '${escapeHtml(m.username)}', '${escapeHtml(m.usdt_address || '')}')" title="Modify Vault Address (BEP-20)" class="p-1.5 rounded-xl bg-amber-500/15 border border-amber-500/40 text-amber-300 hover:bg-amber-500/25 transition text-xs cursor-pointer active:scale-95">
+              <i data-lucide="wallet" class="w-3.5 h-3.5"></i>
+            </button>
+            <button onclick="openQuickPasswordResetModal(${m.id}, '${escapeHtml(m.username)}')" title="Reset Password" class="p-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition text-xs border border-slate-700 active:scale-95 cursor-pointer">
+              <i data-lucide="key" class="w-3.5 h-3.5"></i>
+            </button>
+          </div>
+        </td>
+      </tr>
+    `).join('');
+
+    if (window.lucide) lucide.createIcons();
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="7" class="py-8 text-center text-rose-400">${err.message}</td></tr>`;
+  }
+}
+window.searchUniversalMembers = searchUniversalMembers;
+
+// 11. Super Root Audit Logs (Tab 6)
+async function loadSuperRootAuditLogs() {
+  const tbody = document.getElementById('sr-audit-logs-table-body');
+  if (!tbody) return;
+
+  try {
+    const res = await fetch(`${API_BASE}/admin/audit-logs`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error || 'Failed to load audit logs');
+
+    const logs = data.logs || [];
+    if (logs.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="7" class="py-8 text-center text-slate-500">No platform activity recorded yet</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = logs.map(l => {
+      const dt = new Date(l.created_at).toLocaleString();
+      return `
+        <tr class="hover:bg-slate-800/40 transition">
+          <td class="py-2.5 px-3 text-[10px] text-slate-400 font-mono">${dt}</td>
+          <td class="py-2.5 px-3">
+            <span class="font-bold text-white">@${l.username}</span>
+            ${l.team_name ? `<span class="text-[10px] text-purple-300 ml-1">(${l.team_name})</span>` : ''}
+          </td>
+          <td class="py-2.5 px-3 uppercase text-[10px] font-bold text-slate-300">${l.type}</td>
+          <td class="py-2.5 px-3 text-[10px] text-slate-400 font-mono">${l.wallet_type || 'wallet_balance'}</td>
+          <td class="py-2.5 px-3 font-mono font-bold ${l.type.includes('withdraw') ? 'text-rose-400' : 'text-emerald-400'}">
+            $${parseFloat(l.amount || 0).toFixed(2)}
+          </td>
+          <td class="py-2.5 px-3 text-[11px] text-slate-300">${l.description || 'N/A'}</td>
+          <td class="py-2.5 px-3">
+            <span class="px-2 py-0.5 rounded-full text-[9px] font-bold ${l.status === 'completed' || l.status === 'approved' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-300'}">${(l.status || 'DONE').toUpperCase()}</span>
+          </td>
+        </tr>
+      `;
+    }).join('');
+
+    if (window.lucide) lucide.createIcons();
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="7" class="py-8 text-center text-rose-400">${err.message}</td></tr>`;
+  }
+}
+window.loadSuperRootAuditLogs = loadSuperRootAuditLogs;
+
+// 12. Super Root Manual Fund Credit / Debit (Tab 5)
+async function handleSuperRootAdjustBalance(e) {
+  e.preventDefault();
+  const userId = document.getElementById('sradj-user-id')?.value;
+  const walletType = document.getElementById('sradj-wallet-type')?.value;
+  const action = document.getElementById('sradj-action')?.value;
+  const amount = document.getElementById('sradj-amount')?.value;
+  const reason = document.getElementById('sradj-reason')?.value || 'Super Root balance adjustment';
+
+  const btn = document.getElementById('btn-sradj-submit');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Processing...';
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}/admin/adjust-balance`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ userId, walletType, action, amount, reason })
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error || 'Failed to adjust balance');
+
+    showToast(data.message || 'Balance updated successfully!', 'success');
+    document.getElementById('sradj-amount').value = '';
+    document.getElementById('sradj-reason').value = '';
+    await loadSuperRootMasterDashboard();
+  } catch (err) {
+    showToast(err.message, 'error');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = 'Execute Balance Adjustment';
+    }
+  }
+}
+window.handleSuperRootAdjustBalance = handleSuperRootAdjustBalance;
+
+// 13. Execute Global ROI Closing
+async function executeGlobalRoiClosing() {
+  if (!confirm('Execute Global Daily ROI cycle for all branches and active investor contracts now?')) return;
+  try {
+    const res = await fetch(`${API_BASE}/admin/execute-daily-roi`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast(`Global ROI Cycle Executed! Processed ${data.investmentsProcessed || 0} contracts ($${parseFloat(data.totalDistributed || 0).toFixed(2)})`, 'success');
+      await loadSuperRootMasterDashboard();
+    } else {
+      showToast(data.error || 'Failed to execute ROI cycle', 'error');
+    }
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+window.executeGlobalRoiClosing = executeGlobalRoiClosing;
+
+// 14. Toggle Team Admin Status (Active / Suspended)
+async function toggleTeamAdminStatus(adminId) {
+  try {
+    const res = await fetch(`${API_BASE}/admin/team-admins/${adminId}/toggle-status`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast(data.message, 'success');
+      await loadSuperRootMasterDashboard();
+    } else {
+      showToast(data.error || 'Failed to toggle status', 'error');
+    }
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+window.toggleTeamAdminStatus = toggleTeamAdminStatus;
+
+// 15. Quick Password Reset Modal Handlers
+function openQuickPasswordResetModal(userId, username) {
+  const inpId = document.getElementById('qpr-user-id');
+  const label = document.getElementById('qpr-target-label');
+  const inpPass = document.getElementById('qpr-new-password');
+  if (inpId) inpId.value = userId;
+  if (label) label.textContent = `Reset credentials for @${username} (ID: ${userId})`;
+  if (inpPass) inpPass.value = '';
+  openModal('quickPasswordResetModal');
+}
+window.openQuickPasswordResetModal = openQuickPasswordResetModal;
+
+async function handleQuickPasswordResetSubmit(e) {
+  e.preventDefault();
+  const userId = document.getElementById('qpr-user-id')?.value;
+  const newPassword = document.getElementById('qpr-new-password')?.value;
+  const btn = document.getElementById('btn-qpr-submit');
+
+  if (!userId || !newPassword || newPassword.trim().length < 6) {
+    showToast('Password must be at least 6 characters', 'error');
+    return;
+  }
+
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Updating...';
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}/admin/reset-password`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ userId, newPassword: newPassword.trim() })
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast(data.message || 'Password updated successfully!', 'success');
+      closeModal('quickPasswordResetModal');
+    } else {
+      showToast(data.error || 'Failed to reset password', 'error');
+    }
+  } catch (err) {
+    showToast(err.message, 'error');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = 'Update & Enforce New Password';
+    }
+  }
+}
+window.handleQuickPasswordResetSubmit = handleQuickPasswordResetSubmit;

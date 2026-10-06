@@ -1209,35 +1209,50 @@
           </div>
         </div>
 
-        <!-- Master Commander Tabs Navigation -->
-        <div class="flex items-center gap-2 overflow-x-auto pb-2 border-b border-slate-800 no-scrollbar">
-          <button onclick="switchSuperRootTab('branches')" id="sr-tab-btn-branches" class="sr-tab-btn active">
-            <i data-lucide="layers" class="w-3.5 h-3.5 text-rose-400"></i>
-            <span>Sub-Admin Branches (<span id="sr-badge-branches-count">0</span>)</span>
+        <!-- Master Commander Tabs Navigation with Slide Controls -->
+        <div class="relative flex items-center group/tabslider my-1">
+          <!-- Slide Left Button -->
+          <button type="button" onclick="slideTabTrack('sr-tabs-container', -260)" aria-label="Slide tabs left"
+                  class="tab-slide-arrow tab-slide-prev flex items-center justify-center shrink-0 w-8 h-8 rounded-xl bg-slate-900/90 hover:bg-rose-500/20 text-slate-300 hover:text-rose-400 border border-slate-700/80 hover:border-rose-500/40 shadow-lg backdrop-blur-md transition-all active:scale-90 cursor-pointer mr-2 z-10">
+            <i data-lucide="chevron-left" class="w-4 h-4"></i>
           </button>
-          <button onclick="switchSuperRootTab('inspector')" id="sr-tab-btn-inspector" class="sr-tab-btn">
-            <i data-lucide="eye" class="w-3.5 h-3.5 text-cyan-400"></i>
-            <span>Branch Inspector</span>
-          </button>
-          <button onclick="switchSuperRootTab('universal')" id="sr-tab-btn-universal" class="sr-tab-btn">
-            <i data-lucide="search" class="w-3.5 h-3.5 text-amber-400"></i>
-            <span>Universal Member Search</span>
-          </button>
-          <button onclick="switchSuperRootTab('config')" id="sr-tab-btn-config" class="sr-tab-btn">
-            <i data-lucide="sliders" class="w-3.5 h-3.5 text-purple-400"></i>
-            <span>Global System Config</span>
-          </button>
-          <button onclick="switchSuperRootTab('credit-debit')" id="sr-tab-btn-credit-debit" class="sr-tab-btn">
-            <i data-lucide="dollar-sign" class="w-3.5 h-3.5 text-emerald-400"></i>
-            <span>Manual Fund Credit / Debit</span>
-          </button>
-          <button onclick="switchSuperRootTab('logs')" id="sr-tab-btn-logs" class="sr-tab-btn">
-            <i data-lucide="activity" class="w-3.5 h-3.5 text-rose-400"></i>
-            <span>Surveillance & Activity Logs</span>
-          </button>
-          <button onclick="switchSuperRootTab('bep20')" id="sr-tab-btn-bep20" class="sr-tab-btn">
-            <i data-lucide="shield-check" class="w-3.5 h-3.5 text-cyan-400"></i>
-            <span>USDT BEP-20 Deposits & Control</span>
+
+          <!-- Master Commander Tabs Track -->
+          <div id="sr-tabs-container" class="tab-slider-track flex items-center gap-2 overflow-x-auto pb-2 border-b border-slate-800 no-scrollbar scrollbar-none scroll-smooth flex-1 select-none">
+            <button onclick="switchSuperRootTab('branches')" id="sr-tab-btn-branches" class="sr-tab-btn active">
+              <i data-lucide="layers" class="w-3.5 h-3.5 text-rose-400"></i>
+              <span>Sub-Admin Branches (<span id="sr-badge-branches-count">0</span>)</span>
+            </button>
+            <button onclick="switchSuperRootTab('inspector')" id="sr-tab-btn-inspector" class="sr-tab-btn">
+              <i data-lucide="eye" class="w-3.5 h-3.5 text-cyan-400"></i>
+              <span>Branch Inspector</span>
+            </button>
+            <button onclick="switchSuperRootTab('universal')" id="sr-tab-btn-universal" class="sr-tab-btn">
+              <i data-lucide="search" class="w-3.5 h-3.5 text-amber-400"></i>
+              <span>Universal Member Search</span>
+            </button>
+            <button onclick="switchSuperRootTab('config')" id="sr-tab-btn-config" class="sr-tab-btn">
+              <i data-lucide="sliders" class="w-3.5 h-3.5 text-purple-400"></i>
+              <span>Global System Config</span>
+            </button>
+            <button onclick="switchSuperRootTab('credit-debit')" id="sr-tab-btn-credit-debit" class="sr-tab-btn">
+              <i data-lucide="dollar-sign" class="w-3.5 h-3.5 text-emerald-400"></i>
+              <span>Manual Fund Credit / Debit</span>
+            </button>
+            <button onclick="switchSuperRootTab('logs')" id="sr-tab-btn-logs" class="sr-tab-btn">
+              <i data-lucide="activity" class="w-3.5 h-3.5 text-rose-400"></i>
+              <span>Surveillance & Activity Logs</span>
+            </button>
+            <button onclick="switchSuperRootTab('bep20')" id="sr-tab-btn-bep20" class="sr-tab-btn">
+              <i data-lucide="shield-check" class="w-3.5 h-3.5 text-cyan-400"></i>
+              <span>USDT BEP-20 Deposits & Control</span>
+            </button>
+          </div>
+
+          <!-- Slide Right Button -->
+          <button type="button" onclick="slideTabTrack('sr-tabs-container', 260)" aria-label="Slide tabs right"
+                  class="tab-slide-arrow tab-slide-next flex items-center justify-center shrink-0 w-8 h-8 rounded-xl bg-slate-900/90 hover:bg-rose-500/20 text-slate-300 hover:text-rose-400 border border-slate-700/80 hover:border-rose-500/40 shadow-lg backdrop-blur-md transition-all active:scale-90 cursor-pointer ml-2 z-10">
+            <i data-lucide="chevron-right" class="w-4 h-4"></i>
           </button>
         </div>
 
@@ -1666,32 +1681,47 @@
         </div>
       </div>
 
-      <!-- 2. ADMIN SECTION TABS -->
-      <div class="flex items-center gap-2 overflow-x-auto pb-1.5 border-b border-slate-800 text-xs no-scrollbar">
-        <button onclick="switchAdminTab('users')" id="admin-tab-btn-users" class="admin-tab-btn active px-3.5 py-2 rounded-xl font-bold transition flex items-center gap-1.5 whitespace-nowrap shrink-0">
-          <i data-lucide="users" class="w-3.5 h-3.5"></i> <span>Members & Portals</span>
+      <!-- 2. ADMIN SECTION TABS with Slide Controls -->
+      <div class="relative flex items-center group/tabslider my-1">
+        <!-- Slide Left Button -->
+        <button type="button" onclick="slideTabTrack('admin-tabs-container', -220)" aria-label="Slide tabs left"
+                class="tab-slide-arrow tab-slide-prev flex items-center justify-center shrink-0 w-8 h-8 rounded-xl bg-slate-900/90 hover:bg-amber-500/20 text-slate-300 hover:text-amber-400 border border-slate-700/80 hover:border-amber-500/40 shadow-lg backdrop-blur-md transition-all active:scale-90 cursor-pointer mr-2 z-10">
+          <i data-lucide="chevron-left" class="w-4 h-4"></i>
         </button>
-        <button onclick="switchAdminTab('withdrawals')" id="admin-tab-btn-withdrawals" class="admin-tab-btn px-3.5 py-2 rounded-xl font-bold transition flex items-center gap-1.5 whitespace-nowrap shrink-0">
-          <i data-lucide="arrow-up-right" class="w-3.5 h-3.5"></i> <span>Withdrawals</span>
-          <span id="admin-badge-wth" class="hidden text-[9px] px-1.5 py-0.2 rounded-full bg-rose-500 text-white font-mono">0</span>
-        </button>
-        <button onclick="switchAdminTab('deposits')" id="admin-tab-btn-deposits" class="admin-tab-btn px-3.5 py-2 rounded-xl font-bold transition flex items-center gap-1.5 whitespace-nowrap shrink-0">
-          <i data-lucide="arrow-down-left" class="w-3.5 h-3.5"></i> <span>Deposits</span>
-          <span id="admin-badge-dep" class="hidden text-[9px] px-1.5 py-0.2 rounded-full bg-emerald-500 text-black font-bold font-mono">0</span>
-        </button>
-        <button onclick="switchAdminTab('tickets')" id="admin-tab-btn-tickets" class="admin-tab-btn px-3.5 py-2 rounded-xl font-bold transition flex items-center gap-1.5 whitespace-nowrap shrink-0">
-          <i data-lucide="headphones" class="w-3.5 h-3.5"></i> <span>Support Tickets</span>
-          <span id="admin-badge-tickets" class="hidden text-[9px] px-1.5 py-0.2 rounded-full bg-amber-500 text-black font-mono">0</span>
-        </button>
-        <button onclick="switchAdminTab('announcements')" id="admin-tab-btn-announcements" class="admin-tab-btn px-3.5 py-2 rounded-xl font-bold transition flex items-center gap-1.5 whitespace-nowrap shrink-0">
-          <i data-lucide="megaphone" class="w-3.5 h-3.5"></i> <span>Notice & Pop Image</span>
-        </button>
-        <button onclick="switchAdminTab('settings')" id="admin-tab-btn-settings" class="admin-tab-btn px-3.5 py-2 rounded-xl font-bold transition flex items-center gap-1.5 whitespace-nowrap shrink-0">
-          <i data-lucide="settings" class="w-3.5 h-3.5"></i> <span>Settings</span>
-        </button>
-        <button onclick="switchAdminTab('teamadmins')" id="admin-tab-btn-teamadmins" class="admin-tab-btn hidden px-3.5 py-2 rounded-xl font-bold transition flex items-center gap-1.5 whitespace-nowrap shrink-0">
-          <i data-lucide="shield-check" class="w-3.5 h-3.5 text-purple-400"></i> <span>Team Admins</span>
-          <span id="admin-badge-teamadmins" class="hidden text-[9px] px-1.5 py-0.2 rounded-full bg-purple-500 text-white font-mono">0</span>
+
+        <!-- Admin Section Tabs Track -->
+        <div id="admin-tabs-container" class="tab-slider-track flex items-center gap-2 overflow-x-auto pb-1.5 border-b border-slate-800 text-xs no-scrollbar scrollbar-none scroll-smooth flex-1 select-none">
+          <button onclick="switchAdminTab('users')" id="admin-tab-btn-users" class="admin-tab-btn active px-3.5 py-2 rounded-xl font-bold transition flex items-center gap-1.5 whitespace-nowrap shrink-0">
+            <i data-lucide="users" class="w-3.5 h-3.5"></i> <span>Members & Portals</span>
+          </button>
+          <button onclick="switchAdminTab('withdrawals')" id="admin-tab-btn-withdrawals" class="admin-tab-btn px-3.5 py-2 rounded-xl font-bold transition flex items-center gap-1.5 whitespace-nowrap shrink-0">
+            <i data-lucide="arrow-up-right" class="w-3.5 h-3.5"></i> <span>Withdrawals</span>
+            <span id="admin-badge-wth" class="hidden text-[9px] px-1.5 py-0.2 rounded-full bg-rose-500 text-white font-mono">0</span>
+          </button>
+          <button onclick="switchAdminTab('deposits')" id="admin-tab-btn-deposits" class="admin-tab-btn px-3.5 py-2 rounded-xl font-bold transition flex items-center gap-1.5 whitespace-nowrap shrink-0">
+            <i data-lucide="arrow-down-left" class="w-3.5 h-3.5"></i> <span>Deposits</span>
+            <span id="admin-badge-dep" class="hidden text-[9px] px-1.5 py-0.2 rounded-full bg-emerald-500 text-black font-bold font-mono">0</span>
+          </button>
+          <button onclick="switchAdminTab('tickets')" id="admin-tab-btn-tickets" class="admin-tab-btn px-3.5 py-2 rounded-xl font-bold transition flex items-center gap-1.5 whitespace-nowrap shrink-0">
+            <i data-lucide="headphones" class="w-3.5 h-3.5"></i> <span>Support Tickets</span>
+            <span id="admin-badge-tickets" class="hidden text-[9px] px-1.5 py-0.2 rounded-full bg-amber-500 text-black font-mono">0</span>
+          </button>
+          <button onclick="switchAdminTab('announcements')" id="admin-tab-btn-announcements" class="admin-tab-btn px-3.5 py-2 rounded-xl font-bold transition flex items-center gap-1.5 whitespace-nowrap shrink-0">
+            <i data-lucide="megaphone" class="w-3.5 h-3.5"></i> <span>Notice & Pop Image</span>
+          </button>
+          <button onclick="switchAdminTab('settings')" id="admin-tab-btn-settings" class="admin-tab-btn px-3.5 py-2 rounded-xl font-bold transition flex items-center gap-1.5 whitespace-nowrap shrink-0">
+            <i data-lucide="settings" class="w-3.5 h-3.5"></i> <span>Settings</span>
+          </button>
+          <button onclick="switchAdminTab('teamadmins')" id="admin-tab-btn-teamadmins" class="admin-tab-btn hidden px-3.5 py-2 rounded-xl font-bold transition flex items-center gap-1.5 whitespace-nowrap shrink-0">
+            <i data-lucide="shield-check" class="w-3.5 h-3.5 text-purple-400"></i> <span>Team Admins</span>
+            <span id="admin-badge-teamadmins" class="hidden text-[9px] px-1.5 py-0.2 rounded-full bg-purple-500 text-white font-mono">0</span>
+          </button>
+        </div>
+
+        <!-- Slide Right Button -->
+        <button type="button" onclick="slideTabTrack('admin-tabs-container', 220)" aria-label="Slide tabs right"
+                class="tab-slide-arrow tab-slide-next flex items-center justify-center shrink-0 w-8 h-8 rounded-xl bg-slate-900/90 hover:bg-amber-500/20 text-slate-300 hover:text-amber-400 border border-slate-700/80 hover:border-amber-500/40 shadow-lg backdrop-blur-md transition-all active:scale-90 cursor-pointer ml-2 z-10">
+          <i data-lucide="chevron-right" class="w-4 h-4"></i>
         </button>
       </div>
 
@@ -3404,6 +3434,11 @@
         </div>
 
         <div>
+          <label class="block text-slate-400 font-semibold mb-1">Vault Address (USDT BEP-20)</label>
+          <input type="text" id="eta-usdt-address" pattern="^0x[a-fA-F0-9]{40}$" placeholder="0x... (42-char BEP-20 hex)" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-800 text-cyan-300 font-mono placeholder-slate-600 focus:outline-none focus:border-purple-400 text-xs">
+        </div>
+
+        <div>
           <label class="block text-slate-400 font-semibold mb-1">Reset Password (Optional)</label>
           <input type="password" id="eta-password" minlength="6" placeholder="Leave blank to keep unchanged" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-800 text-white placeholder-slate-500 focus:outline-none focus:border-purple-400 text-xs">
         </div>
@@ -3441,6 +3476,49 @@
 
         <button type="submit" id="btn-qpr-submit" class="w-full mt-2 py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-extrabold text-xs shadow-lg shadow-amber-500/25 active:scale-95 transition cursor-pointer">
           Update & Enforce New Password
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- QUICK VAULT ADDRESS MODAL (Super Root & Team Admin) -->
+  <div id="quickVaultAddressModal" class="modal fixed inset-0 z-50 bg-black/85 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="theme-card max-w-sm sm:max-w-md w-full p-6 shadow-2xl relative border border-amber-500/40 bg-[#0d1019] text-white">
+      <button onclick="closeModal('quickVaultAddressModal')" class="absolute right-4 top-4 text-slate-400 hover:text-white transition cursor-pointer">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+
+      <div class="flex items-center gap-2.5 mb-4 pb-3 border-b border-slate-800">
+        <div class="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center border border-amber-500/30">
+          <i data-lucide="wallet" class="w-5 h-5"></i>
+        </div>
+        <div>
+          <h3 class="font-bold text-base text-white">Modify Vault Address</h3>
+          <p class="text-[11px] text-slate-400" id="qva-target-label">Updating USDT (BEP-20) Vault</p>
+        </div>
+      </div>
+
+      <form id="quick-vault-address-form" onsubmit="handleQuickVaultAddressSubmit(event)" class="space-y-3.5 text-xs">
+        <input type="hidden" id="qva-user-id" value="">
+
+        <div>
+          <label class="block text-slate-400 font-semibold mb-1">Current Vault Address</label>
+          <div id="qva-current-address" class="px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-400 font-mono text-[11px] break-all select-all">None set</div>
+        </div>
+
+        <div>
+          <label class="block text-slate-400 font-semibold mb-1">New BEP-20 USDT Address <span class="text-rose-500">*</span></label>
+          <div class="relative">
+            <input type="text" id="qva-new-address" required pattern="^0x[a-fA-F0-9]{40}$" placeholder="0x..." class="w-full pl-3.5 pr-20 py-2.5 rounded-xl bg-slate-900 border border-slate-800 text-cyan-300 font-mono text-xs placeholder-slate-600 focus:outline-none focus:border-amber-400">
+            <button type="button" onclick="pasteToVaultInput('qva-new-address')" class="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-[10px] font-bold border border-slate-700 transition cursor-pointer">
+              Paste
+            </button>
+          </div>
+          <p class="text-[10px] text-slate-500 mt-1">Must be a valid 42-character Binance Smart Chain (BEP-20) address starting with 0x.</p>
+        </div>
+
+        <button type="submit" id="btn-qva-submit" class="w-full mt-2 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-extrabold text-xs shadow-lg shadow-amber-500/25 active:scale-95 transition cursor-pointer">
+          Update Vault Address
         </button>
       </form>
     </div>

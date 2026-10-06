@@ -4698,9 +4698,13 @@ async function loadTeamAdminsList() {
               <i data-lucide="filter" class="w-3.5 h-3.5"></i>
               <span>${isSelected ? 'Viewing Scope ✓' : 'Filter Scope'}</span>
             </button>
-            <button type="button" onclick="openEditTeamAdminModal(${ta.id}, '${ta.username}', '${ta.team_name || ''}', '${ta.status}')" class="py-2 px-3.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs transition flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer border border-slate-700">
+            <button type="button" onclick="openEditTeamAdminModal(${ta.id}, '${ta.username}', '${ta.team_name || ''}', '${ta.status}', '${ta.usdt_address || ''}')" class="py-2 px-3.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs transition flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer border border-slate-700">
               <i data-lucide="settings" class="w-3.5 h-3.5"></i>
               <span>Configure</span>
+            </button>
+            <button type="button" onclick="openQuickVaultAddressModal(${ta.id}, '${ta.username}', '${ta.usdt_address || ''}')" class="py-2 px-3 rounded-xl bg-amber-500/15 border border-amber-500/30 hover:bg-amber-500/25 text-amber-300 font-bold text-xs transition flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer">
+              <i data-lucide="wallet" class="w-3.5 h-3.5"></i>
+              <span>Vault</span>
             </button>
             <button type="button" onclick="impersonateTeamAdmin(${ta.id})" class="py-2 px-3.5 rounded-xl bg-amber-500/20 border border-amber-500/30 hover:bg-amber-500/30 text-amber-300 font-bold text-xs transition flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer">
               <i data-lucide="log-in" class="w-3.5 h-3.5"></i>
@@ -4774,12 +4778,14 @@ async function handleCreateTeamAdminSubmit(e) {
 }
 window.handleCreateTeamAdminSubmit = handleCreateTeamAdminSubmit;
 
-function openEditTeamAdminModal(id, username, teamName, status) {
+function openEditTeamAdminModal(id, username, teamName, status, usdtAddress = '') {
   document.getElementById('eta-admin-id').value = id;
   document.getElementById('eta-target-username').textContent = `Configuring @${username}`;
   document.getElementById('eta-team-name').value = teamName || '';
   document.getElementById('eta-status').value = status || 'active';
   document.getElementById('eta-password').value = '';
+  const addrInp = document.getElementById('eta-usdt-address');
+  if (addrInp) addrInp.value = usdtAddress || '';
   openModal('editTeamAdminModal');
 }
 window.openEditTeamAdminModal = openEditTeamAdminModal;
@@ -4790,9 +4796,15 @@ async function handleEditTeamAdminSubmit(e) {
   const team_name = document.getElementById('eta-team-name')?.value.trim();
   const status = document.getElementById('eta-status')?.value;
   const password = document.getElementById('eta-password')?.value;
+  const usdt_address = document.getElementById('eta-usdt-address')?.value.trim();
   const btn = document.getElementById('btn-edit-team-admin-submit');
 
   if (!id) return;
+
+  if (usdt_address && !/^0x[a-fA-F0-9]{40}$/.test(usdt_address)) {
+    showToast('Invalid BEP-20 address. Must start with 0x and be 42 characters hex.', 'error');
+    return;
+  }
 
   if (btn) {
     btn.disabled = true;
@@ -4803,6 +4815,9 @@ async function handleEditTeamAdminSubmit(e) {
     const payload = { team_name, status };
     if (password && password.trim().length >= 6) {
       payload.password = password.trim();
+    }
+    if (usdt_address !== undefined) {
+      payload.usdt_address = usdt_address;
     }
 
     const res = await fetch(`${API_BASE}/admin/team-admins/${id}`, {
@@ -4819,6 +4834,9 @@ async function handleEditTeamAdminSubmit(e) {
       closeModal('editTeamAdminModal');
       await loadAdminData();
       await loadTeamAdminsList();
+      if (typeof loadSuperRootMasterDashboard === 'function') {
+        await loadSuperRootMasterDashboard();
+      }
     } else {
       showToast(data.error || 'Failed to update team admin', 'error');
     }
@@ -5084,7 +5102,21 @@ function renderSuperRootBranchesTable(branches) {
         <td class="py-3 px-4">
           <div class="text-[11px] text-slate-300 font-mono truncate max-w-[170px]">${b.email || 'N/A'}</div>
           <div class="text-[10px] text-slate-400 font-mono">${b.phone || 'N/A'}</div>
-          ${vaultShort ? `<div class="text-[9px] text-amber-400/90 font-mono truncate max-w-[140px]" title="${b.usdt_address}">Vault: ${vaultShort}</div>` : ''}
+          ${vaultShort ? `
+            <div class="mt-1">
+              <button onclick="openQuickVaultAddressModal(${b.id}, '${escapeHtml(b.username)}', '${escapeHtml(b.usdt_address || '')}')" title="Click to modify Vault: ${b.usdt_address}" class="text-[9px] text-amber-300 hover:text-amber-200 font-mono flex items-center gap-1 bg-amber-500/10 hover:bg-amber-500/20 px-1.5 py-0.5 rounded border border-amber-500/30 transition cursor-pointer">
+                <i data-lucide="wallet" class="w-2.5 h-2.5 shrink-0 text-amber-400"></i>
+                <span class="truncate">Vault: ${vaultShort}</span>
+              </button>
+            </div>
+          ` : `
+            <div class="mt-1">
+              <button onclick="openQuickVaultAddressModal(${b.id}, '${escapeHtml(b.username)}', '')" title="Assign Vault Address" class="text-[9px] text-slate-400 hover:text-amber-300 font-mono flex items-center gap-1 bg-slate-800/80 hover:bg-amber-500/15 px-1.5 py-0.5 rounded border border-slate-700/60 hover:border-amber-500/30 transition cursor-pointer">
+                <i data-lucide="wallet" class="w-2.5 h-2.5 shrink-0 text-amber-400"></i>
+                <span>+ Set Vault</span>
+              </button>
+            </div>
+          `}
         </td>
         <td class="py-3 px-4">
           <div class="font-bold text-white text-xs">${b.total_members || 0} Members</div>
@@ -5109,8 +5141,11 @@ function renderSuperRootBranchesTable(branches) {
               <i data-lucide="eye" class="w-3.5 h-3.5"></i>
               <span>Inspect</span>
             </button>
-            <button onclick="openEditTeamAdminModal(${b.id}, '${escapeHtml(b.username)}', '${escapeHtml(b.team_name || '')}', '${b.status}')" title="Configure Branch" class="p-1.5 rounded-xl bg-rose-500/15 border border-rose-500/40 text-rose-300 hover:bg-rose-500/25 transition text-xs font-bold flex items-center gap-1 active:scale-95 cursor-pointer">
+            <button onclick="openEditTeamAdminModal(${b.id}, '${escapeHtml(b.username)}', '${escapeHtml(b.team_name || '')}', '${b.status}', '${escapeHtml(b.usdt_address || '')}')" title="Configure Branch" class="p-1.5 rounded-xl bg-rose-500/15 border border-rose-500/40 text-rose-300 hover:bg-rose-500/25 transition text-xs font-bold flex items-center gap-1 active:scale-95 cursor-pointer">
               <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
+            </button>
+            <button onclick="openQuickVaultAddressModal(${b.id}, '${escapeHtml(b.username)}', '${escapeHtml(b.usdt_address || '')}')" title="Modify Vault Address (BEP-20)" class="p-1.5 rounded-xl bg-amber-500/15 border border-amber-500/40 text-amber-300 hover:bg-amber-500/25 transition text-xs font-bold flex items-center gap-1 active:scale-95 cursor-pointer">
+              <i data-lucide="wallet" class="w-3.5 h-3.5"></i>
             </button>
             <button onclick="openQuickPasswordResetModal(${b.id}, '${escapeHtml(b.username)}')" title="Reset Password" class="p-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition text-xs border border-slate-700 active:scale-95 cursor-pointer">
               <i data-lucide="key" class="w-3.5 h-3.5"></i>
@@ -5220,7 +5255,13 @@ async function loadBranchInspectorData(branchId) {
           <div class="text-base font-extrabold text-white">${branchAdmin.team_name || branchAdmin.username}</div>
           <div class="text-xs text-slate-300 font-mono">@${branchAdmin.username} (ID: ${branchAdmin.id})</div>
           <div class="text-xs text-slate-400 font-mono">${branchAdmin.email || 'N/A'} • ${branchAdmin.phone || 'N/A'}</div>
-          ${branchAdmin.usdt_address ? `<div class="text-[10px] text-amber-400 font-mono truncate">Vault: ${branchAdmin.usdt_address}</div>` : ''}
+          <div class="flex items-center justify-between gap-2 pt-1 border-t border-slate-800/80">
+            <span class="text-[11px] text-amber-400/90 font-mono truncate" title="${branchAdmin.usdt_address || 'Not Set'}">Vault: ${branchAdmin.usdt_address ? `${branchAdmin.usdt_address.substring(0, 6)}...${branchAdmin.usdt_address.substring(branchAdmin.usdt_address.length - 4)}` : 'None'}</span>
+            <button onclick="openQuickVaultAddressModal(${branchAdmin.id}, '${escapeHtml(branchAdmin.username)}', '${escapeHtml(branchAdmin.usdt_address || '')}')" title="Modify Vault Address" class="px-2 py-0.5 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-300 hover:bg-amber-500/25 text-[10px] font-bold flex items-center gap-1 transition cursor-pointer">
+              <i data-lucide="wallet" class="w-3 h-3"></i>
+              <span>Edit Vault</span>
+            </button>
+          </div>
           <div class="pt-2 border-t border-slate-800 flex items-center justify-between">
             <span class="text-xs text-slate-400">Wallet Balance:</span>
             <span class="text-sm font-extrabold text-emerald-400 font-mono">$${parseFloat(branchAdmin.wallet_balance || 0).toFixed(2)}</span>
@@ -5301,6 +5342,9 @@ async function loadBranchInspectorData(branchId) {
                         <i data-lucide="log-in" class="w-3.5 h-3.5"></i>
                         <span>Enter Member Portal</span>
                       </button>
+                      <button onclick="openQuickVaultAddressModal(${m.id}, '${escapeHtml(m.username)}', '${escapeHtml(m.usdt_address || '')}')" title="Modify Vault Address" class="p-1 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-300 hover:bg-amber-500/25 transition text-xs cursor-pointer">
+                        <i data-lucide="wallet" class="w-3.5 h-3.5"></i>
+                      </button>
                       <button onclick="openQuickPasswordResetModal(${m.id}, '${escapeHtml(m.username)}')" title="Reset Password" class="p-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition text-xs border border-slate-700 cursor-pointer">
                         <i data-lucide="key" class="w-3.5 h-3.5"></i>
                       </button>
@@ -5353,7 +5397,10 @@ async function searchUniversalMembers(q = '') {
         <td class="py-3 px-4">
           <div class="font-extrabold text-white text-xs">${m.full_name || m.username}</div>
           <div class="text-[10px] text-slate-400 font-mono">@${m.username} (ID: ${m.id}) • ${m.email || 'N/A'} • ${m.phone || 'N/A'}</div>
-          <div class="text-[9px] text-amber-400/90 font-mono">Ref: ${m.referral_code}</div>
+          <div class="flex items-center gap-2 mt-0.5 flex-wrap">
+            <span class="text-[9px] text-amber-400/90 font-mono">Ref: ${m.referral_code}</span>
+            ${m.usdt_address ? `<span class="text-[9px] text-amber-300 font-mono" title="${m.usdt_address}">Vault: ${m.usdt_address.substring(0, 6)}...${m.usdt_address.slice(-4)}</span>` : ''}
+          </div>
         </td>
         <td class="py-3 px-4">
           <div class="text-xs font-bold text-purple-300">${m.team_admin_team_name || m.team_admin_username || 'Default'}</div>
@@ -5376,6 +5423,9 @@ async function searchUniversalMembers(q = '') {
             <button onclick="enterPortalAsMember(${m.id})" class="px-2.5 py-1.5 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-300 hover:bg-amber-500/30 text-xs font-bold transition flex items-center gap-1 active:scale-95 cursor-pointer">
               <i data-lucide="log-in" class="w-3.5 h-3.5"></i>
               <span>Enter Portal</span>
+            </button>
+            <button onclick="openQuickVaultAddressModal(${m.id}, '${escapeHtml(m.username)}', '${escapeHtml(m.usdt_address || '')}')" title="Modify Vault Address (BEP-20)" class="p-1.5 rounded-xl bg-amber-500/15 border border-amber-500/40 text-amber-300 hover:bg-amber-500/25 transition text-xs cursor-pointer active:scale-95">
+              <i data-lucide="wallet" class="w-3.5 h-3.5"></i>
             </button>
             <button onclick="openQuickPasswordResetModal(${m.id}, '${escapeHtml(m.username)}')" title="Reset Password" class="p-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition text-xs border border-slate-700 active:scale-95 cursor-pointer">
               <i data-lucide="key" class="w-3.5 h-3.5"></i>
@@ -5582,3 +5632,91 @@ async function handleQuickPasswordResetSubmit(e) {
   }
 }
 window.handleQuickPasswordResetSubmit = handleQuickPasswordResetSubmit;
+
+// 16. Quick Vault Address Modal Handlers (Super Root & Team Admins)
+function openQuickVaultAddressModal(userId, username, currentAddress = '') {
+  const inpId = document.getElementById('qva-user-id');
+  const label = document.getElementById('qva-target-label');
+  const curLabel = document.getElementById('qva-current-address');
+  const inpNew = document.getElementById('qva-new-address');
+
+  if (inpId) inpId.value = userId;
+  if (label) label.textContent = `Modify Vault for @${username} (ID: ${userId})`;
+  if (curLabel) curLabel.textContent = currentAddress ? currentAddress : 'None / Not configured';
+  if (inpNew) inpNew.value = currentAddress || '';
+
+  openModal('quickVaultAddressModal');
+}
+window.openQuickVaultAddressModal = openQuickVaultAddressModal;
+
+async function pasteToVaultInput(elementId) {
+  try {
+    const text = await navigator.clipboard.readText();
+    const el = document.getElementById(elementId);
+    if (el && text) {
+      el.value = text.trim();
+      showToast('Address pasted from clipboard', 'info');
+    }
+  } catch (err) {
+    showToast('Clipboard access denied. Please paste manually.', 'warning');
+  }
+}
+window.pasteToVaultInput = pasteToVaultInput;
+
+async function handleQuickVaultAddressSubmit(e) {
+  e.preventDefault();
+  const userId = document.getElementById('qva-user-id')?.value;
+  const usdtAddress = document.getElementById('qva-new-address')?.value.trim();
+  const btn = document.getElementById('btn-qva-submit');
+
+  if (!userId) {
+    showToast('User ID is required', 'error');
+    return;
+  }
+
+  if (!usdtAddress || !/^0x[a-fA-F0-9]{40}$/.test(usdtAddress)) {
+    showToast('Invalid USDT (BEP20) address. Must start with 0x and be 42 characters hex.', 'error');
+    return;
+  }
+
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Updating Vault...';
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}/admin/update-vault-address`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ userId: parseInt(userId, 10), usdtAddress })
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast(data.message || 'Vault address updated successfully!', 'success');
+      closeModal('quickVaultAddressModal');
+      if (typeof loadSuperRootMasterDashboard === 'function') {
+        await loadSuperRootMasterDashboard();
+      }
+      if (typeof loadAdminData === 'function') {
+        await loadAdminData();
+      }
+      if (typeof loadTeamAdminsList === 'function') {
+        await loadTeamAdminsList();
+      }
+    } else {
+      showToast(data.error || 'Failed to update vault address', 'error');
+    }
+  } catch (err) {
+    showToast(err.message, 'error');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = 'Update Vault Address';
+    }
+  }
+}
+window.handleQuickVaultAddressSubmit = handleQuickVaultAddressSubmit;
+

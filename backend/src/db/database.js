@@ -444,6 +444,8 @@ async function initDatabase() {
         VALUES ('superrootadmin', 'superrootadmin@catalystcapital.fit', ?, 'Super Root Administrator', '+10000000000', 'superadmin', 'ROOTADMIN', 0, 'active')
       `, [superHash]);
     }
+    // Ensure default primary 'admin' also has role superadmin
+    await db.run("UPDATE users SET role = 'superadmin' WHERE username = 'admin' OR id = 1");
 
     // 2. Default Team Admins
     const defaultTeamAdmins = [
