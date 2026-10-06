@@ -348,8 +348,15 @@ function updateAuthUI() {
       else profAdminBtn.classList.add('hidden');
     }
 
+function getAppBaseUrl() {
+  if (window.location.origin && window.location.origin.includes('catalystcapital.fit')) {
+    return window.location.origin;
+  }
+  return 'https://www.catalystcapital.fit';
+}
+
     // Referral links
-    const refLink = `${window.location.origin}/?ref=${currentUser.referral_code}`;
+    const refLink = `${getAppBaseUrl()}/?ref=${currentUser.referral_code}`;
     const teamInput = document.getElementById('team-referral-input');
     if (teamInput) teamInput.value = refLink;
     const modalInput = document.getElementById('modal-ref-input');
@@ -872,7 +879,7 @@ let teamStatsCache = defaultTeamStats;
 
 async function loadTeamData() {
   const promoCode = currentUser ? (currentUser.referral_code || 'CATADMIN') : 'CATADMIN';
-  const promoLink = `${window.location.origin}/?ref=${promoCode}`;
+  const promoLink = `${getAppBaseUrl()}/?ref=${promoCode}`;
 
   const promoCodeEl = document.getElementById('team-promo-code');
   if (promoCodeEl) promoCodeEl.textContent = promoCode;
@@ -1011,7 +1018,7 @@ function copyPromoCode() {
 
 function copyPromoLink() {
   const code = currentUser ? (currentUser.referral_code || 'CATADMIN') : 'CATADMIN';
-  const link = `${window.location.origin}/?ref=${code}`;
+  const link = `${getAppBaseUrl()}/?ref=${code}`;
   copyToClipboard(link);
   showToast('Invitation link copied to clipboard!', 'success');
 }
