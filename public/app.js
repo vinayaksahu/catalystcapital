@@ -607,6 +607,9 @@ function navigate(viewName, updateHistory = true) {
   const targetView = document.getElementById(`view-${targetViewKey}`);
   if (targetView) targetView.classList.remove('hidden');
 
+  // Toggle admin active class on body for responsive container adaptation
+  document.body.classList.toggle('admin-view-active', viewName === 'admin');
+
   // Configure Login Page presentation based on adminlogin vs regular login
   const adminBadge = document.getElementById('login-admin-badge');
   const loginTitle = document.getElementById('login-page-title');
@@ -1838,46 +1841,61 @@ function renderAdminUsersList(users) {
   if (!container) return;
 
   if (!users || users.length === 0) {
-    container.innerHTML = `<div class="text-center py-6 text-slate-500">No members found</div>`;
+    container.innerHTML = `<div class="text-center py-8 text-slate-500 bg-slate-900/50 rounded-2xl border border-slate-800">No members found matching your search.</div>`;
     return;
   }
 
   container.innerHTML = users.map(u => `
-    <div class="p-3 rounded-2xl bg-slate-900 border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2 hover:border-slate-700 transition">
-      <div class="flex items-center gap-3">
-        <div class="w-9 h-9 rounded-full bg-gradient-to-tr from-amber-500 to-amber-700 text-black font-extrabold flex items-center justify-center shrink-0">
-          ${(u.full_name || u.username || 'U')[0].toUpperCase()}
+    <div class="p-3.5 sm:p-4 rounded-2xl bg-slate-900/90 border border-slate-800 hover:border-slate-700 transition space-y-3 shadow-md overflow-hidden">
+      <!-- Top Row: Avatar + User Info + Role/Status Badges -->
+      <div class="flex items-start justify-between gap-2.5">
+        <div class="flex items-center gap-2.5 min-w-0 flex-1">
+          <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-gradient-to-tr from-amber-500 to-amber-700 text-black font-black text-sm flex items-center justify-center shrink-0 shadow-sm">
+            ${(u.full_name || u.username || 'U')[0].toUpperCase()}
+          </div>
+          <div class="min-w-0 flex-1">
+            <div class="flex items-center gap-1.5 flex-wrap">
+              <span class="font-bold text-white text-xs sm:text-sm truncate max-w-[140px] sm:max-w-[200px]">${u.full_name || u.username}</span>
+              <span class="text-slate-400 font-mono text-[11px]">(@${u.username})</span>
+            </div>
+            <div class="text-[10px] text-slate-400 flex items-center gap-1.5 mt-0.5 flex-wrap font-mono">
+              <span>Ref: <strong class="text-amber-400">${u.referral_code}</strong></span>
+              <span class="text-slate-600">&bull;</span>
+              <span>Sponsor: <span class="text-slate-300">${u.sponsor_username ? '@' + u.sponsor_username : 'None'}</span></span>
+            </div>
+          </div>
         </div>
-        <div>
-          <div class="font-bold text-white flex items-center gap-1.5">
-            <span>${u.full_name || u.username}</span>
-            <span class="text-slate-400 font-mono text-[11px]">(@${u.username})</span>
-            <span class="text-[9px] uppercase px-1.5 py-0.2 rounded font-mono font-bold ${u.role === 'admin' ? 'bg-amber-500/20 text-amber-400' : 'bg-slate-800 text-cyan-400'}">${u.role}</span>
-          </div>
-          <div class="text-[10px] text-slate-400 flex items-center gap-2 mt-0.5">
-            <span>Ref: <strong class="text-amber-400 font-mono">${u.referral_code}</strong></span>
-            <span>&bull;</span>
-            <span>Sponsor: ${u.sponsor_username ? '@' + u.sponsor_username : 'None'}</span>
-            <span>&bull;</span>
-            <span class="${u.status === 'active' ? 'text-emerald-400' : 'text-rose-400'} font-semibold uppercase">${u.status}</span>
-          </div>
+        <div class="flex flex-col items-end gap-1 shrink-0">
+          <span class="text-[9px] uppercase px-2 py-0.5 rounded font-mono font-bold ${u.role === 'admin' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'bg-slate-800 text-cyan-400 border border-slate-700'}">${u.role}</span>
+          <span class="text-[9px] uppercase px-1.5 py-0.5 rounded font-bold ${u.status === 'active' ? 'text-emerald-400' : 'text-rose-400'} flex items-center gap-1">
+            <span class="w-1.5 h-1.5 rounded-full ${u.status === 'active' ? 'bg-emerald-400' : 'bg-rose-400'}"></span>
+            ${u.status}
+          </span>
         </div>
       </div>
 
-      <div class="flex items-center justify-between sm:justify-end gap-2.5 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-800">
-        <div class="text-left sm:text-right">
-          <div class="text-[10px] text-slate-400">Recharge / Active Invest</div>
-          <div class="font-bold font-mono text-cyan-300 text-xs">$${(u.wallet_balance || 0).toFixed(2)} / <span class="text-emerald-400">$${(u.active_invested || 0).toFixed(2)}</span></div>
+      <!-- Financial Metrics Grid -->
+      <div class="grid grid-cols-2 gap-2 p-2.5 rounded-xl bg-slate-950/60 border border-slate-800/80 text-[11px]">
+        <div>
+          <div class="text-[10px] text-slate-400 font-medium">Recharge Balance</div>
+          <div class="font-bold font-mono text-cyan-300 text-xs sm:text-sm mt-0.5">$${(u.wallet_balance || 0).toFixed(2)}</div>
         </div>
+        <div class="text-right">
+          <div class="text-[10px] text-slate-400 font-medium">Active Investment</div>
+          <div class="font-bold font-mono text-emerald-400 text-xs sm:text-sm mt-0.5">$${(u.active_invested || 0).toFixed(2)}</div>
+        </div>
+      </div>
 
-        <div class="flex items-center gap-1.5">
-          <button onclick="inspectAdminUser(${u.id})" class="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px] font-bold transition flex items-center gap-1" title="View Portfolio & Adjust">
-            <i data-lucide="eye" class="w-3.5 h-3.5"></i> Inspect
-          </button>
-          <button onclick="adminImpersonateUser(${u.id})" class="px-2.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black text-[11px] font-bold transition flex items-center gap-1 shadow-sm shadow-amber-500/20 cursor-pointer" title="Open member's live portal directly">
-            <i data-lucide="external-link" class="w-3.5 h-3.5"></i> Open Portal
-          </button>
-        </div>
+      <!-- Actions Bar: Equal Width, Always within card container -->
+      <div class="flex items-center gap-2 pt-1 border-t border-slate-800/80">
+        <button onclick="inspectAdminUser(${u.id})" class="flex-1 py-2 px-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition flex items-center justify-center gap-1.5 border border-slate-700 cursor-pointer active:scale-95" title="View Portfolio & Adjust">
+          <i data-lucide="eye" class="w-3.5 h-3.5 text-amber-400"></i>
+          <span>Inspect</span>
+        </button>
+        <button onclick="adminImpersonateUser(${u.id})" class="flex-1 py-2 px-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black text-xs font-black transition flex items-center justify-center gap-1.5 shadow-md shadow-amber-500/20 cursor-pointer active:scale-95" title="Open member's live portal directly">
+          <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
+          <span>Open Portal</span>
+        </button>
       </div>
     </div>
   `).join('');
@@ -2063,40 +2081,50 @@ async function loadAdminWithdrawals() {
 
   if (withData.success && withData.withdrawals && withData.withdrawals.length > 0) {
     withContainer.innerHTML = withData.withdrawals.map(w => `
-      <div class="p-3 rounded-2xl bg-slate-900 border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-        <div>
-          <div class="font-bold text-white flex items-center gap-2">
-            <span>#${w.id} &bull; ${w.full_name || w.username}</span>
-            <span class="text-slate-400 font-mono text-[11px]">(@${w.username})</span>
-          </div>
-          <div class="text-[10px] text-slate-400 font-mono mt-0.5 flex items-center gap-2">
-            <span>Address: <strong class="text-slate-200">${w.usdt_address}</strong></span>
-            <span>&bull;</span>
-            <span>Date: ${new Date(w.created_at).toLocaleString()}</span>
-          </div>
-        </div>
-
-        <div class="flex items-center justify-between sm:justify-end gap-3 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-800">
-          <div class="text-right">
-            <div class="font-bold text-rose-400 font-mono text-sm">$${parseFloat(w.amount).toFixed(2)} USDT</div>
-            <span class="text-[9px] uppercase px-1.5 py-0.2 rounded font-bold font-mono ${w.status === 'approved' ? 'bg-emerald-500/20 text-emerald-400' : (w.status === 'rejected' ? 'bg-rose-500/20 text-rose-400' : 'bg-amber-500/20 text-amber-400')}">${w.status}</span>
-          </div>
-
-          ${w.status === 'pending' ? `
-            <div class="flex items-center gap-1.5">
-              <button onclick="approveWithdrawal(${w.id})" class="px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs transition cursor-pointer">
-                Approve
-              </button>
-              <button onclick="rejectWithdrawal(${w.id})" class="px-2.5 py-1.5 rounded-xl bg-rose-500/20 border border-rose-500/40 hover:bg-rose-500/30 text-rose-400 font-bold text-xs transition cursor-pointer">
-                Reject
-              </button>
+      <div class="p-3.5 sm:p-4 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-2.5 hover:border-slate-700 transition shadow-md overflow-hidden">
+        <div class="flex items-start justify-between gap-2">
+          <div>
+            <div class="font-bold text-white text-xs flex items-center gap-1.5 flex-wrap">
+              <span>#${w.id}</span>
+              <span class="text-slate-600">&bull;</span>
+              <span>${w.full_name || w.username}</span>
+              <span class="text-slate-400 font-mono text-[11px]">(@${w.username})</span>
             </div>
-          ` : ''}
+            <div class="text-[10px] text-slate-400 font-mono mt-0.5">
+              ${new Date(w.created_at).toLocaleString()}
+            </div>
+          </div>
+          <div class="text-right shrink-0">
+            <div class="font-bold text-rose-400 font-mono text-sm sm:text-base">$${parseFloat(w.amount).toFixed(2)} USDT</div>
+            <span class="text-[9px] uppercase px-2 py-0.5 rounded font-bold font-mono inline-block mt-0.5 ${w.status === 'approved' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : (w.status === 'rejected' ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30' : 'bg-amber-500/20 text-amber-400 border border-amber-500/30')}">${w.status}</span>
+          </div>
         </div>
+
+        <div class="p-2.5 rounded-xl bg-slate-950/60 border border-slate-800/80 text-[11px] font-mono">
+          <div class="text-[10px] text-slate-400 flex items-center justify-between">
+            <span>Destination Address:</span>
+            <span class="text-slate-500 text-[9px]">BEP-20 / TRC-20</span>
+          </div>
+          <div class="text-slate-200 font-bold break-all select-all mt-1 text-[11px]">${w.usdt_address || 'No address provided'}</div>
+        </div>
+
+        ${w.status === 'pending' ? `
+          <div class="flex items-center gap-2 pt-1 border-t border-slate-800/80">
+            <button onclick="approveWithdrawal(${w.id})" class="flex-1 py-2 px-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs transition flex items-center justify-center gap-1.5 cursor-pointer shadow-sm shadow-emerald-500/20 active:scale-95">
+              <i data-lucide="check-circle-2" class="w-3.5 h-3.5"></i>
+              <span>Approve Payout</span>
+            </button>
+            <button onclick="rejectWithdrawal(${w.id})" class="flex-1 py-2 px-3 rounded-xl bg-rose-500/20 border border-rose-500/40 hover:bg-rose-500/30 text-rose-400 font-bold text-xs transition flex items-center justify-center gap-1.5 cursor-pointer active:scale-95">
+              <i data-lucide="x-circle" class="w-3.5 h-3.5"></i>
+              <span>Reject</span>
+            </button>
+          </div>
+        ` : ''}
       </div>
     `).join('');
+    if (window.lucide) lucide.createIcons();
   } else {
-    withContainer.innerHTML = `<div class="text-center py-6 text-slate-500">No withdrawal requests found</div>`;
+    withContainer.innerHTML = `<div class="text-center py-8 text-slate-500 bg-slate-900/50 rounded-2xl border border-slate-800">No withdrawal requests found</div>`;
   }
 }
 
@@ -2160,42 +2188,50 @@ async function loadAdminDeposits() {
 
   if (depData.success && depData.deposits && depData.deposits.length > 0) {
     depContainer.innerHTML = depData.deposits.map(d => `
-      <div class="p-3 rounded-2xl bg-slate-900 border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-        <div>
-          <div class="font-bold text-white flex items-center gap-2">
-            <span>#${d.id} &bull; ${d.full_name || d.username}</span>
-            <span class="text-slate-400 font-mono text-[11px]">(@${d.username})</span>
-          </div>
-          <div class="text-[10px] text-slate-400 font-mono mt-0.5">
-            <span>Hash: <strong class="text-slate-200">${d.tx_hash || 'Internal Credit'}</strong></span>
-            <span>&bull;</span>
-            <span>Network: ${d.network || 'USDT'}</span>
-            <span>&bull;</span>
-            <span>${new Date(d.created_at).toLocaleString()}</span>
-          </div>
-        </div>
-
-        <div class="flex items-center justify-between sm:justify-end gap-3 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-800">
-          <div class="text-right">
-            <div class="font-bold text-emerald-400 font-mono text-sm">+$${parseFloat(d.amount).toFixed(2)} USDT</div>
-            <span class="text-[9px] uppercase px-1.5 py-0.2 rounded font-bold font-mono ${d.status === 'completed' ? 'bg-emerald-500/20 text-emerald-400' : (d.status === 'rejected' ? 'bg-rose-500/20 text-rose-400' : 'bg-amber-500/20 text-amber-400')}">${d.status}</span>
-          </div>
-
-          ${d.status === 'pending' ? `
-            <div class="flex items-center gap-1.5">
-              <button onclick="approveDeposit(${d.id})" class="px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs transition cursor-pointer">
-                Approve
-              </button>
-              <button onclick="rejectDeposit(${d.id})" class="px-2.5 py-1.5 rounded-xl bg-rose-500/20 border border-rose-500/40 hover:bg-rose-500/30 text-rose-400 font-bold text-xs transition cursor-pointer">
-                Reject
-              </button>
+      <div class="p-3.5 sm:p-4 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-2.5 hover:border-slate-700 transition shadow-md overflow-hidden">
+        <div class="flex items-start justify-between gap-2">
+          <div>
+            <div class="font-bold text-white text-xs flex items-center gap-1.5 flex-wrap">
+              <span>#${d.id}</span>
+              <span class="text-slate-600">&bull;</span>
+              <span>${d.full_name || d.username}</span>
+              <span class="text-slate-400 font-mono text-[11px]">(@${d.username})</span>
             </div>
-          ` : ''}
+            <div class="text-[10px] text-slate-400 font-mono mt-0.5">
+              ${new Date(d.created_at).toLocaleString()}
+            </div>
+          </div>
+          <div class="text-right shrink-0">
+            <div class="font-bold text-emerald-400 font-mono text-sm sm:text-base">+$${parseFloat(d.amount).toFixed(2)} USDT</div>
+            <span class="text-[9px] uppercase px-2 py-0.5 rounded font-bold font-mono inline-block mt-0.5 ${d.status === 'completed' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : (d.status === 'rejected' ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30' : 'bg-amber-500/20 text-amber-400 border border-amber-500/30')}">${d.status}</span>
+          </div>
         </div>
+
+        <div class="p-2.5 rounded-xl bg-slate-950/60 border border-slate-800/80 text-[11px] font-mono">
+          <div class="text-[10px] text-slate-400 flex items-center justify-between">
+            <span>Tx Hash / Reference:</span>
+            <span class="text-cyan-400 text-[10px] font-bold">${d.network || 'USDT'}</span>
+          </div>
+          <div class="text-slate-200 font-bold break-all select-all mt-1 text-[11px]">${d.tx_hash || 'Internal Admin Credit'}</div>
+        </div>
+
+        ${d.status === 'pending' ? `
+          <div class="flex items-center gap-2 pt-1 border-t border-slate-800/80">
+            <button onclick="approveDeposit(${d.id})" class="flex-1 py-2 px-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs transition flex items-center justify-center gap-1.5 cursor-pointer shadow-sm shadow-emerald-500/20 active:scale-95">
+              <i data-lucide="check-circle-2" class="w-3.5 h-3.5"></i>
+              <span>Approve & Credit</span>
+            </button>
+            <button onclick="rejectDeposit(${d.id})" class="flex-1 py-2 px-3 rounded-xl bg-rose-500/20 border border-rose-500/40 hover:bg-rose-500/30 text-rose-400 font-bold text-xs transition flex items-center justify-center gap-1.5 cursor-pointer active:scale-95">
+              <i data-lucide="x-circle" class="w-3.5 h-3.5"></i>
+              <span>Reject</span>
+            </button>
+          </div>
+        ` : ''}
       </div>
     `).join('');
+    if (window.lucide) lucide.createIcons();
   } else {
-    depContainer.innerHTML = `<div class="text-center py-6 text-slate-500">No deposit records found</div>`;
+    depContainer.innerHTML = `<div class="text-center py-8 text-slate-500 bg-slate-900/50 rounded-2xl border border-slate-800">No deposit records found</div>`;
   }
 }
 
@@ -2308,36 +2344,41 @@ async function loadAdminTickets() {
 
   if (data.success && data.tickets && data.tickets.length > 0) {
     container.innerHTML = data.tickets.map(t => `
-      <div class="p-3.5 rounded-2xl bg-slate-900 border border-slate-800 space-y-2">
-        <div class="flex items-center justify-between">
-          <div class="font-bold text-white flex items-center gap-2">
-            <span>#${t.id} &bull; ${t.subject}</span>
-            <span class="text-[10px] px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-400 font-mono">${t.category}</span>
+      <div class="p-3.5 sm:p-4 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-2.5 hover:border-slate-700 transition shadow-md overflow-hidden">
+        <div class="flex items-start justify-between gap-2">
+          <div>
+            <div class="font-bold text-white text-xs flex items-center gap-2 flex-wrap">
+              <span>#${t.id} &bull; ${t.subject}</span>
+              <span class="text-[10px] px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-400 font-mono border border-cyan-500/30">${t.category}</span>
+            </div>
+            <div class="text-[10px] text-slate-400 font-mono mt-0.5">
+              By <strong class="text-slate-200">@${t.username}</strong> &bull; ${new Date(t.created_at).toLocaleString()}
+            </div>
           </div>
-          <span class="text-[9px] uppercase font-bold px-2 py-0.5 rounded ${t.status === 'open' ? 'bg-amber-500/20 text-amber-400' : 'bg-emerald-500/20 text-emerald-400'}">${t.status}</span>
+          <span class="text-[9px] uppercase font-bold px-2 py-0.5 rounded shrink-0 ${t.status === 'open' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'}">${t.status}</span>
         </div>
 
-        <div class="text-xs text-slate-300 bg-slate-950/60 p-2.5 rounded-xl border border-slate-800/80 whitespace-pre-line">
+        <div class="text-xs text-slate-300 bg-slate-950/60 p-2.5 rounded-xl border border-slate-800/80 whitespace-pre-line break-words">
           ${t.message}
         </div>
 
         ${t.admin_reply ? `
-          <div class="text-xs text-emerald-300 bg-emerald-950/20 p-2 rounded-xl border border-emerald-900/40">
-            <strong>Admin Reply:</strong> ${t.admin_reply}
+          <div class="text-xs text-emerald-300 bg-emerald-950/20 p-2.5 rounded-xl border border-emerald-900/40 break-words">
+            <strong class="text-emerald-400">Admin Reply:</strong> ${t.admin_reply}
           </div>
         ` : ''}
 
-        <div class="flex items-center justify-between pt-1 text-[10px] text-slate-400">
-          <span>By: <strong class="text-white">@${t.username}</strong> &bull; ${new Date(t.created_at).toLocaleString()}</span>
-          <button onclick="openAdminTicketReplyModal(${t.id}, '${escapeQuote(t.username)}', '${escapeQuote(t.category)}', '${escapeQuote(t.subject)}', '${escapeQuote(t.message)}')" class="px-3 py-1 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold transition flex items-center gap-1 cursor-pointer">
-            <i data-lucide="message-square" class="w-3 h-3"></i> Reply
+        <div class="flex items-center justify-end pt-1 border-t border-slate-800/80">
+          <button onclick="openAdminTicketReplyModal(${t.id}, '${escapeQuote(t.username)}', '${escapeQuote(t.category)}', '${escapeQuote(t.subject)}', '${escapeQuote(t.message)}')" class="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-extrabold text-xs transition flex items-center gap-1.5 cursor-pointer shadow-sm shadow-amber-500/20 active:scale-95">
+            <i data-lucide="message-square" class="w-3.5 h-3.5"></i>
+            <span>Reply to Member</span>
           </button>
         </div>
       </div>
     `).join('');
     if (window.lucide) lucide.createIcons();
   } else {
-    container.innerHTML = `<div class="text-center py-6 text-slate-500">No support tickets found</div>`;
+    container.innerHTML = `<div class="text-center py-8 text-slate-500 bg-slate-900/50 rounded-2xl border border-slate-800">No support tickets found</div>`;
   }
 }
 

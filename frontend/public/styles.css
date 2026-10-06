@@ -784,3 +784,48 @@ html:not(.dark) .official-guidance-card {
   margin-left: 2px;
 }
 
+/* ========================================================
+   ADMIN DASHBOARD RESPONSIVENESS & ALIGNMENT ENHANCEMENTS
+   ======================================================== */
+
+body.admin-view-active .mobile-shell {
+  max-width: 960px;
+  transition: max-width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+body.admin-view-active .bottom-nav-bar {
+  max-width: 960px;
+  transition: max-width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* No scrollbar utility */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Admin Tabs Styling */
+.admin-tab-btn {
+  white-space: nowrap;
+  flex-shrink: 0;
+  color: #94a3b8;
+  background-color: transparent;
+  border: 1px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.admin-tab-btn:hover {
+  color: #ffffff;
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.admin-tab-btn.active {
+  color: #f59e0b !important;
+  background-color: rgba(245, 158, 11, 0.15) !important;
+  border-color: rgba(245, 158, 11, 0.35) !important;
+}
+
+
