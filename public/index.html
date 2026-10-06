@@ -238,7 +238,7 @@
           <div class="flex items-center gap-2 overflow-hidden flex-1 mr-2">
             <i data-lucide="bell" class="w-4 h-4 text-amber-500 shrink-0"></i>
             <div class="ticker-wrap flex-1">
-              <span class="ticker-content text-[11px] text-slate-700 dark:text-slate-200 font-semibold">
+              <span id="home-ticker-text" class="ticker-content text-[11px] text-slate-700 dark:text-slate-200 font-semibold">
                 Welcome to the official Catalyst Capital trading platform &bull; High Frequency AI Trading &bull; Instant 0% Withdrawal Payouts &bull; Daily ROI Active &bull;
               </span>
             </div>
@@ -1119,6 +1119,9 @@
           <i data-lucide="headphones" class="w-3.5 h-3.5"></i> <span>Support Tickets</span>
           <span id="admin-badge-tickets" class="hidden text-[9px] px-1.5 py-0.2 rounded-full bg-amber-500 text-black font-mono">0</span>
         </button>
+        <button onclick="switchAdminTab('announcements')" id="admin-tab-btn-announcements" class="admin-tab-btn px-3.5 py-2 rounded-xl font-bold transition flex items-center gap-1.5 whitespace-nowrap shrink-0">
+          <i data-lucide="megaphone" class="w-3.5 h-3.5"></i> <span>Notice & Pop Image</span>
+        </button>
       </div>
 
       <!-- TAB 1: MEMBERS MANAGEMENT & IMPERSONATION -->
@@ -1174,6 +1177,87 @@
         </div>
         <div id="admin-tickets-list" class="space-y-2.5 text-xs">
           <div class="text-center py-6 text-slate-500">No support tickets found</div>
+        </div>
+      </div>
+
+      <!-- TAB 5: NOTICE & POPUP IMAGE MANAGER -->
+      <div id="admin-tab-content-announcements" class="hidden space-y-4">
+        <!-- 1. Scrolling Notification Text -->
+        <div class="p-4 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-3">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <i data-lucide="bell-ring" class="w-4 h-4 text-amber-400"></i>
+              <span class="text-xs font-bold text-white">Scrolling Header Notification Text</span>
+            </div>
+            <span class="text-[10px] text-slate-400">Shows in Member Ticker Capsule</span>
+          </div>
+
+          <p class="text-[11px] text-slate-400 leading-relaxed">
+            Member dashboard ke top me chalne wala ticker text yaha se change karein. Jo text aap likhenge wahi live scroll hoga.
+          </p>
+
+          <form onsubmit="handleSaveTickerNotice(event)" class="space-y-2.5">
+            <div>
+              <textarea id="admin-ticker-input" rows="3" required placeholder="Enter announcement text to scroll in member dashboard..." class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs placeholder-slate-500 focus:outline-none focus:border-amber-400 transition"></textarea>
+            </div>
+            <button type="submit" id="btn-save-ticker" class="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-extrabold text-xs transition shadow-md shadow-amber-500/20 active:scale-95 cursor-pointer">
+              Save Scrolling Notice
+            </button>
+          </form>
+        </div>
+
+        <!-- 2. Member Login Pop Image (Upload / URL / Toggle) -->
+        <div class="p-4 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-3">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <i data-lucide="image" class="w-4 h-4 text-cyan-400"></i>
+              <span class="text-xs font-bold text-white">Member Login Pop Image Announcement</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <label class="text-[11px] font-bold text-slate-300 cursor-pointer flex items-center gap-1.5">
+                <input type="checkbox" id="admin-popup-active-checkbox" class="w-4 h-4 accent-amber-500 rounded cursor-pointer">
+                <span>Enable Popup on Login</span>
+              </label>
+            </div>
+          </div>
+
+          <p class="text-[11px] text-slate-400 leading-relaxed">
+            Member panel me login karte hi screen par pop hone wali offer ya notice image upload karein (PNG / JPG / WebP).
+          </p>
+
+          <form onsubmit="handleSavePopupImage(event)" class="space-y-3 text-xs">
+            <div>
+              <label class="block text-slate-400 mb-1 font-semibold">Announcement Title / Caption</label>
+              <input type="text" id="admin-popup-title-input" placeholder="e.g. Mega Deposit Bonus & ROI Event!" class="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs focus:outline-none focus:border-cyan-400">
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
+              <div>
+                <label class="block text-slate-400 mb-1 font-semibold">Option A: Upload Image File</label>
+                <input type="file" id="admin-popup-file-input" accept="image/*" onchange="previewAdminPopupImageFile(this)" class="w-full text-slate-400 text-xs file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-cyan-500/20 file:text-cyan-300 hover:file:bg-cyan-500/30 cursor-pointer">
+              </div>
+
+              <div>
+                <label class="block text-slate-400 mb-1 font-semibold">Option B: Image Direct URL</label>
+                <input type="url" id="admin-popup-url-input" oninput="previewAdminPopupImageUrl(this.value)" placeholder="https://example.com/banner.png" class="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs focus:outline-none focus:border-cyan-400">
+              </div>
+            </div>
+
+            <!-- Image Live Preview Box -->
+            <div id="admin-popup-preview-box" class="hidden p-3 rounded-xl bg-black/60 border border-slate-800 flex flex-col items-center">
+              <span class="text-[10px] text-slate-400 uppercase tracking-wider mb-2 font-bold">Pop Image Live Preview</span>
+              <img id="admin-popup-preview-img" src="" alt="Popup Preview" class="max-h-56 max-w-full rounded-lg object-contain shadow-md">
+            </div>
+
+            <div class="flex items-center gap-2 pt-1">
+              <button type="submit" id="btn-save-popup" class="px-4 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-extrabold text-xs transition shadow-md shadow-cyan-500/20 active:scale-95 cursor-pointer">
+                Save & Update Pop Image
+              </button>
+              <button type="button" onclick="clearAdminPopupImage()" class="px-3 py-2 rounded-xl bg-rose-500/20 text-rose-300 border border-rose-500/30 hover:bg-rose-500/30 text-xs font-bold transition active:scale-95 cursor-pointer">
+                Remove Pop Image
+              </button>
+            </div>
+          </form>
         </div>
       </div>
     </main>
@@ -2423,10 +2507,37 @@
     </div>
   </div>
 
+  <!-- MEMBER LOGIN ANNOUNCEMENT POPUP MODAL (Admin Configured Pop Image) -->
+  <div id="memberLoginPopupModal" class="modal fixed inset-0 z-50 bg-black/90 backdrop-blur-md hidden items-center justify-center p-3 sm:p-4">
+    <div class="relative max-w-sm sm:max-w-md w-full bg-[#0d1017] border border-slate-800 rounded-3xl overflow-hidden shadow-2xl flex flex-col items-center animate-scale-up">
+      <!-- Close Button (X in circle) -->
+      <button onclick="closeModal('memberLoginPopupModal')" class="absolute right-3.5 top-3.5 z-20 w-8 h-8 rounded-full bg-black/70 hover:bg-black text-slate-300 hover:text-white flex items-center justify-center transition border border-white/10 cursor-pointer shadow-lg">
+        <i data-lucide="x" class="w-4 h-4"></i>
+      </button>
+
+      <!-- Header Title -->
+      <div class="w-full px-4 pt-4 pb-2 text-center">
+        <h4 id="login-popup-title" class="text-sm font-extrabold text-white tracking-wide">Important Announcement</h4>
+      </div>
+
+      <!-- Pop Image container -->
+      <div class="w-full p-3 flex items-center justify-center overflow-hidden">
+        <img id="login-popup-img" src="" alt="Announcement" class="max-h-[68vh] w-auto max-w-full rounded-2xl object-contain shadow-2xl border border-slate-800/80">
+      </div>
+
+      <!-- Footer action -->
+      <div class="w-full p-3 pt-1 flex justify-center pb-4">
+        <button onclick="closeModal('memberLoginPopupModal')" class="w-11/12 py-2.5 rounded-2xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-extrabold text-xs shadow-lg shadow-amber-500/20 active:scale-95 transition cursor-pointer">
+          Acknowledge & Continue
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- TOAST NOTIFICATION CONTAINER -->
   <div id="toast-container" class="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-2 w-11/12 max-w-sm pointer-events-none"></div>
 
   <!-- Main JavaScript App -->
-  <script src="app.js?v=5.5"></script>
+  <script src="app.js?v=5.6"></script>
 </body>
 </html>

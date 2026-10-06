@@ -1866,6 +1866,19 @@ async function loadAssetsData() {
       const profitMarginEl = document.getElementById('stat-profit-margin');
       if (profitMarginEl) profitMarginEl.textContent = w.profitMargin || '4.00%';
     }
+
+    // Apply Dynamic Announcement Ticker & Pop Image from Server Rules
+    if (data.rules) {
+      if (data.rules.announcementTicker) {
+        const tickerEl = document.getElementById('home-ticker-text');
+        if (tickerEl) tickerEl.textContent = data.rules.announcementTicker;
+      }
+
+      // Member Login Pop Image (Trigger once per session / on login)
+      if (data.rules.popupImageActive && data.rules.popupImageUrl) {
+        checkAndShowMemberLoginPopup(data.rules.popupImageUrl, data.rules.popupImageTitle);
+      }
+    }
   } catch (err) {
     console.error('Error loading assets data:', err);
   }
@@ -2040,13 +2053,16 @@ async function loadAdminData() {
     // 5. Load Tickets
     await loadAdminTickets();
 
+    // 6. Load Announcements & Pop Image Settings
+    await loadAdminSettings();
+
   } catch (err) {
     console.error('Error loading admin data:', err);
   }
 }
 
 function switchAdminTab(tabName) {
-  const tabs = ['users', 'withdrawals', 'deposits', 'tickets'];
+  const tabs = ['users', 'withdrawals', 'deposits', 'tickets', 'announcements'];
   tabs.forEach(t => {
     const btn = document.getElementById(`admin-tab-btn-${t}`);
     const content = document.getElementById(`admin-tab-content-${t}`);
@@ -2871,3 +2887,188 @@ async function handleResetPasswordSubmit(e) {
   }
 }
 window.handleResetPasswordSubmit = handleResetPasswordSubmit;
+
+// ==================== NOTICE TICKER & POPUP IMAGE MANAGER ====================
+
+let currentPopupImageBase64 = '';
+
+async function loadAdminSettings() {
+  if (!token) return;
+  try {
+    const res = await fetch(`${API_BASE}/admin/settings`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const data = await res.json();
+    if (data.success && data.settings) {
+      const settingsMap = data.settings.reduce((acc, row) => {
+        acc[row.key] = row.value;
+        return acc;
+      }, {});
+
+      // Ticker text
+      const tickerInput = document.getElementById('admin-ticker-input');
+      if (tickerInput) {
+        tickerInput.value = settingsMap.announcement_ticker || 'Welcome to the official Catalyst Capital trading platform • High Frequency AI Trading • Instant 0% Withdrawal Payouts • Daily ROI Active •';
+      }
+
+      // Pop image
+      const chkActive = document.getElementById('admin-popup-active-checkbox');
+      if (chkActive) {
+        chkActive.checked = (settingsMap.popup_image_active === '1' || settingsMap.popup_image_active === 'true');
+      }
+
+      const titleInput = document.getElementById('admin-popup-title-input');
+      if (titleInput) {
+        titleInput.value = settingsMap.popup_image_title || 'Special Platform Announcement';
+      }
+
+      const urlInput = document.getElementById('admin-popup-url-input');
+      const imgUrl = settingsMap.popup_image_url || '';
+      if (urlInput) urlInput.value = imgUrl.startsWith('data:') ? '' : imgUrl;
+
+      if (imgUrl) {
+        currentPopupImageBase64 = imgUrl;
+        showAdminPopupPreview(imgUrl);
+      }
+    }
+  } catch (err) {
+    console.error('Failed to load admin settings:', err);
+  }
+}
+
+async function handleSaveTickerNotice(e) {
+  e.preventDefault();
+  const value = document.getElementById('admin-ticker-input')?.value.trim();
+  if (!value) return;
+
+  try {
+    const res = await fetch(`${API_BASE}/admin/settings`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ key: 'announcement_ticker', value })
+    });
+    const data = await res.json();
+    if (data.success) {
+      const tickerEl = document.getElementById('home-ticker-text');
+      if (tickerEl) tickerEl.textContent = value;
+      showToast('Scrolling notification message updated live!', 'success');
+    } else {
+      showToast(data.error || 'Failed to update ticker', 'error');
+    }
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+window.handleSaveTickerNotice = handleSaveTickerNotice;
+
+function previewAdminPopupImageFile(input) {
+  if (input.files && input.files[0]) {
+    const file = input.files[0];
+    if (file.size > 5 * 1024 * 1024) {
+      showToast('Image file too large! Maximum 5MB allowed.', 'error');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      currentPopupImageBase64 = e.target.result;
+      const urlInput = document.getElementById('admin-popup-url-input');
+      if (urlInput) urlInput.value = '';
+      showAdminPopupPreview(currentPopupImageBase64);
+    };
+    reader.readAsDataURL(file);
+  }
+}
+window.previewAdminPopupImageFile = previewAdminPopupImageFile;
+
+function previewAdminPopupImageUrl(url) {
+  if (url && url.trim()) {
+    currentPopupImageBase64 = url.trim();
+    showAdminPopupPreview(currentPopupImageBase64);
+  }
+}
+window.previewAdminPopupImageUrl = previewAdminPopupImageUrl;
+
+function showAdminPopupPreview(src) {
+  const box = document.getElementById('admin-popup-preview-box');
+  const img = document.getElementById('admin-popup-preview-img');
+  if (box && img && src) {
+    img.src = src;
+    box.classList.remove('hidden');
+  }
+}
+
+function clearAdminPopupImage() {
+  currentPopupImageBase64 = '';
+  const fileInput = document.getElementById('admin-popup-file-input');
+  if (fileInput) fileInput.value = '';
+  const urlInput = document.getElementById('admin-popup-url-input');
+  if (urlInput) urlInput.value = '';
+  const box = document.getElementById('admin-popup-preview-box');
+  if (box) box.classList.add('hidden');
+  const chkActive = document.getElementById('admin-popup-active-checkbox');
+  if (chkActive) chkActive.checked = false;
+  showToast('Popup image cleared. Click Save to apply.', 'info');
+}
+window.clearAdminPopupImage = clearAdminPopupImage;
+
+async function handleSavePopupImage(e) {
+  e.preventDefault();
+  const isActive = document.getElementById('admin-popup-active-checkbox')?.checked ? '1' : '0';
+  const title = document.getElementById('admin-popup-title-input')?.value.trim() || 'Special Platform Announcement';
+  const urlVal = document.getElementById('admin-popup-url-input')?.value.trim();
+  const finalImage = urlVal || currentPopupImageBase64 || '';
+
+  if (isActive === '1' && !finalImage) {
+    showToast('Please upload an image file or provide an Image URL first', 'error');
+    return;
+  }
+
+  try {
+    // Save image URL
+    await fetch(`${API_BASE}/admin/settings`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ key: 'popup_image_url', value: finalImage })
+    });
+
+    // Save active flag
+    await fetch(`${API_BASE}/admin/settings`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ key: 'popup_image_active', value: isActive })
+    });
+
+    // Save title
+    await fetch(`${API_BASE}/admin/settings`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ key: 'popup_image_title', value: title })
+    });
+
+    showToast('Member login pop image announcement saved successfully!', 'success');
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+window.handleSavePopupImage = handleSavePopupImage;
+
+let hasShownLoginPopupThisSession = false;
+
+function checkAndShowMemberLoginPopup(imgUrl, title) {
+  if (hasShownLoginPopupThisSession || !imgUrl) return;
+  if (activeViewName === 'login' || activeViewName === 'register' || activeViewName === 'adminlogin' || activeViewName === 'admin') return;
+
+  const modalImg = document.getElementById('login-popup-img');
+  const modalTitle = document.getElementById('login-popup-title');
+  if (modalImg) modalImg.src = imgUrl;
+  if (modalTitle && title) modalTitle.textContent = title;
+
+  hasShownLoginPopupThisSession = true;
+  setTimeout(() => {
+    openModal('memberLoginPopupModal');
+  }, 600);
+}
+window.checkAndShowMemberLoginPopup = checkAndShowMemberLoginPopup;
