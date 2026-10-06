@@ -291,33 +291,42 @@ class AuthService {
       throw new Error('Valid BEP-20 wallet address is required');
     }
 
+    const cleanAddr = walletAddress.trim();
+    if (!cleanAddr.startsWith('0x') || cleanAddr.length < 10) {
+      throw new Error('Wallet address must be a valid BEP-20 address starting with 0x');
+    }
+
     const user = await db.get('SELECT id, email, role FROM users WHERE id = ?', [userId]);
     if (!user) {
       throw new Error('User not found');
     }
 
-    if (!otp) {
-      throw new Error('Email OTP code is required to update BEP-20 wallet address');
+    const isAdmin = user.role === 'admin' || user.id === 1;
+
+    // For regular users, OTP is required. For admin, check OTP if provided
+    if (!isAdmin || otp) {
+      if (!otp) {
+        throw new Error('Email OTP code is required to update BEP-20 wallet address');
+      }
+      const otpVerify = await emailService.verifyOtp(user.email, otp, 'wallet_update');
+      if (!otpVerify.success) {
+        throw new Error(otpVerify.error || 'Invalid or expired OTP code');
+      }
     }
 
-    const otpVerify = await emailService.verifyOtp(user.email, otp, 'wallet_update');
-    if (!otpVerify.success) {
-      throw new Error(otpVerify.error || 'Invalid or expired OTP code');
-    }
-
-    await db.run('UPDATE users SET usdt_address = ? WHERE id = ?', [walletAddress.trim(), userId]);
+    await db.run('UPDATE users SET usdt_address = ? WHERE id = ?', [cleanAddr, userId]);
 
     // If user is admin, also automatically update the platform official deposit address
-    if (user.role === 'admin' || (user.id === 1)) {
+    if (isAdmin) {
       if (db.isPostgres) {
         await db.run(
           'INSERT INTO system_settings (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value',
-          ['usdt_deposit_address', walletAddress.trim()]
+          ['usdt_deposit_address', cleanAddr]
         );
       } else {
         await db.run(
           'INSERT INTO system_settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = ?',
-          ['usdt_deposit_address', walletAddress.trim(), walletAddress.trim()]
+          ['usdt_deposit_address', cleanAddr, cleanAddr]
         );
       }
     }
