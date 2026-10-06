@@ -461,11 +461,15 @@ async function handleLogin(e) {
   const loginId = loginIdInput ? loginIdInput.value.trim() : '';
   const password = passwordInput ? passwordInput.value : '';
 
+  const currentPath = window.location.pathname.toLowerCase().replace(/\/+$/, '');
+  const isAdminPortal = (activeViewName === 'adminlogin' || currentPath === '/adminlogin');
+  const portalType = isAdminPortal ? 'admin' : 'member';
+
   try {
     const res = await fetch(`${API_BASE}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ loginId, password })
+      body: JSON.stringify({ loginId, password, portalType })
     });
     const data = await res.json();
     if (!res.ok || !data.success) {
@@ -607,14 +611,17 @@ function navigate(viewName, updateHistory = true) {
   const adminBadge = document.getElementById('login-admin-badge');
   const loginTitle = document.getElementById('login-page-title');
   const loginSubtitle = document.getElementById('login-page-subtitle');
+  const regSwitch = document.getElementById('login-register-switch-container');
   if (isAdminLoginMode) {
     if (adminBadge) adminBadge.classList.remove('hidden');
     if (loginTitle) loginTitle.textContent = 'Admin Portal Login';
     if (loginSubtitle) loginSubtitle.textContent = 'Authorized administrators and staff credentials only';
+    if (regSwitch) regSwitch.classList.add('hidden');
   } else {
     if (adminBadge) adminBadge.classList.add('hidden');
     if (loginTitle) loginTitle.textContent = 'Account Login';
     if (loginSubtitle) loginSubtitle.textContent = 'Sign in to access your investment dashboard';
+    if (regSwitch) regSwitch.classList.remove('hidden');
   }
 
   // Control Header elements and Bottom Nav Bar visibility

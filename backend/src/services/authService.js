@@ -68,7 +68,7 @@ class AuthService {
     return { user: newUser, token };
   }
 
-  async login({ loginId, password }) {
+  async login({ loginId, password, portalType = 'member' }) {
     if (!loginId || !password) {
       throw new Error('Username/Email and Password are required');
     }
@@ -89,6 +89,17 @@ class AuthService {
     const isMatch = await bcrypt.compare(password, user.password_hash);
     if (!isMatch) {
       throw new Error('Invalid credentials');
+    }
+
+    // Role vs Portal restriction:
+    // If admin tries to login from Member portal:
+    if (user.role === 'admin' && portalType !== 'admin') {
+      throw new Error('Admin credentials cannot be used here. Please use the Admin Portal login page (/adminlogin).');
+    }
+
+    // If regular user tries to login from Admin portal:
+    if (portalType === 'admin' && user.role !== 'admin') {
+      throw new Error('Access denied. Only authorized administrators can login through this portal.');
     }
 
     const token = jwt.sign(

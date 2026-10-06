@@ -15,8 +15,8 @@ router.post('/register', async (req, res) => {
 
 router.post('/login', async (req, res) => {
   try {
-    const { loginId, password } = req.body;
-    const result = await authService.login({ loginId, password });
+    const { loginId, password, portalType } = req.body;
+    const result = await authService.login({ loginId, password, portalType });
     res.json({ success: true, ...result });
   } catch (err) {
     res.status(401).json({ success: false, error: err.message });
