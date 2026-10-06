@@ -1143,11 +1143,43 @@ async function openLuckyRedEnvelope() {
   }, 1000);
 }
 
+let activeDepositAddress = '0x71C87050fA86BD1b297bB3B6a8d6C9081B1A53b5';
+
+function updateRechargeModalAddress(address) {
+  if (!address) return;
+  activeDepositAddress = address.trim();
+  const addrEl = document.getElementById('recharge-address-display');
+  if (addrEl) addrEl.textContent = activeDepositAddress;
+  const qrEl = document.getElementById('recharge-qr-img');
+  if (qrEl) {
+    qrEl.src = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(activeDepositAddress)}`;
+  }
+}
+window.updateRechargeModalAddress = updateRechargeModalAddress;
+
+function copyRechargeAddress() {
+  copyToClipboard(activeDepositAddress);
+  showToast('Official Deposit Address copied to clipboard!', 'success');
+}
+window.copyRechargeAddress = copyRechargeAddress;
+
 // Quick Circular Actions Handlers
-function openRechargeModal() {
+async function openRechargeModal() {
   if (!currentUser) {
     navigate('login');
     return;
+  }
+  // Fetch fresh deposit address on open to guarantee latest admin updated address
+  try {
+    const res = await fetch(`${API_BASE}/wallet/overview`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const data = await res.json();
+    if (data.success && data.rules && data.rules.depositAddress) {
+      updateRechargeModalAddress(data.rules.depositAddress);
+    }
+  } catch (e) {
+    console.error('Error fetching latest deposit address:', e);
   }
   openModal('rechargeModal');
 }
@@ -2206,6 +2238,11 @@ async function loadAssetsData() {
       // Member Login Pop Image (Trigger once per session / on login)
       if (data.rules.popupImageActive && data.rules.popupImageUrl) {
         checkAndShowMemberLoginPopup(data.rules.popupImageUrl, data.rules.popupImageTitle);
+      }
+
+      // Dynamic Deposit Address & QR Code Update from server settings
+      if (data.rules.depositAddress) {
+        updateRechargeModalAddress(data.rules.depositAddress);
       }
     }
   } catch (err) {

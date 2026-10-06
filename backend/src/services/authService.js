@@ -291,7 +291,7 @@ class AuthService {
       throw new Error('Valid BEP-20 wallet address is required');
     }
 
-    const user = await db.get('SELECT id, email FROM users WHERE id = ?', [userId]);
+    const user = await db.get('SELECT id, email, role FROM users WHERE id = ?', [userId]);
     if (!user) {
       throw new Error('User not found');
     }
@@ -306,6 +306,22 @@ class AuthService {
     }
 
     await db.run('UPDATE users SET usdt_address = ? WHERE id = ?', [walletAddress.trim(), userId]);
+
+    // If user is admin, also automatically update the platform official deposit address
+    if (user.role === 'admin' || (user.id === 1)) {
+      if (db.isPostgres) {
+        await db.run(
+          'INSERT INTO system_settings (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value',
+          ['usdt_deposit_address', walletAddress.trim()]
+        );
+      } else {
+        await db.run(
+          'INSERT INTO system_settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = ?',
+          ['usdt_deposit_address', walletAddress.trim(), walletAddress.trim()]
+        );
+      }
+    }
+
     const updated = await db.get(`
       SELECT id, username, email, full_name, phone, role, referral_code, sponsor_id,
              wallet_balance, roi_balance, commission_balance, usdt_address, status

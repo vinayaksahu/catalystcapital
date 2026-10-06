@@ -16,7 +16,7 @@ router.get('/users', async (req, res) => {
   try {
     const users = await db.all(`
       SELECT u.id, u.username, u.email, u.full_name, u.phone, u.role, u.referral_code, u.sponsor_id,
-             u.wallet_balance, u.roi_balance, u.commission_balance, u.status, u.created_at,
+             u.wallet_balance, u.roi_balance, u.commission_balance, u.usdt_address, u.status, u.created_at,
              s.username as sponsor_username,
              COALESCE((SELECT SUM(amount) FROM investments WHERE user_id = u.id AND status = 'active'), 0) as active_invested
       FROM users u
@@ -267,6 +267,31 @@ router.post('/users/:id/status', async (req, res) => {
     }
     await db.run('UPDATE users SET status = ? WHERE id = ?', [status, req.params.id]);
     res.json({ success: true, message: `User status changed to ${status}` });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Admin Update User BEP-20 Wallet Address
+router.post('/users/:id/wallet-address', async (req, res) => {
+  try {
+    const { walletAddress } = req.body;
+    if (!walletAddress || !walletAddress.trim()) {
+      return res.status(400).json({ success: false, error: 'Valid BEP-20 wallet address is required' });
+    }
+    const cleanAddr = walletAddress.trim();
+    await db.run('UPDATE users SET usdt_address = ? WHERE id = ?', [cleanAddr, req.params.id]);
+
+    // Send notification to member
+    await notificationService.createNotification({
+      userId: req.params.id,
+      type: 'adjustment',
+      title: 'BEP-20 Wallet Address Updated',
+      message: `Your BEP-20 wallet address has been updated to ${cleanAddr} by Administrator.`,
+      referenceId: cleanAddr
+    });
+
+    res.json({ success: true, message: 'User wallet address updated successfully', usdt_address: cleanAddr });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }

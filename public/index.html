@@ -1344,6 +1344,31 @@
             </div>
           </form>
         </div>
+
+        <!-- 3. Official Platform BEP-20 Deposit Wallet Address Settings -->
+        <div class="p-4 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-3">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <i data-lucide="wallet" class="w-4 h-4 text-emerald-400"></i>
+              <span class="text-xs font-bold text-white">Official Platform BEP-20 Deposit Address</span>
+            </div>
+            <span class="text-[10px] text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">Syncs Live to Member Recharge</span>
+          </div>
+
+          <p class="text-[11px] text-slate-400 leading-relaxed">
+            Members will receive this BEP-20 address and its corresponding QR code on their Recharge/Deposit screen. Updating here or from your Profile BEP-20 modal immediately syncs for all members.
+          </p>
+
+          <form onsubmit="handleSaveAdminDepositAddress(event)" class="space-y-2.5">
+            <div>
+              <label class="block text-slate-400 mb-1 font-semibold text-xs">Official Receiving Address (0x...)</label>
+              <input type="text" id="admin-deposit-address-input" required placeholder="0x..." class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-cyan-300 font-mono text-xs focus:outline-none focus:border-emerald-400 transition">
+            </div>
+            <button type="submit" id="btn-save-deposit-address" class="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold text-xs transition shadow-md shadow-emerald-500/20 active:scale-95 cursor-pointer">
+              Update Official Deposit Address
+            </button>
+          </form>
+        </div>
       </div>
     </main>
 
@@ -1488,7 +1513,7 @@
               <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
                 <i data-lucide="phone" class="w-4 h-4"></i>
               </span>
-              <input type="tel" id="reg-phone" placeholder="+91 9876543210" class="w-full pl-10 pr-3.5 py-2.5 rounded-2xl bg-slate-50 dark:bg-slate-900/90 border border-slate-300 dark:border-slate-700/80 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-amber-400 transition text-xs">
+              <input type="tel" id="reg-phone" placeholder="+1 555 XXX XXXX" class="w-full pl-10 pr-3.5 py-2.5 rounded-2xl bg-slate-50 dark:bg-slate-900/90 border border-slate-300 dark:border-slate-700/80 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-amber-400 transition text-xs">
             </div>
           </div>
 
@@ -1617,12 +1642,12 @@
 
       <div class="theme-card-subtle p-3 text-center my-3">
         <div class="w-32 h-32 mx-auto bg-white p-2 rounded-xl flex items-center justify-center mb-2 shadow-sm">
-          <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=0x71C87050fA86BD1b297bB3B6a8d6C9081B1A53b5" alt="USDT BEP20 QR Code" class="w-full h-full object-contain">
+          <img id="recharge-qr-img" src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=0x71C87050fA86BD1b297bB3B6a8d6C9081B1A53b5" alt="USDT BEP20 QR Code" class="w-full h-full object-contain">
         </div>
         <span class="font-cf-subtitle text-[10px] uppercase tracking-wider block mb-1">Official BEP20 Address (USDT - BSC)</span>
         <div class="flex items-center justify-between bg-slate-200 dark:bg-slate-900 px-2.5 py-1.5 rounded-lg text-[11px] font-mono text-cyan-600 dark:text-cyan-300">
           <span class="truncate mr-1" id="recharge-address-display">0x71C87050fA86BD1b297bB3B6a8d6C9081B1A53b5</span>
-          <button type="button" onclick="copyToClipboard(document.getElementById('recharge-address-display').innerText || '0x71C87050fA86BD1b297bB3B6a8d6C9081B1A53b5')" class="font-sans text-[10px] font-bold bg-white dark:bg-slate-800 px-2 py-0.5 rounded shadow-sm hover:text-cyan-400">Copy</button>
+          <button type="button" onclick="copyRechargeAddress()" class="font-sans text-[10px] font-bold bg-white dark:bg-slate-800 px-2 py-0.5 rounded shadow-sm hover:text-cyan-400 cursor-pointer">Copy</button>
         </div>
       </div>
 
@@ -1924,7 +1949,7 @@
 
         <div>
           <label class="block text-slate-400 font-semibold mb-1">Phone Number</label>
-          <input type="tel" id="edit-prof-phone" placeholder="+91 9876543210" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700/80 text-white placeholder-slate-500 focus:outline-none focus:border-amber-400 text-xs">
+          <input type="tel" id="edit-prof-phone" placeholder="+1 555 XXX XXXX" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700/80 text-white placeholder-slate-500 focus:outline-none focus:border-amber-400 text-xs">
         </div>
 
         <div>
@@ -2360,9 +2385,14 @@
           <span class="text-slate-400">Sponsor:</span>
           <span class="font-mono text-cyan-400" id="aud-sponsor">-</span>
         </div>
-        <div class="flex justify-between">
+        <div class="flex items-center justify-between gap-2">
           <span class="text-slate-400">USDT Address:</span>
-          <span class="font-mono text-[11px] truncate max-w-[200px] text-slate-300" id="aud-usdt">-</span>
+          <div class="flex items-center gap-1.5 flex-1 justify-end max-w-[240px]">
+            <input type="text" id="aud-usdt-input" placeholder="0x..." class="w-full px-2 py-1 rounded-lg bg-slate-950 border border-slate-700 font-mono text-[10.5px] text-cyan-300 focus:outline-none focus:border-amber-400">
+            <button type="button" onclick="handleAdminSaveUserWalletAddress()" class="px-2 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-black font-bold text-[10px] whitespace-nowrap active:scale-95 transition cursor-pointer">
+              Save
+            </button>
+          </div>
         </div>
         <div class="flex justify-between">
           <span class="text-slate-400">Account Status:</span>
@@ -2683,6 +2713,6 @@
   <div id="toast-container" class="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-2 w-11/12 max-w-sm pointer-events-none"></div>
 
   <!-- Main JavaScript App -->
-  <script src="app.js?v=7.0"></script>
+  <script src="app.js?v=7.1"></script>
 </body>
 </html>

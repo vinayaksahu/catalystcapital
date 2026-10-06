@@ -397,6 +397,16 @@ async function initDatabase() {
 
   // Ensure deposit address is updated to BEP-20 if previously set to TRC20 address
   await db.run("UPDATE system_settings SET value = '0x71C87050fA86BD1b297bB3B6a8d6C9081B1A53b5' WHERE key = 'usdt_deposit_address' AND (value LIKE 'TYD%' OR value LIKE 'T%')");
+
+  // If admin user has a saved usdt_address, sync it with system_settings deposit address
+  const adminUser = await db.get("SELECT usdt_address FROM users WHERE role = 'admin' AND usdt_address IS NOT NULL AND usdt_address != '' ORDER BY id ASC LIMIT 1");
+  if (adminUser && adminUser.usdt_address) {
+    if (isPostgres) {
+      await db.run('INSERT INTO system_settings (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value', ['usdt_deposit_address', adminUser.usdt_address]);
+    } else {
+      await db.run('INSERT INTO system_settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = ?', ['usdt_deposit_address', adminUser.usdt_address, adminUser.usdt_address]);
+    }
+  }
 }
 
 module.exports = { db, initDatabase, pool };
