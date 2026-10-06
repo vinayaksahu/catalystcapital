@@ -49,6 +49,16 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Start live crypto price pulse
   startCryptoTickerPulse();
 
+  // Background poller for real-time notifications & admin alerts (every 15s)
+  setInterval(() => {
+    if (token && currentUser) {
+      loadNotificationBadge();
+      if (activeViewName === 'admin' && currentUser.role === 'admin') {
+        loadAdminData();
+      }
+    }
+  }, 15000);
+
   // Initialize interactive calendar and team stats immediately
   renderInteractiveCalendar();
   if (teamStatsCache) updateTeamUIWithStats(teamStatsCache);
@@ -1296,6 +1306,17 @@ function updateNotificationBadgeUI(count) {
       badgeEl.className = 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-700/80 text-slate-400';
     }
   }
+
+  const adminBadgeEl = document.getElementById('admin-notification-badge');
+  if (adminBadgeEl) {
+    adminBadgeEl.textContent = count > 99 ? '99+' : count;
+    if (count > 0) {
+      adminBadgeEl.classList.remove('hidden');
+      adminBadgeEl.className = 'px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-[#ff4e91] text-white font-mono animate-pulse shadow-sm shadow-[#ff4e91]/40';
+    } else {
+      adminBadgeEl.classList.add('hidden');
+    }
+  }
 }
 
 async function openNotificationsModal() {
@@ -1376,7 +1397,7 @@ function renderNotificationsList() {
     let iconBg = 'bg-amber-500/15 text-amber-400 border-amber-500/30';
     let amountColor = 'text-emerald-400';
 
-    if (n.type === 'referral') {
+    if (n.type === 'referral' || n.type === 'user') {
       icon = 'user-plus';
       iconBg = 'bg-blue-500/15 text-blue-400 border-blue-500/30';
     } else if (n.type === 'roi') {
@@ -1391,7 +1412,14 @@ function renderNotificationsList() {
       iconBg = 'bg-cyan-500/15 text-cyan-400 border-cyan-500/30';
     } else if (n.type === 'withdrawal') {
       icon = 'arrow-up-right';
+      iconBg = 'bg-rose-500/15 text-rose-400 border-rose-500/30';
+      amountColor = 'text-rose-400';
+    } else if (n.type === 'ticket') {
+      icon = 'headphones';
       iconBg = 'bg-amber-500/15 text-amber-400 border-amber-500/30';
+    } else if (n.type === 'investment') {
+      icon = 'zap';
+      iconBg = 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30';
     } else if (n.type === 'adjustment') {
       icon = 'sliders';
       iconBg = 'bg-yellow-500/15 text-yellow-400 border-yellow-500/30';
@@ -2584,6 +2612,16 @@ async function loadAdminData() {
       const pWthEl = document.getElementById('admin-stat-pending-wth-sub');
       if (pWthEl) pWthEl.textContent = `${s.pendingWithdrawalsCount || 0} Pending ($${(s.pendingWithdrawalsVolume || 0).toFixed(2)})`;
 
+      const bDep = document.getElementById('admin-badge-dep');
+      if (bDep) {
+        if (s.pendingDepositsCount > 0) {
+          bDep.textContent = s.pendingDepositsCount;
+          bDep.classList.remove('hidden');
+        } else {
+          bDep.classList.add('hidden');
+        }
+      }
+
       const bWth = document.getElementById('admin-badge-wth');
       if (bWth) {
         if (s.pendingWithdrawalsCount > 0) {
@@ -2603,6 +2641,9 @@ async function loadAdminData() {
           bTkt.classList.add('hidden');
         }
       }
+
+      // Also refresh admin notification badge
+      await loadNotificationBadge();
     }
 
     // 2. Load Members List

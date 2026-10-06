@@ -40,6 +40,16 @@ class WalletService {
       VALUES (?, ?, 'deposit', 'wallet_balance', ?, ?, 'pending')
     `, [userId, amount, `Deposit request of $${amount} via ${network || 'USDT-BEP20'} (Awaiting Admin Approval)`, cleanHash]);
 
+    // Notify Admins about new pending deposit
+    const u = await db.get('SELECT username FROM users WHERE id = ?', [userId]);
+    await notificationService.notifyAdmins({
+      type: 'deposit',
+      title: 'New Deposit Request!',
+      message: `@${u?.username || 'User'} requested verification for $${amount} USDT deposit.`,
+      amount,
+      referenceId: `DEP-${res.lastInsertRowid}`
+    });
+
     return {
       success: true,
       pending: true,
@@ -97,6 +107,15 @@ class WalletService {
       type: 'investment',
       title: 'Plan Activated Successfully!',
       message: `${plan.name} ($${plan.price}) activated. Daily ROI of $${plan.daily_roi}/day for ${plan.duration_days} days has commenced.`,
+      amount: plan.price,
+      referenceId: `INV-${investmentId}`
+    });
+
+    // Notify Admins about plan purchase
+    await notificationService.notifyAdmins({
+      type: 'investment',
+      title: 'New Plan Activated!',
+      message: `@${user.username} activated ${plan.name} ($${plan.price} USDT).`,
       amount: plan.price,
       referenceId: `INV-${investmentId}`
     });
@@ -240,6 +259,15 @@ class WalletService {
       `Withdrawal Request to ${usdtAddress.trim()} (Fee: 0%, Processing: 0-24hr)`,
       `WTH-${res.lastInsertRowid}`
     ]);
+
+    // Notify Admins about new withdrawal request
+    await notificationService.notifyAdmins({
+      type: 'withdrawal',
+      title: 'New Withdrawal Request!',
+      message: `@${user.username || 'User'} requested withdrawal of $${amount} USDT to ${usdtAddress.trim().substring(0, 10)}...`,
+      amount,
+      referenceId: `WTH-${res.lastInsertRowid}`
+    });
 
     return {
       success: true,

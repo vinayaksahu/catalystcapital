@@ -67,6 +67,28 @@ class NotificationService {
       WHERE id = ? AND user_id = ?
     `, [notificationId, userId]);
   }
+
+  /**
+   * Send notification to all admin accounts
+   */
+  async notifyAdmins({ type, title, message, amount = null, referenceId = null }) {
+    try {
+      const admins = await db.all("SELECT id FROM users WHERE role = 'admin'");
+      if (!admins || admins.length === 0) return;
+      for (const admin of admins) {
+        await this.createNotification({
+          userId: admin.id,
+          type: type || 'admin_alert',
+          title,
+          message,
+          amount,
+          referenceId
+        });
+      }
+    } catch (err) {
+      console.error('Error sending notification to admins:', err.message);
+    }
+  }
 }
 
 module.exports = new NotificationService();

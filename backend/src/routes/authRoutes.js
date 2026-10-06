@@ -176,10 +176,21 @@ router.post('/tickets', authenticateToken, async (req, res) => {
       return res.status(400).json({ success: false, error: 'Subject and message are required' });
     }
     const { db } = require('../db/database');
+    const notificationService = require('../services/notificationService');
     const insert = await db.run(`
       INSERT INTO support_tickets (user_id, subject, category, message, status)
       VALUES (?, ?, ?, ?, 'open')
     `, [req.user.id, subject.trim(), category.trim(), message.trim()]);
+
+    // Notify Admins about new support ticket
+    const user = await db.get('SELECT username, full_name FROM users WHERE id = ?', [req.user.id]);
+    await notificationService.notifyAdmins({
+      type: 'ticket',
+      title: 'New Support Ticket!',
+      message: `@${user?.username || 'User'} opened a ${category.trim()} ticket: "${subject.trim()}"`,
+      referenceId: `TKT-${insert.lastInsertRowid}`
+    });
+
     res.json({ success: true, message: 'Support ticket submitted successfully!', ticketId: insert.lastInsertRowid });
   } catch (err) {
     res.status(400).json({ success: false, error: err.message });

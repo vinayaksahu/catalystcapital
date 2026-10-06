@@ -1103,10 +1103,17 @@
          ======================================================== -->
     <main id="view-admin" class="page-view hidden flex-1 flex flex-col px-3.5 py-3.5 space-y-4 max-w-4xl mx-auto w-full pb-28">
       <!-- Admin Portal Status Bar -->
-      <div class="flex items-center justify-end gap-2 flex-wrap">
+      <div class="flex items-center justify-between gap-2 flex-wrap">
         <div class="flex items-center gap-2">
           <span class="px-2.5 py-0.5 rounded-md text-[10px] font-bold bg-amber-500/20 border border-amber-500/30 text-amber-400 font-mono">MASTER ADMIN</span>
           <span class="text-xs text-amber-500 font-mono font-bold">@admin</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="openNotificationsModal()" class="relative px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 hover:border-amber-500/50 text-slate-300 hover:text-white transition flex items-center gap-2 cursor-pointer shadow-sm text-xs font-semibold">
+            <i data-lucide="bell" class="w-3.5 h-3.5 text-amber-400"></i>
+            <span>Notifications</span>
+            <span id="admin-notification-badge" class="hidden px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-[#ff4e91] text-white font-mono">0</span>
+          </button>
         </div>
       </div>
 
@@ -1196,6 +1203,7 @@
         </button>
         <button onclick="switchAdminTab('deposits')" id="admin-tab-btn-deposits" class="admin-tab-btn px-3.5 py-2 rounded-xl font-bold transition flex items-center gap-1.5 whitespace-nowrap shrink-0">
           <i data-lucide="arrow-down-left" class="w-3.5 h-3.5"></i> <span>Deposits</span>
+          <span id="admin-badge-dep" class="hidden text-[9px] px-1.5 py-0.2 rounded-full bg-emerald-500 text-black font-bold font-mono">0</span>
         </button>
         <button onclick="switchAdminTab('tickets')" id="admin-tab-btn-tickets" class="admin-tab-btn px-3.5 py-2 rounded-xl font-bold transition flex items-center gap-1.5 whitespace-nowrap shrink-0">
           <i data-lucide="headphones" class="w-3.5 h-3.5"></i> <span>Support Tickets</span>

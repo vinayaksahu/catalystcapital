@@ -134,6 +134,14 @@ class AuthService {
       });
     }
 
+    // Notify Admins about new registration
+    await notificationService.notifyAdmins({
+      type: 'user',
+      title: 'New Member Registered!',
+      message: `${newUser.full_name || newUser.username} (@${newUser.username}, ID: ${userIdCode}) registered on platform.`,
+      referenceId: userIdCode
+    });
+
     const token = jwt.sign(
       { id: newUser.id, username: newUser.username, role: newUser.role },
       JWT_SECRET,
