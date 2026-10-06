@@ -1,4 +1,5 @@
 const { db } = require('../db/database');
+const notificationService = require('./notificationService');
 
 class MlmService {
   /**
@@ -63,6 +64,16 @@ class MlmService {
           level
         ]);
 
+        // Team Commission Notification
+        await notificationService.createNotification({
+          userId: user.id,
+          type: 'commission',
+          title: `Level ${level} Team Commission!`,
+          message: `+$${commission.toFixed(2)} USDT (${(rate * 100).toFixed(0)}%) received from ${investor.username}'s $${amount} package activation.`,
+          amount: commission,
+          referenceId: `INV-${investmentId}`
+        });
+
         distributions.push({
           level,
           uplineId: user.id,
@@ -117,6 +128,16 @@ class MlmService {
           earner.id,
           level
         ]);
+
+        // Referral ROI Notification
+        await notificationService.createNotification({
+          userId: user.id,
+          type: 'referral_roi',
+          title: `Level ${level} Referral ROI!`,
+          message: `+$${commission.toFixed(2)} USDT (${(rate * 100).toFixed(0)}%) received from ${earner.username}'s daily ROI ($${dailyRoiAmount.toFixed(2)}).`,
+          amount: commission,
+          referenceId: `ROI-INV-${investmentId}`
+        });
 
         distributions.push({
           level,

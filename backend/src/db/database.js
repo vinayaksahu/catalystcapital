@@ -208,6 +208,18 @@ async function initDatabase() {
         expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       );
+
+      CREATE TABLE IF NOT EXISTS notifications (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id),
+        type VARCHAR(50) NOT NULL,
+        title VARCHAR(255) NOT NULL,
+        message TEXT,
+        amount NUMERIC(18, 4),
+        reference_id VARCHAR(100),
+        is_read INTEGER DEFAULT 0,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
     `);
   } else {
     // SQLite Tables
@@ -320,6 +332,18 @@ async function initDatabase() {
         otp TEXT NOT NULL,
         purpose TEXT NOT NULL,
         expires_at TEXT NOT NULL,
+        created_at TEXT DEFAULT (datetime('now'))
+      );
+
+      CREATE TABLE IF NOT EXISTS notifications (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL REFERENCES users(id),
+        type TEXT NOT NULL,
+        title TEXT NOT NULL,
+        message TEXT,
+        amount REAL,
+        reference_id TEXT,
+        is_read INTEGER DEFAULT 0,
         created_at TEXT DEFAULT (datetime('now'))
       );
     `);

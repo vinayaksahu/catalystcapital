@@ -5,6 +5,7 @@ const { db } = require('../db/database');
 const { JWT_SECRET } = require('../middleware/authMiddleware');
 
 const emailService = require('./emailService');
+const notificationService = require('./notificationService');
 
 class AuthService {
   generateUserId() {
@@ -111,6 +112,26 @@ class AuthService {
       });
     } catch (mailErr) {
       console.error('Failed to send welcome credentials mail:', mailErr.message);
+    }
+
+    // Welcome Notification for New User
+    await notificationService.createNotification({
+      userId: newUser.id,
+      type: 'welcome',
+      title: 'Welcome to Catalyst Capital!',
+      message: `Account activated successfully. Your Member ID is ${userIdCode}. Start trading or stake a VIP plan to earn daily ROI!`,
+      referenceId: userIdCode
+    });
+
+    // Notify Sponsor if exists
+    if (sponsorId) {
+      await notificationService.createNotification({
+        userId: sponsorId,
+        type: 'referral',
+        title: 'New Team Member Joined!',
+        message: `${newUser.full_name} (@${newUser.username}) joined your team with User ID ${userIdCode}.`,
+        referenceId: userIdCode
+      });
     }
 
     const token = jwt.sign(

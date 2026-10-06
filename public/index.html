@@ -445,7 +445,7 @@
 
         <!-- Notification & Gifts Rows -->
         <div class="theme-card mt-2.5 overflow-hidden divide-y divide-slate-100 dark:divide-slate-800">
-          <div onclick="openNoticeModal()" class="p-3 flex items-center justify-between cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/40 transition">
+          <div onclick="openNotificationsModal()" class="p-3 flex items-center justify-between cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/40 transition">
             <div class="flex items-center gap-3">
               <div class="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center">
                 <i data-lucide="bell" class="w-4 h-4"></i>
@@ -453,7 +453,7 @@
               <span class="font-cf-title text-[13px]">Notification</span>
             </div>
             <div class="flex items-center gap-2">
-              <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#ff4e91] text-white">30</span>
+              <span id="home-notification-badge" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#ff4e91] text-white">0</span>
               <i data-lucide="chevron-right" class="w-4 h-4 text-slate-400"></i>
             </div>
           </div>
@@ -2620,10 +2620,69 @@
     </div>
   </div>
 
+  <!-- ==================== MEMBER NOTIFICATIONS MODAL ==================== -->
+  <div id="memberNotificationsModal" class="modal fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden items-center justify-center p-3 sm:p-4">
+    <div class="bg-[#0f131c] border border-slate-800 rounded-3xl max-w-md w-full shadow-2xl flex flex-col max-h-[85vh] overflow-hidden text-white animate-scale-up">
+      <!-- Modal Header -->
+      <div class="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-900/60">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400">
+            <i data-lucide="bell" class="w-4 h-4"></i>
+          </div>
+          <div>
+            <h3 class="font-extrabold text-sm sm:text-base text-white tracking-wide">Notifications</h3>
+            <p class="text-[10px] text-slate-400">Activity, Referral, ROI & Commission Alerts</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="markAllNotificationsRead()" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-[11px] font-bold text-amber-400 border border-slate-700/60 transition cursor-pointer" title="Mark all as read">
+            Read All
+          </button>
+          <button onclick="closeModal('memberNotificationsModal')" class="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition cursor-pointer">
+            <i data-lucide="x" class="w-5 h-5"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Filter tabs -->
+      <div class="flex items-center gap-1.5 px-4 py-2.5 border-b border-slate-800/80 bg-slate-900/30 text-xs overflow-x-auto no-scrollbar">
+        <button onclick="filterNotifications('all')" id="notif-tab-all" class="notif-filter-tab px-3 py-1 rounded-full text-[11px] font-bold bg-amber-500 text-black transition">
+          All
+        </button>
+        <button onclick="filterNotifications('referral')" id="notif-tab-referral" class="notif-filter-tab px-3 py-1 rounded-full text-[11px] font-bold bg-slate-800 text-slate-300 hover:text-white transition">
+          Referrals
+        </button>
+        <button onclick="filterNotifications('roi')" id="notif-tab-roi" class="notif-filter-tab px-3 py-1 rounded-full text-[11px] font-bold bg-slate-800 text-slate-300 hover:text-white transition">
+          Daily ROI
+        </button>
+        <button onclick="filterNotifications('commission')" id="notif-tab-commission" class="notif-filter-tab px-3 py-1 rounded-full text-[11px] font-bold bg-slate-800 text-slate-300 hover:text-white transition">
+          Commissions
+        </button>
+        <button onclick="filterNotifications('wallet')" id="notif-tab-wallet" class="notif-filter-tab px-3 py-1 rounded-full text-[11px] font-bold bg-slate-800 text-slate-300 hover:text-white transition">
+          Deposits/Payouts
+        </button>
+      </div>
+
+      <!-- Notifications List Container -->
+      <div id="member-notifications-list" class="p-3 sm:p-4 overflow-y-auto space-y-2.5 flex-1 min-h-[260px] max-h-[55vh]">
+        <!-- Dynamic notifications will render here -->
+        <div class="text-center py-12 text-slate-500 text-xs">
+          <i data-lucide="bell-off" class="w-8 h-8 mx-auto mb-2 opacity-40"></i>
+          <div>Loading notifications...</div>
+        </div>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="p-3 border-t border-slate-800/80 bg-slate-900/40 text-center">
+        <span class="text-[10px] text-slate-500">Real-time alerts for all account, referral and earnings updates</span>
+      </div>
+    </div>
+  </div>
+
   <!-- TOAST NOTIFICATION CONTAINER -->
   <div id="toast-container" class="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-2 w-11/12 max-w-sm pointer-events-none"></div>
 
   <!-- Main JavaScript App -->
-  <script src="app.js?v=6.3"></script>
+  <script src="app.js?v=7.0"></script>
 </body>
 </html>

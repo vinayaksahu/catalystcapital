@@ -1,5 +1,6 @@
 const { db } = require('../db/database');
 const mlmService = require('./mlmService');
+const notificationService = require('./notificationService');
 
 class WalletService {
   /**
@@ -89,6 +90,16 @@ class WalletService {
       `Activated ${plan.name} ($${plan.price} for ${plan.duration_days} days @ $${plan.daily_roi}/day)`,
       `INV-${investmentId}`
     ]);
+
+    // Plan Activation Notification
+    await notificationService.createNotification({
+      userId,
+      type: 'investment',
+      title: 'Plan Activated Successfully!',
+      message: `${plan.name} ($${plan.price}) activated. Daily ROI of $${plan.daily_roi}/day for ${plan.duration_days} days has commenced.`,
+      amount: plan.price,
+      referenceId: `INV-${investmentId}`
+    });
 
     // 4. Distribute Team Commission (One-Time: L1: 6%, L2: 2%, L3: 1%)
     const teamCommissions = await mlmService.distributeTeamCommission(userId, plan.price, investmentId);
@@ -264,6 +275,16 @@ class WalletService {
       `, [descAppend, `WTH-${withdrawalId}`]);
     }
 
+    // Withdrawal Approved Notification
+    await notificationService.createNotification({
+      userId: withdrawal.user_id,
+      type: 'withdrawal',
+      title: 'Withdrawal Approved & Sent!',
+      message: `Your withdrawal of $${withdrawal.amount} USDT has been sent to ${withdrawal.usdt_address} (TXID: ${hash}).`,
+      amount: withdrawal.amount,
+      referenceId: hash
+    });
+
     return { success: true, withdrawalId, status: 'approved', txHash: hash };
   }
 
@@ -294,6 +315,16 @@ class WalletService {
     `, [w.user_id, w.amount, refundWallet, `Withdrawal Refund: ${reason}`, `REF-${withdrawalId}`]);
 
     await db.run("UPDATE transactions SET status = 'rejected' WHERE reference_id = ?", [`WTH-${withdrawalId}`]);
+
+    // Withdrawal Rejected Notification
+    await notificationService.createNotification({
+      userId: w.user_id,
+      type: 'withdrawal',
+      title: 'Withdrawal Rejected & Refunded',
+      message: `Your withdrawal request of $${w.amount} was rejected (${reason}). Funds have been refunded to your ${refundWallet.replace('_', ' ')}.`,
+      amount: w.amount,
+      referenceId: `WTH-${withdrawalId}`
+    });
 
     return { success: true, withdrawalId, status: 'rejected', refundedAmount: w.amount };
   }

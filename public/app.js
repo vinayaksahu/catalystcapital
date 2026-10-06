@@ -1016,6 +1016,7 @@ function navigate(viewName, updateHistory = true) {
 }
 
 async function refreshCurrentViewData() {
+  loadNotificationBadge();
   if (activeViewName === 'home') await loadAssetsData();
   if (activeViewName === 'assets') await loadAssetsData();
   if (activeViewName === 'invest') renderPresentationPlans();
@@ -1176,9 +1177,226 @@ function openInviteModal() {
   openModal('inviteModal');
 }
 
-function openNoticeModal() {
-  showToast('Catalyst Capital: High Frequency AI Trading & 0% Fee Instant Payouts Active.', 'info');
+// ==================== MEMBER NOTIFICATIONS SYSTEM ====================
+
+let memberNotificationsCache = [];
+let currentNotificationFilter = 'all';
+
+async function loadNotificationBadge() {
+  if (!token || !currentUser) return;
+  try {
+    const res = await fetch(`${API_BASE}/notifications/unread-count`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const data = await res.json();
+    if (data.success) {
+      updateNotificationBadgeUI(data.unreadCount || 0);
+    }
+  } catch (err) {
+    console.error('Failed to load notification unread count:', err);
+  }
 }
+
+function updateNotificationBadgeUI(count) {
+  const badgeEl = document.getElementById('home-notification-badge');
+  if (badgeEl) {
+    badgeEl.textContent = count > 99 ? '99+' : count;
+    if (count > 0) {
+      badgeEl.className = 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#ff4e91] text-white animate-pulse shadow-sm shadow-[#ff4e91]/40';
+      badgeEl.style.removeProperty('display');
+    } else {
+      badgeEl.className = 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-700/80 text-slate-400';
+    }
+  }
+}
+
+async function openNotificationsModal() {
+  if (!token || !currentUser) {
+    navigate('login');
+    return;
+  }
+  openModal('memberNotificationsModal');
+  await fetchUserNotifications();
+}
+window.openNotificationsModal = openNotificationsModal;
+
+function openNoticeModal() {
+  openNotificationsModal();
+}
+window.openNoticeModal = openNoticeModal;
+
+async function fetchUserNotifications() {
+  const listEl = document.getElementById('member-notifications-list');
+  if (listEl) {
+    listEl.innerHTML = `
+      <div class="text-center py-10 text-slate-500 text-xs flex flex-col items-center justify-center">
+        <div class="w-6 h-6 border-2 border-amber-500/30 border-t-amber-500 rounded-full animate-spin mb-2"></div>
+        <div>Loading notifications...</div>
+      </div>
+    `;
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}/notifications?limit=60`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const data = await res.json();
+    if (data.success) {
+      memberNotificationsCache = data.notifications || [];
+      updateNotificationBadgeUI(data.unreadCount || 0);
+      renderNotificationsList();
+    } else {
+      throw new Error(data.error || 'Failed to fetch notifications');
+    }
+  } catch (err) {
+    if (listEl) {
+      listEl.innerHTML = `<div class="text-center py-8 text-rose-400 text-xs">${err.message}</div>`;
+    }
+  }
+}
+
+function renderNotificationsList() {
+  const listEl = document.getElementById('member-notifications-list');
+  if (!listEl) return;
+
+  let items = memberNotificationsCache;
+  if (currentNotificationFilter === 'referral') {
+    items = items.filter(n => n.type === 'referral');
+  } else if (currentNotificationFilter === 'roi') {
+    items = items.filter(n => n.type === 'roi');
+  } else if (currentNotificationFilter === 'commission') {
+    items = items.filter(n => n.type === 'commission' || n.type === 'referral_roi');
+  } else if (currentNotificationFilter === 'wallet') {
+    items = items.filter(n => n.type === 'deposit' || n.type === 'withdrawal' || n.type === 'adjustment');
+  }
+
+  if (items.length === 0) {
+    listEl.innerHTML = `
+      <div class="text-center py-12 text-slate-500 text-xs">
+        <i data-lucide="bell-off" class="w-9 h-9 mx-auto mb-2 opacity-30 text-amber-400"></i>
+        <div class="font-bold text-slate-400">No ${currentNotificationFilter === 'all' ? '' : currentNotificationFilter} notifications yet</div>
+        <div class="text-[11px] text-slate-500 mt-1">Earnings and team activities will appear here in real-time.</div>
+      </div>
+    `;
+    if (window.lucide) lucide.createIcons();
+    return;
+  }
+
+  listEl.innerHTML = items.map(n => {
+    // Style by notification type
+    let icon = 'bell';
+    let iconBg = 'bg-amber-500/15 text-amber-400 border-amber-500/30';
+    let amountColor = 'text-emerald-400';
+
+    if (n.type === 'referral') {
+      icon = 'user-plus';
+      iconBg = 'bg-blue-500/15 text-blue-400 border-blue-500/30';
+    } else if (n.type === 'roi') {
+      icon = 'trending-up';
+      iconBg = 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30';
+    } else if (n.type === 'commission' || n.type === 'referral_roi') {
+      icon = 'award';
+      iconBg = 'bg-purple-500/15 text-purple-400 border-purple-500/30';
+      amountColor = 'text-purple-400';
+    } else if (n.type === 'deposit') {
+      icon = 'arrow-down-left';
+      iconBg = 'bg-cyan-500/15 text-cyan-400 border-cyan-500/30';
+    } else if (n.type === 'withdrawal') {
+      icon = 'arrow-up-right';
+      iconBg = 'bg-amber-500/15 text-amber-400 border-amber-500/30';
+    } else if (n.type === 'adjustment') {
+      icon = 'sliders';
+      iconBg = 'bg-yellow-500/15 text-yellow-400 border-yellow-500/30';
+    } else if (n.type === 'welcome') {
+      icon = 'sparkles';
+      iconBg = 'bg-pink-500/15 text-pink-400 border-pink-500/30';
+    }
+
+    const dateStr = n.created_at ? new Date(n.created_at).toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    }) : '';
+
+    const isUnread = !n.is_read || n.is_read === 0;
+
+    return `
+      <div onclick="markSingleNotificationRead(${n.id})" class="p-3 rounded-2xl border transition cursor-pointer ${isUnread ? 'bg-gradient-to-r from-slate-900 via-slate-900 to-amber-950/20 border-amber-500/40 shadow-sm' : 'bg-slate-900/60 border-slate-800/80 hover:bg-slate-800/60'}">
+        <div class="flex items-start gap-3">
+          <div class="w-9 h-9 rounded-xl border flex items-center justify-center shrink-0 ${iconBg}">
+            <i data-lucide="${icon}" class="w-4 h-4"></i>
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center justify-between gap-1 mb-0.5">
+              <span class="text-xs font-bold text-white truncate flex items-center gap-1.5">
+                ${n.title}
+                ${isUnread ? '<span class="w-1.5 h-1.5 rounded-full bg-[#ff4e91] inline-block"></span>' : ''}
+              </span>
+              ${n.amount ? `<span class="text-xs font-mono font-black ${amountColor}">+$${parseFloat(n.amount).toFixed(2)}</span>` : ''}
+            </div>
+            <p class="text-[11px] text-slate-300 leading-relaxed font-sans">${n.message || ''}</p>
+            <div class="flex items-center justify-between mt-1.5 pt-1 border-t border-slate-800/50">
+              <span class="text-[9.5px] font-mono text-slate-500">${dateStr}</span>
+              ${n.reference_id ? `<span class="text-[9.5px] font-mono text-slate-500">Ref: ${n.reference_id}</span>` : ''}
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  if (window.lucide) lucide.createIcons();
+}
+
+function filterNotifications(filter) {
+  currentNotificationFilter = filter;
+  document.querySelectorAll('.notif-filter-tab').forEach(tab => {
+    tab.className = 'notif-filter-tab px-3 py-1 rounded-full text-[11px] font-bold bg-slate-800 text-slate-300 hover:text-white transition';
+  });
+  const activeTab = document.getElementById(`notif-tab-${filter}`);
+  if (activeTab) {
+    activeTab.className = 'notif-filter-tab px-3 py-1 rounded-full text-[11px] font-bold bg-amber-500 text-black transition';
+  }
+  renderNotificationsList();
+}
+window.filterNotifications = filterNotifications;
+
+async function markSingleNotificationRead(notifId) {
+  const item = memberNotificationsCache.find(n => n.id === notifId);
+  if (item && (!item.is_read || item.is_read === 0)) {
+    item.is_read = 1;
+    renderNotificationsList();
+    try {
+      await fetch(`${API_BASE}/notifications/${notifId}/read`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      loadNotificationBadge();
+    } catch (e) {
+      console.error(e);
+    }
+  }
+}
+window.markSingleNotificationRead = markSingleNotificationRead;
+
+async function markAllNotificationsRead() {
+  if (!token) return;
+  try {
+    await fetch(`${API_BASE}/notifications/mark-all-read`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    memberNotificationsCache.forEach(n => { n.is_read = 1; });
+    renderNotificationsList();
+    updateNotificationBadgeUI(0);
+    showToast('All notifications marked as read', 'success');
+  } catch (err) {
+    showToast('Failed to mark read: ' + err.message, 'error');
+  }
+}
+window.markAllNotificationsRead = markAllNotificationsRead;
 
 function openDedicatedSupportModal(type) {
   const title = document.getElementById('service-modal-title');

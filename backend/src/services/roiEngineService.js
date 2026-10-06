@@ -1,5 +1,6 @@
 const { db } = require('../db/database');
 const mlmService = require('./mlmService');
+const notificationService = require('./notificationService');
 
 class RoiEngineService {
   /**
@@ -64,6 +65,16 @@ class RoiEngineService {
         `Daily ROI Payout (Day ${nextDaysCredited}/${inv.total_days}) for ${inv.plan_name} ($${inv.amount})`,
         `ROI-INV-${inv.id}`
       ]);
+
+      // Daily ROI Notification
+      await notificationService.createNotification({
+        userId: inv.user_id,
+        type: 'roi',
+        title: 'Daily ROI Credited!',
+        message: `+$${dailyRoi.toFixed(2)} USDT credited for ${inv.plan_name} ($${inv.amount}) - Day ${nextDaysCredited}/${inv.total_days}${isCompleted ? ' (Plan Completed!)' : ''}.`,
+        amount: dailyRoi,
+        referenceId: `ROI-INV-${inv.id}`
+      });
 
       totalRoiDistributed += dailyRoi;
       processedCount++;

@@ -3,6 +3,7 @@ const router = express.Router();
 const { db } = require('../db/database');
 const roiEngineService = require('../services/roiEngineService');
 const walletService = require('../services/walletService');
+const notificationService = require('../services/notificationService');
 const { authenticateToken, requireAdmin } = require('../middleware/authMiddleware');
 
 router.use(authenticateToken);
@@ -45,6 +46,14 @@ router.post('/adjust-balance', async (req, res) => {
       INSERT INTO transactions (user_id, amount, type, wallet_type, description, status)
       VALUES (?, ?, 'admin_adjustment', ?, ?, 'completed')
     `, [userId, delta, walletType, `Admin Adjustment: ${action.toUpperCase()} $${numAmount} (${reason})`]);
+
+    await notificationService.createNotification({
+      userId,
+      type: 'adjustment',
+      title: `Balance ${action === 'debit' ? 'Debited' : 'Credited'} by Admin`,
+      message: `${action === 'debit' ? '-' : '+'}$${numAmount} USDT adjusted in your ${walletType.replace('_', ' ')} (${reason}).`,
+      amount: delta
+    });
 
     res.json({ success: true, message: `Successfully adjusted balance by ${delta}` });
   } catch (err) {
@@ -299,6 +308,16 @@ router.post('/deposits/:id/approve', async (req, res) => {
       `, [deposit.user_id, deposit.amount, `Deposit Approved by Admin ($${deposit.amount})`, deposit.tx_hash || `DEP-${deposit.id}`]);
     }
 
+    // Deposit Approved Notification
+    await notificationService.createNotification({
+      userId: deposit.user_id,
+      type: 'deposit',
+      title: 'Deposit Approved & Credited!',
+      message: `Your deposit of $${deposit.amount} USDT has been approved and credited to your Recharge Balance.`,
+      amount: deposit.amount,
+      referenceId: deposit.tx_hash || `DEP-${deposit.id}`
+    });
+
     res.json({ success: true, message: `Deposit #${deposit.id} approved and credited` });
   } catch (err) {
     res.status(400).json({ success: false, error: err.message });
@@ -317,6 +336,17 @@ router.post('/deposits/:id/reject', async (req, res) => {
     if (deposit.tx_hash) {
       await db.run("UPDATE transactions SET status = 'failed', description = ? WHERE reference_id = ? AND user_id = ?", [`Deposit Rejected by Admin (${reason})`, deposit.tx_hash, deposit.user_id]);
     }
+
+    // Deposit Rejected Notification
+    await notificationService.createNotification({
+      userId: deposit.user_id,
+      type: 'deposit',
+      title: 'Deposit Verification Failed',
+      message: `Your deposit request of $${deposit.amount} USDT was rejected (${reason}).`,
+      amount: deposit.amount,
+      referenceId: deposit.tx_hash
+    });
+
     res.json({ success: true, message: `Deposit #${deposit.id} rejected (${reason})` });
   } catch (err) {
     res.status(400).json({ success: false, error: err.message });
@@ -345,6 +375,16 @@ router.post('/deposits/manual-create', async (req, res) => {
       INSERT INTO transactions (user_id, amount, type, wallet_type, description, reference_id, status)
       VALUES (?, ?, 'deposit', 'wallet_balance', ?, ?, 'completed')
     `, [userId, numAmount, `Manual Deposit Credited by Admin via ${network}`, cleanHash]);
+
+    // Manual Deposit Notification
+    await notificationService.createNotification({
+      userId,
+      type: 'deposit',
+      title: 'Deposit Credited by Admin!',
+      message: `+$${numAmount.toFixed(2)} USDT deposit credited to your Recharge Balance via ${network}.`,
+      amount: numAmount,
+      referenceId: cleanHash
+    });
 
     res.json({ success: true, message: `Credited $${numAmount} USDT deposit to user #${userId}`, depositId: insert.lastInsertRowid });
   } catch (err) {
