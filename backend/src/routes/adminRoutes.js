@@ -282,6 +282,22 @@ router.post('/users/:id/wallet-address', async (req, res) => {
     const cleanAddr = walletAddress.trim();
     await db.run('UPDATE users SET usdt_address = ? WHERE id = ?', [cleanAddr, req.params.id]);
 
+    // If updated user is admin or ID 1, synchronize system_settings usdt_deposit_address
+    const targetUser = await db.get('SELECT id, role FROM users WHERE id = ?', [req.params.id]);
+    if (targetUser && (targetUser.role === 'admin' || Number(targetUser.id) === 1)) {
+      if (db.isPostgres) {
+        await db.run(
+          'INSERT INTO system_settings (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value',
+          ['usdt_deposit_address', cleanAddr]
+        );
+      } else {
+        await db.run(
+          'INSERT INTO system_settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = ?',
+          ['usdt_deposit_address', cleanAddr, cleanAddr]
+        );
+      }
+    }
+
     // Send notification to member
     await notificationService.createNotification({
       userId: req.params.id,
@@ -478,6 +494,9 @@ router.post('/settings', async (req, res) => {
             [k, String(v), String(v)]
           );
         }
+        if (k === 'usdt_deposit_address' && String(v).trim().startsWith('0x')) {
+          await db.run("UPDATE users SET usdt_address = ? WHERE role = 'admin' OR id = 1", [String(v).trim()]);
+        }
       }
       return res.json({ success: true, message: 'Settings updated successfully' });
     }
@@ -495,6 +514,11 @@ router.post('/settings', async (req, res) => {
         [key, String(value), String(value)]
       );
     }
+
+    if (key === 'usdt_deposit_address' && String(value).trim().startsWith('0x')) {
+      await db.run("UPDATE users SET usdt_address = ? WHERE role = 'admin' OR id = 1", [String(value).trim()]);
+    }
+
     res.json({ success: true, message: 'Setting updated' });
   } catch (err) {
     res.status(400).json({ success: false, error: err.message });
