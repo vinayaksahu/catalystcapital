@@ -57,4 +57,32 @@ router.post('/wallet-address', authenticateToken, async (req, res) => {
   }
 });
 
+// Member Support Tickets
+router.get('/tickets', authenticateToken, async (req, res) => {
+  try {
+    const { db } = require('../db/database');
+    const tickets = await db.all('SELECT * FROM support_tickets WHERE user_id = ? ORDER BY created_at DESC', [req.user.id]);
+    res.json({ success: true, tickets });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+router.post('/tickets', authenticateToken, async (req, res) => {
+  try {
+    const { subject, category = 'General', message } = req.body;
+    if (!subject || !message) {
+      return res.status(400).json({ success: false, error: 'Subject and message are required' });
+    }
+    const { db } = require('../db/database');
+    const insert = await db.run(`
+      INSERT INTO support_tickets (user_id, subject, category, message, status)
+      VALUES (?, ?, ?, ?, 'open')
+    `, [req.user.id, subject.trim(), category.trim(), message.trim()]);
+    res.json({ success: true, message: 'Support ticket submitted successfully!', ticketId: insert.lastInsertRowid });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
 module.exports = router;

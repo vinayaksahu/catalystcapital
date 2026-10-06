@@ -183,6 +183,18 @@ async function initDatabase() {
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       );
 
+      CREATE TABLE IF NOT EXISTS support_tickets (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id),
+        subject VARCHAR(255) NOT NULL,
+        category VARCHAR(100) DEFAULT 'General',
+        message TEXT NOT NULL,
+        admin_reply TEXT,
+        status VARCHAR(50) DEFAULT 'open',
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+
       CREATE TABLE IF NOT EXISTS system_settings (
         key VARCHAR(100) PRIMARY KEY,
         value TEXT NOT NULL
@@ -274,6 +286,18 @@ async function initDatabase() {
         admin_note TEXT,
         processed_at TEXT,
         created_at TEXT DEFAULT (datetime('now'))
+      );
+
+      CREATE TABLE IF NOT EXISTS support_tickets (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL REFERENCES users(id),
+        subject TEXT NOT NULL,
+        category TEXT DEFAULT 'General',
+        message TEXT NOT NULL,
+        admin_reply TEXT,
+        status TEXT DEFAULT 'open',
+        created_at TEXT DEFAULT (datetime('now')),
+        updated_at TEXT DEFAULT (datetime('now'))
       );
 
       CREATE TABLE IF NOT EXISTS system_settings (

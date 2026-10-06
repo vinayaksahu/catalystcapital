@@ -1694,67 +1694,377 @@ async function handleWithdrawSubmit(e) {
   }
 }
 
-// ==================== VIEW 6: ADMIN CONTROL ====================
+// ==================== VIEW 6: ADMIN CONTROL & PORTAL IMPERSONATION ====================
+
+let adminCachedUsers = [];
+let currentInspectedUserId = null;
+let originalAdminToken = localStorage.getItem('catalyst_admin_orig_token') || null;
 
 async function loadAdminData() {
   if (!token || !currentUser || currentUser.role !== 'admin') return;
 
   try {
-    // Withdrawals
-    const withRes = await fetch(`${API_BASE}/admin/withdrawals`, {
+    // 1. Load Platform Stats (Total Business, Deposits, Withdrawals, Users, ROI)
+    const statsRes = await fetch(`${API_BASE}/admin/stats`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
-    const withData = await withRes.json();
-    const withContainer = document.getElementById('admin-withdrawals-list');
-    if (withContainer) {
-      if (withData.success && withData.withdrawals && withData.withdrawals.length > 0) {
-        withContainer.innerHTML = withData.withdrawals.map(w => `
-          <div class="p-2.5 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between">
-            <div>
-              <div class="font-bold text-white">#${w.id} &bull; ${w.username}</div>
-              <div class="text-[10px] text-slate-400 font-mono truncate max-w-[150px]">${w.usdt_address}</div>
-            </div>
-            <div class="text-right flex items-center gap-2">
-              <span class="font-bold text-white font-mono">$${w.amount}</span>
-              ${w.status === 'pending' ? `
-                <button onclick="approveWithdrawal(${w.id})" class="px-2 py-0.5 rounded bg-emerald-500 text-black font-bold text-[10px]">Approve</button>
-              ` : `
-                <span class="text-[9px] px-1 rounded bg-slate-800 text-slate-400 uppercase">${w.status}</span>
-              `}
-            </div>
-          </div>
-        `).join('');
-      } else {
-        withContainer.innerHTML = `<div class="text-center py-4 text-slate-500 text-xs">No pending withdrawals</div>`;
+    const statsData = await statsRes.json();
+    if (statsData.success && statsData.stats) {
+      const s = statsData.stats;
+      const bEl = document.getElementById('admin-stat-total-business');
+      if (bEl) bEl.textContent = `$${(s.totalBusiness || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+      const uEl = document.getElementById('admin-stat-total-users');
+      if (uEl) uEl.textContent = s.totalUsers || 0;
+
+      const dEl = document.getElementById('admin-stat-deposits');
+      if (dEl) dEl.textContent = `$${(s.totalDepositsVolume || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      const pDepEl = document.getElementById('admin-stat-pending-dep-sub');
+      if (pDepEl) pDepEl.textContent = `${s.pendingDepositsCount || 0} Pending ($${(s.pendingDepositsVolume || 0).toFixed(2)})`;
+
+      const wEl = document.getElementById('admin-stat-withdrawals');
+      if (wEl) wEl.textContent = `$${(s.approvedWithdrawalsVolume || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      const pWthEl = document.getElementById('admin-stat-pending-wth-sub');
+      if (pWthEl) pWthEl.textContent = `${s.pendingWithdrawalsCount || 0} Pending ($${(s.pendingWithdrawalsVolume || 0).toFixed(2)})`;
+
+      const bWth = document.getElementById('admin-badge-wth');
+      if (bWth) {
+        if (s.pendingWithdrawalsCount > 0) {
+          bWth.textContent = s.pendingWithdrawalsCount;
+          bWth.classList.remove('hidden');
+        } else {
+          bWth.classList.add('hidden');
+        }
+      }
+
+      const bTkt = document.getElementById('admin-badge-tickets');
+      if (bTkt) {
+        if (s.openTicketsCount > 0) {
+          bTkt.textContent = s.openTicketsCount;
+          bTkt.classList.remove('hidden');
+        } else {
+          bTkt.classList.add('hidden');
+        }
       }
     }
 
-    // Users
+    // 2. Load Members List
     const usersRes = await fetch(`${API_BASE}/admin/users`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
     const usersData = await usersRes.json();
-    const usersContainer = document.getElementById('admin-users-list');
-    if (usersContainer && usersData.success && usersData.users) {
-      usersContainer.innerHTML = usersData.users.map(u => `
-        <div class="p-2.5 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between">
-          <div>
-            <div class="font-bold text-white">${u.full_name || u.username} (@${u.username})</div>
-            <div class="text-[10px] text-slate-400 font-mono">Ref: ${u.referral_code}</div>
-          </div>
-          <div class="text-right">
-            <div class="font-bold text-cyan-300 font-mono">$${(u.wallet_balance || 0).toFixed(2)}</div>
-            <span class="text-[9px] uppercase px-1 rounded bg-slate-800 text-amber-400">${u.role}</span>
-          </div>
-        </div>
-      `).join('');
+    if (usersData.success && usersData.users) {
+      adminCachedUsers = usersData.users;
+      renderAdminUsersList(adminCachedUsers);
+      populateManualDepositUserSelect(adminCachedUsers);
     }
+
+    // 3. Load Withdrawals
+    await loadAdminWithdrawals();
+
+    // 4. Load Deposits
+    await loadAdminDeposits();
+
+    // 5. Load Tickets
+    await loadAdminTickets();
+
   } catch (err) {
     console.error('Error loading admin data:', err);
   }
 }
 
+function switchAdminTab(tabName) {
+  const tabs = ['users', 'withdrawals', 'deposits', 'tickets'];
+  tabs.forEach(t => {
+    const btn = document.getElementById(`admin-tab-btn-${t}`);
+    const content = document.getElementById(`admin-tab-content-${t}`);
+    if (btn) {
+      if (t === tabName) {
+        btn.classList.add('active', 'bg-amber-500/20', 'text-amber-400', 'border', 'border-amber-500/30');
+        btn.classList.remove('text-slate-400');
+      } else {
+        btn.classList.remove('active', 'bg-amber-500/20', 'text-amber-400', 'border', 'border-amber-500/30');
+        btn.classList.add('text-slate-400');
+      }
+    }
+    if (content) {
+      if (t === tabName) content.classList.remove('hidden');
+      else content.classList.add('hidden');
+    }
+  });
+  if (window.lucide) lucide.createIcons();
+}
+window.switchAdminTab = switchAdminTab;
+
+function renderAdminUsersList(users) {
+  const container = document.getElementById('admin-users-list');
+  if (!container) return;
+
+  if (!users || users.length === 0) {
+    container.innerHTML = `<div class="text-center py-6 text-slate-500">No members found</div>`;
+    return;
+  }
+
+  container.innerHTML = users.map(u => `
+    <div class="p-3 rounded-2xl bg-slate-900 border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2 hover:border-slate-700 transition">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-full bg-gradient-to-tr from-amber-500 to-amber-700 text-black font-extrabold flex items-center justify-center shrink-0">
+          ${(u.full_name || u.username || 'U')[0].toUpperCase()}
+        </div>
+        <div>
+          <div class="font-bold text-white flex items-center gap-1.5">
+            <span>${u.full_name || u.username}</span>
+            <span class="text-slate-400 font-mono text-[11px]">(@${u.username})</span>
+            <span class="text-[9px] uppercase px-1.5 py-0.2 rounded font-mono font-bold ${u.role === 'admin' ? 'bg-amber-500/20 text-amber-400' : 'bg-slate-800 text-cyan-400'}">${u.role}</span>
+          </div>
+          <div class="text-[10px] text-slate-400 flex items-center gap-2 mt-0.5">
+            <span>Ref: <strong class="text-amber-400 font-mono">${u.referral_code}</strong></span>
+            <span>&bull;</span>
+            <span>Sponsor: ${u.sponsor_username ? '@' + u.sponsor_username : 'None'}</span>
+            <span>&bull;</span>
+            <span class="${u.status === 'active' ? 'text-emerald-400' : 'text-rose-400'} font-semibold uppercase">${u.status}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-between sm:justify-end gap-2.5 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-800">
+        <div class="text-left sm:text-right">
+          <div class="text-[10px] text-slate-400">Recharge / Active Invest</div>
+          <div class="font-bold font-mono text-cyan-300 text-xs">$${(u.wallet_balance || 0).toFixed(2)} / <span class="text-emerald-400">$${(u.active_invested || 0).toFixed(2)}</span></div>
+        </div>
+
+        <div class="flex items-center gap-1.5">
+          <button onclick="inspectAdminUser(${u.id})" class="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px] font-bold transition flex items-center gap-1" title="View Portfolio & Adjust">
+            <i data-lucide="eye" class="w-3.5 h-3.5"></i> Inspect
+          </button>
+          <button onclick="adminImpersonateUser(${u.id})" class="px-2.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black text-[11px] font-bold transition flex items-center gap-1 shadow-sm shadow-amber-500/20 cursor-pointer" title="Open member's live portal directly">
+            <i data-lucide="external-link" class="w-3.5 h-3.5"></i> Open Portal
+          </button>
+        </div>
+      </div>
+    </div>
+  `).join('');
+
+  if (window.lucide) lucide.createIcons();
+}
+
+function filterAdminUsersList() {
+  const query = (document.getElementById('admin-user-search-input')?.value || '').trim().toLowerCase();
+  if (!query) {
+    renderAdminUsersList(adminCachedUsers);
+    return;
+  }
+  const filtered = adminCachedUsers.filter(u =>
+    (u.username && u.username.toLowerCase().includes(query)) ||
+    (u.full_name && u.full_name.toLowerCase().includes(query)) ||
+    (u.email && u.email.toLowerCase().includes(query)) ||
+    (u.referral_code && u.referral_code.toLowerCase().includes(query))
+  );
+  renderAdminUsersList(filtered);
+}
+window.filterAdminUsersList = filterAdminUsersList;
+
+async function inspectAdminUser(userId) {
+  try {
+    currentInspectedUserId = userId;
+    const res = await fetch(`${API_BASE}/admin/users/${userId}/details`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const data = await res.json();
+    if (!data.success || !data.user) throw new Error(data.error || 'Failed to fetch user details');
+
+    const u = data.user;
+    document.getElementById('aud-fullname').textContent = u.full_name || u.username;
+    document.getElementById('aud-username').textContent = `@${u.username}`;
+    document.getElementById('aud-avatar').textContent = (u.full_name || u.username || 'U')[0].toUpperCase();
+    document.getElementById('aud-role-badge').textContent = u.role.toUpperCase();
+
+    document.getElementById('aud-wallet-bal').textContent = `$${(u.wallet_balance || 0).toFixed(2)}`;
+    document.getElementById('aud-roi-bal').textContent = `$${(u.roi_balance || 0).toFixed(2)}`;
+    document.getElementById('aud-comm-bal').textContent = `$${(u.commission_balance || 0).toFixed(2)}`;
+
+    document.getElementById('aud-email').textContent = u.email || '-';
+    document.getElementById('aud-phone').textContent = u.phone || '-';
+    document.getElementById('aud-refcode').textContent = u.referral_code;
+    document.getElementById('aud-sponsor').textContent = u.sponsor_username ? `@${u.sponsor_username}` : 'Direct Master';
+    document.getElementById('aud-usdt').textContent = u.usdt_address || 'Not Set';
+
+    const stEl = document.getElementById('aud-status');
+    if (stEl) {
+      stEl.textContent = u.status.toUpperCase();
+      stEl.className = `font-bold uppercase text-[11px] ${u.status === 'active' ? 'text-emerald-400' : 'text-rose-400'}`;
+    }
+
+    // Render investments
+    const invContainer = document.getElementById('aud-investments-list');
+    if (invContainer) {
+      if (data.investments && data.investments.length > 0) {
+        invContainer.innerHTML = data.investments.map(i => `
+          <div class="p-2 rounded-xl bg-slate-800/80 border border-slate-700/60 flex items-center justify-between text-xs">
+            <div>
+              <div class="font-bold text-white">${i.plan_name} ($${i.amount})</div>
+              <div class="text-[10px] text-slate-400">Earned: $${(i.total_earned || 0).toFixed(2)} &bull; ${i.days_credited}/${i.total_days} days</div>
+            </div>
+            <span class="text-[9px] uppercase px-1.5 py-0.5 rounded font-bold ${i.status === 'active' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-700 text-slate-300'}">${i.status}</span>
+          </div>
+        `).join('');
+      } else {
+        invContainer.innerHTML = `<div class="text-center py-2 text-slate-500">No investment plans active</div>`;
+      }
+    }
+
+    openModal('adminUserDetailModal');
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+window.inspectAdminUser = inspectAdminUser;
+
+async function adminImpersonateUser(userId) {
+  try {
+    const res = await fetch(`${API_BASE}/admin/impersonate/${userId}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    const data = await res.json();
+    if (!data.success || !data.token) throw new Error(data.error || 'Impersonation failed');
+
+    // Save admin original token so admin can return
+    if (!originalAdminToken) {
+      originalAdminToken = token;
+      localStorage.setItem('catalyst_admin_orig_token', originalAdminToken);
+    }
+
+    // Switch active credentials to target user
+    token = data.token;
+    currentUser = data.user;
+    localStorage.setItem('catalyst_token', token);
+
+    closeModal('adminUserDetailModal');
+
+    // Show Impersonation banner
+    const banner = document.getElementById('impersonation-alert-banner');
+    const uEl = document.getElementById('impersonation-active-user');
+    if (banner && uEl) {
+      uEl.textContent = `@${currentUser.username} (${currentUser.full_name || ''})`;
+      banner.classList.remove('hidden');
+    }
+
+    updateAuthUI();
+    showToast(`Switched into member portal of @${currentUser.username}!`, 'info');
+    navigate('home');
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+window.adminImpersonateUser = adminImpersonateUser;
+
+function exitImpersonation() {
+  if (!originalAdminToken) return;
+  token = originalAdminToken;
+  localStorage.setItem('catalyst_token', token);
+  localStorage.removeItem('catalyst_admin_orig_token');
+  originalAdminToken = null;
+
+  const banner = document.getElementById('impersonation-alert-banner');
+  if (banner) banner.classList.add('hidden');
+
+  fetchUserProfile().then(() => {
+    showToast('Returned to Master Admin Portal!', 'success');
+    navigate('admin');
+  });
+}
+window.exitImpersonation = exitImpersonation;
+
+async function handleAdminAdjustBalance(e) {
+  e.preventDefault();
+  if (!currentInspectedUserId) return;
+  const walletType = document.getElementById('adj-wallet-type').value;
+  const action = document.getElementById('adj-action').value;
+  const amount = document.getElementById('adj-amount').value;
+
+  try {
+    const res = await fetch(`${API_BASE}/admin/adjust-balance`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        userId: currentInspectedUserId,
+        amount,
+        walletType,
+        action,
+        reason: 'Admin Panel Quick Adjustment'
+      })
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error || 'Adjustment failed');
+
+    showToast(data.message || 'Balance updated!', 'success');
+    document.getElementById('adj-amount').value = '';
+    await inspectAdminUser(currentInspectedUserId);
+    await loadAdminData();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+window.handleAdminAdjustBalance = handleAdminAdjustBalance;
+
+// ==================== ADMIN DEPOSITS & WITHDRAWALS ====================
+
+async function loadAdminWithdrawals() {
+  const withRes = await fetch(`${API_BASE}/admin/withdrawals`, {
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  const withData = await withRes.json();
+  const withContainer = document.getElementById('admin-withdrawals-list');
+  if (!withContainer) return;
+
+  if (withData.success && withData.withdrawals && withData.withdrawals.length > 0) {
+    withContainer.innerHTML = withData.withdrawals.map(w => `
+      <div class="p-3 rounded-2xl bg-slate-900 border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+        <div>
+          <div class="font-bold text-white flex items-center gap-2">
+            <span>#${w.id} &bull; ${w.full_name || w.username}</span>
+            <span class="text-slate-400 font-mono text-[11px]">(@${w.username})</span>
+          </div>
+          <div class="text-[10px] text-slate-400 font-mono mt-0.5 flex items-center gap-2">
+            <span>Address: <strong class="text-slate-200">${w.usdt_address}</strong></span>
+            <span>&bull;</span>
+            <span>Date: ${new Date(w.created_at).toLocaleString()}</span>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between sm:justify-end gap-3 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-800">
+          <div class="text-right">
+            <div class="font-bold text-rose-400 font-mono text-sm">$${parseFloat(w.amount).toFixed(2)} USDT</div>
+            <span class="text-[9px] uppercase px-1.5 py-0.2 rounded font-bold font-mono ${w.status === 'approved' ? 'bg-emerald-500/20 text-emerald-400' : (w.status === 'rejected' ? 'bg-rose-500/20 text-rose-400' : 'bg-amber-500/20 text-amber-400')}">${w.status}</span>
+          </div>
+
+          ${w.status === 'pending' ? `
+            <div class="flex items-center gap-1.5">
+              <button onclick="approveWithdrawal(${w.id})" class="px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs transition cursor-pointer">
+                Approve
+              </button>
+              <button onclick="rejectWithdrawal(${w.id})" class="px-2.5 py-1.5 rounded-xl bg-rose-500/20 border border-rose-500/40 hover:bg-rose-500/30 text-rose-400 font-bold text-xs transition cursor-pointer">
+                Reject
+              </button>
+            </div>
+          ` : ''}
+        </div>
+      </div>
+    `).join('');
+  } else {
+    withContainer.innerHTML = `<div class="text-center py-6 text-slate-500">No withdrawal requests found</div>`;
+  }
+}
+
 async function approveWithdrawal(id) {
+  const txHash = prompt('Optional: Enter Blockchain Transaction Hash (or leave empty to auto-generate):');
   try {
     const res = await fetch(`${API_BASE}/admin/withdrawals/${id}/approve`, {
       method: 'POST',
@@ -1762,40 +2072,348 @@ async function approveWithdrawal(id) {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`
       },
-      body: JSON.stringify({})
+      body: JSON.stringify({ txHash: txHash ? txHash.trim() : null })
     });
     const data = await res.json();
     if (data.success) {
-      showToast(`Withdrawal #${id} approved!`, 'success');
+      showToast(`Withdrawal #${id} approved successfully!`, 'success');
       loadAdminData();
+    } else {
+      showToast(data.error || 'Approval failed', 'error');
     }
   } catch (err) {
     showToast(err.message, 'error');
   }
 }
+window.approveWithdrawal = approveWithdrawal;
 
-async function triggerAdminDailyRoi() {
-  if (!confirm('Run the daily ROI and 3-level Referral Income cycle now?')) return;
+async function rejectWithdrawal(id) {
+  const reason = prompt('Enter rejection reason for member:', 'Incorrect wallet address or suspicious activity');
+  if (!reason) return;
 
   try {
-    const res = await fetch(`${API_BASE}/admin/trigger-daily-roi`, {
+    const res = await fetch(`${API_BASE}/admin/withdrawals/${id}/reject`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`
       },
-      body: JSON.stringify({ force: true })
+      body: JSON.stringify({ reason })
     });
     const data = await res.json();
     if (data.success) {
-      showToast(`🚀 Processed ${data.processedInvestments} plans. Paid ROI: $${data.totalRoiDistributed}`, 'success');
-      await fetchUserProfile();
+      showToast(`Withdrawal #${id} rejected and funds refunded to user!`, 'info');
       loadAdminData();
+    } else {
+      showToast(data.error || 'Rejection failed', 'error');
     }
   } catch (err) {
     showToast(err.message, 'error');
   }
 }
+window.rejectWithdrawal = rejectWithdrawal;
+
+async function loadAdminDeposits() {
+  const depRes = await fetch(`${API_BASE}/admin/deposits`, {
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  const depData = await depRes.json();
+  const depContainer = document.getElementById('admin-deposits-list');
+  if (!depContainer) return;
+
+  if (depData.success && depData.deposits && depData.deposits.length > 0) {
+    depContainer.innerHTML = depData.deposits.map(d => `
+      <div class="p-3 rounded-2xl bg-slate-900 border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+        <div>
+          <div class="font-bold text-white flex items-center gap-2">
+            <span>#${d.id} &bull; ${d.full_name || d.username}</span>
+            <span class="text-slate-400 font-mono text-[11px]">(@${d.username})</span>
+          </div>
+          <div class="text-[10px] text-slate-400 font-mono mt-0.5">
+            <span>Hash: <strong class="text-slate-200">${d.tx_hash || 'Internal Credit'}</strong></span>
+            <span>&bull;</span>
+            <span>Network: ${d.network || 'USDT'}</span>
+            <span>&bull;</span>
+            <span>${new Date(d.created_at).toLocaleString()}</span>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between sm:justify-end gap-3 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-800">
+          <div class="text-right">
+            <div class="font-bold text-emerald-400 font-mono text-sm">+$${parseFloat(d.amount).toFixed(2)} USDT</div>
+            <span class="text-[9px] uppercase px-1.5 py-0.2 rounded font-bold font-mono ${d.status === 'completed' ? 'bg-emerald-500/20 text-emerald-400' : (d.status === 'rejected' ? 'bg-rose-500/20 text-rose-400' : 'bg-amber-500/20 text-amber-400')}">${d.status}</span>
+          </div>
+
+          ${d.status === 'pending' ? `
+            <div class="flex items-center gap-1.5">
+              <button onclick="approveDeposit(${d.id})" class="px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs transition cursor-pointer">
+                Approve
+              </button>
+              <button onclick="rejectDeposit(${d.id})" class="px-2.5 py-1.5 rounded-xl bg-rose-500/20 border border-rose-500/40 hover:bg-rose-500/30 text-rose-400 font-bold text-xs transition cursor-pointer">
+                Reject
+              </button>
+            </div>
+          ` : ''}
+        </div>
+      </div>
+    `).join('');
+  } else {
+    depContainer.innerHTML = `<div class="text-center py-6 text-slate-500">No deposit records found</div>`;
+  }
+}
+
+async function approveDeposit(id) {
+  try {
+    const res = await fetch(`${API_BASE}/admin/deposits/${id}/approve`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast(data.message || 'Deposit approved and credited!', 'success');
+      loadAdminData();
+    } else {
+      showToast(data.error || 'Approval failed', 'error');
+    }
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+window.approveDeposit = approveDeposit;
+
+async function rejectDeposit(id) {
+  const reason = prompt('Enter rejection reason:');
+  if (!reason) return;
+  try {
+    const res = await fetch(`${API_BASE}/admin/deposits/${id}/reject`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ reason })
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast(data.message || 'Deposit rejected', 'info');
+      loadAdminData();
+    } else {
+      showToast(data.error || 'Rejection failed', 'error');
+    }
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+window.rejectDeposit = rejectDeposit;
+
+function populateManualDepositUserSelect(users) {
+  const select = document.getElementById('amd-user-select');
+  if (!select) return;
+  select.innerHTML = '<option value="">Select a user...</option>' + users.map(u => `
+    <option value="${u.id}">${u.full_name || u.username} (@${u.username} - Ref: ${u.referral_code})</option>
+  `).join('');
+}
+
+function openManualDepositModal() {
+  populateManualDepositUserSelect(adminCachedUsers);
+  openModal('adminManualDepositModal');
+}
+window.openManualDepositModal = openManualDepositModal;
+
+function openManualDepositForUser(userId) {
+  openManualDepositModal();
+  const select = document.getElementById('amd-user-select');
+  if (select) select.value = userId;
+}
+window.openManualDepositForUser = openManualDepositForUser;
+
+async function handleAdminManualDepositSubmit(e) {
+  e.preventDefault();
+  const userId = document.getElementById('amd-user-select').value;
+  const amount = document.getElementById('amd-amount').value;
+  const network = document.getElementById('amd-network').value;
+  const txHash = document.getElementById('amd-txhash').value.trim();
+
+  try {
+    const res = await fetch(`${API_BASE}/admin/deposits/manual-create`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ userId, amount, network, txHash })
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error || 'Manual deposit failed');
+
+    closeModal('adminManualDepositModal');
+    showToast(data.message || 'Manual deposit credited successfully!', 'success');
+    await loadAdminData();
+    if (currentInspectedUserId) await inspectAdminUser(currentInspectedUserId);
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+window.handleAdminManualDepositSubmit = handleAdminManualDepositSubmit;
+
+// ==================== SUPPORT TICKETS LOGIC (ADMIN & USER) ====================
+
+async function loadAdminTickets() {
+  const res = await fetch(`${API_BASE}/admin/tickets`, {
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  const data = await res.json();
+  const container = document.getElementById('admin-tickets-list');
+  if (!container) return;
+
+  if (data.success && data.tickets && data.tickets.length > 0) {
+    container.innerHTML = data.tickets.map(t => `
+      <div class="p-3.5 rounded-2xl bg-slate-900 border border-slate-800 space-y-2">
+        <div class="flex items-center justify-between">
+          <div class="font-bold text-white flex items-center gap-2">
+            <span>#${t.id} &bull; ${t.subject}</span>
+            <span class="text-[10px] px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-400 font-mono">${t.category}</span>
+          </div>
+          <span class="text-[9px] uppercase font-bold px-2 py-0.5 rounded ${t.status === 'open' ? 'bg-amber-500/20 text-amber-400' : 'bg-emerald-500/20 text-emerald-400'}">${t.status}</span>
+        </div>
+
+        <div class="text-xs text-slate-300 bg-slate-950/60 p-2.5 rounded-xl border border-slate-800/80 whitespace-pre-line">
+          ${t.message}
+        </div>
+
+        ${t.admin_reply ? `
+          <div class="text-xs text-emerald-300 bg-emerald-950/20 p-2 rounded-xl border border-emerald-900/40">
+            <strong>Admin Reply:</strong> ${t.admin_reply}
+          </div>
+        ` : ''}
+
+        <div class="flex items-center justify-between pt-1 text-[10px] text-slate-400">
+          <span>By: <strong class="text-white">@${t.username}</strong> &bull; ${new Date(t.created_at).toLocaleString()}</span>
+          <button onclick="openAdminTicketReplyModal(${t.id}, '${escapeQuote(t.username)}', '${escapeQuote(t.category)}', '${escapeQuote(t.subject)}', '${escapeQuote(t.message)}')" class="px-3 py-1 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold transition flex items-center gap-1 cursor-pointer">
+            <i data-lucide="message-square" class="w-3 h-3"></i> Reply
+          </button>
+        </div>
+      </div>
+    `).join('');
+    if (window.lucide) lucide.createIcons();
+  } else {
+    container.innerHTML = `<div class="text-center py-6 text-slate-500">No support tickets found</div>`;
+  }
+}
+
+function escapeQuote(str) {
+  if (!str) return '';
+  return str.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+}
+
+function openAdminTicketReplyModal(id, username, category, subject, message) {
+  document.getElementById('at-reply-ticket-id').value = id;
+  document.getElementById('at-reply-ticket-user').textContent = `@${username}`;
+  document.getElementById('at-reply-ticket-category').textContent = category;
+  document.getElementById('at-reply-ticket-subject').textContent = subject;
+  document.getElementById('at-reply-ticket-msg').textContent = message;
+  document.getElementById('at-reply-text').value = '';
+  openModal('adminTicketReplyModal');
+}
+window.openAdminTicketReplyModal = openAdminTicketReplyModal;
+
+async function handleAdminTicketReplySubmit(e) {
+  e.preventDefault();
+  const id = document.getElementById('at-reply-ticket-id').value;
+  const reply = document.getElementById('at-reply-text').value.trim();
+  const status = document.getElementById('at-reply-status').value;
+
+  try {
+    const res = await fetch(`${API_BASE}/admin/tickets/${id}/reply`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ reply, status })
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error || 'Failed to submit reply');
+
+    closeModal('adminTicketReplyModal');
+    showToast('Reply sent successfully!', 'success');
+    loadAdminTickets();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+window.handleAdminTicketReplySubmit = handleAdminTicketReplySubmit;
+
+function openSupportTicketModal() {
+  closeProfileDropdown();
+  loadMemberSupportTickets();
+  openModal('memberSupportModal');
+}
+window.openSupportTicketModal = openSupportTicketModal;
+
+async function loadMemberSupportTickets() {
+  if (!token) return;
+  try {
+    const res = await fetch(`${API_BASE}/auth/tickets`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const data = await res.json();
+    const container = document.getElementById('member-tickets-list');
+    if (!container) return;
+
+    if (data.success && data.tickets && data.tickets.length > 0) {
+      container.innerHTML = data.tickets.map(t => `
+        <div class="p-2.5 rounded-xl bg-slate-900 border border-slate-800 space-y-1.5">
+          <div class="flex items-center justify-between">
+            <span class="font-bold text-white text-xs">${t.subject}</span>
+            <span class="text-[9px] uppercase font-bold px-1.5 py-0.2 rounded ${t.status === 'open' ? 'bg-amber-500/20 text-amber-400' : 'bg-emerald-500/20 text-emerald-400'}">${t.status}</span>
+          </div>
+          <p class="text-[11px] text-slate-300">${t.message}</p>
+          ${t.admin_reply ? `
+            <div class="p-2 rounded-lg bg-cyan-950/30 border border-cyan-800/40 text-[11px] text-cyan-300 mt-1">
+              <strong>Admin Response:</strong> ${t.admin_reply}
+            </div>
+          ` : `<div class="text-[10px] text-slate-500 italic">Waiting for admin response...</div>`}
+        </div>
+      `).join('');
+    } else {
+      container.innerHTML = `<div class="text-center py-4 text-slate-500">No support tickets created yet</div>`;
+    }
+  } catch (err) {
+    console.error('Failed to load tickets:', err);
+  }
+}
+
+async function handleCreateSupportTicket(e) {
+  e.preventDefault();
+  const category = document.getElementById('st-category').value;
+  const subject = document.getElementById('st-subject').value.trim();
+  const message = document.getElementById('st-message').value.trim();
+
+  try {
+    const res = await fetch(`${API_BASE}/auth/tickets`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ category, subject, message })
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error || 'Failed to submit ticket');
+
+    showToast('Support ticket submitted successfully!', 'success');
+    document.getElementById('st-subject').value = '';
+    document.getElementById('st-message').value = '';
+    loadMemberSupportTickets();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+window.handleCreateSupportTicket = handleCreateSupportTicket;
 
 // ==================== UTILS & HELPERS ====================
 
