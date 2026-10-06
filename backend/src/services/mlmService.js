@@ -30,14 +30,23 @@ class MlmService {
    * Level 3: 1%
    */
   async distributeTeamCommission(investorId, amount, investmentId) {
-    const uplines = await this.getUplineChain(investorId, 3);
     const investor = await db.get('SELECT id, username, full_name FROM users WHERE id = ?', [investorId]);
 
-    const rates = {
-      1: 0.06, // 6%
-      2: 0.02, // 2%
-      3: 0.01  // 1%
-    };
+    // Dynamic rates from admin settings, fallback to defaults
+    let rates = { 1: 0.06, 2: 0.02, 3: 0.01 };
+    try {
+      const setting = await db.get("SELECT value FROM system_settings WHERE key = 'team_commission_levels'");
+      if (setting && setting.value) {
+        const parsed = JSON.parse(setting.value);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          rates = {};
+          parsed.forEach(item => { rates[item.level] = item.rate / 100; });
+        }
+      }
+    } catch(e) { /* use defaults */ }
+
+    const maxLevel = Math.max(...Object.keys(rates).map(Number), 3);
+    const uplines = await this.getUplineChain(investorId, maxLevel);
 
     const distributions = [];
 
@@ -95,14 +104,23 @@ class MlmService {
    * Level 3: 2%
    */
   async distributeReferralRoi(earnerId, dailyRoiAmount, investmentId) {
-    const uplines = await this.getUplineChain(earnerId, 3);
     const earner = await db.get('SELECT id, username FROM users WHERE id = ?', [earnerId]);
 
-    const rates = {
-      1: 0.10, // 10%
-      2: 0.04, // 4%
-      3: 0.02  // 2%
-    };
+    // Dynamic rates from admin settings, fallback to defaults
+    let rates = { 1: 0.10, 2: 0.04, 3: 0.02 };
+    try {
+      const setting = await db.get("SELECT value FROM system_settings WHERE key = 'team_roi_levels'");
+      if (setting && setting.value) {
+        const parsed = JSON.parse(setting.value);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          rates = {};
+          parsed.forEach(item => { rates[item.level] = item.rate / 100; });
+        }
+      }
+    } catch(e) { /* use defaults */ }
+
+    const maxLevel = Math.max(...Object.keys(rates).map(Number), 3);
+    const uplines = await this.getUplineChain(earnerId, maxLevel);
 
     const distributions = [];
 

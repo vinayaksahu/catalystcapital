@@ -2552,7 +2552,7 @@ async function loadAdminData() {
 }
 
 function switchAdminTab(tabName) {
-  const tabs = ['users', 'withdrawals', 'deposits', 'tickets', 'announcements'];
+  const tabs = ['users', 'withdrawals', 'deposits', 'tickets', 'announcements', 'settings'];
   tabs.forEach(t => {
     const btn = document.getElementById(`admin-tab-btn-${t}`);
     const content = document.getElementById(`admin-tab-content-${t}`);
@@ -2570,6 +2570,7 @@ function switchAdminTab(tabName) {
       else content.classList.add('hidden');
     }
   });
+  if (tabName === 'settings') loadAdminPlatformSettings();
   if (window.lucide) lucide.createIcons();
 }
 window.switchAdminTab = switchAdminTab;
@@ -2676,7 +2677,8 @@ async function inspectAdminUser(userId) {
     document.getElementById('aud-phone').textContent = u.phone || '-';
     document.getElementById('aud-refcode').textContent = u.referral_code;
     document.getElementById('aud-sponsor').textContent = u.sponsor_username ? `@${u.sponsor_username}` : 'Direct Master';
-    document.getElementById('aud-usdt').textContent = u.usdt_address || 'Not Set';
+    const audUsdtInput = document.getElementById('aud-usdt-input');
+    if (audUsdtInput) audUsdtInput.value = u.usdt_address || '';
 
     const stEl = document.getElementById('aud-status');
     if (stEl) {
@@ -3450,6 +3452,12 @@ async function loadAdminSettings() {
         currentPopupImageBase64 = imgUrl;
         showAdminPopupPreview(imgUrl);
       }
+
+      // Deposit address
+      const depositAddrInput = document.getElementById('admin-deposit-address-input');
+      if (depositAddrInput) {
+        depositAddrInput.value = settingsMap.usdt_deposit_address || '';
+      }
     }
   } catch (err) {
     console.error('Failed to load admin settings:', err);
@@ -3486,6 +3494,53 @@ async function handleSaveTickerNotice(e) {
   }
 }
 window.handleSaveTickerNotice = handleSaveTickerNotice;
+
+async function handleSaveAdminDepositAddress(e) {
+  e.preventDefault();
+  const value = document.getElementById('admin-deposit-address-input')?.value.trim();
+  if (!value) { showToast('Please enter a valid BEP-20 address', 'error'); return; }
+
+  try {
+    const res = await fetch(`${API_BASE}/admin/settings`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ key: 'usdt_deposit_address', value })
+    });
+    const data = await res.json();
+    if (data.success) {
+      updateRechargeModalAddress(value);
+      showToast('Official deposit address updated & synced to all members!', 'success');
+    } else {
+      showToast(data.error || 'Failed to update deposit address', 'error');
+    }
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+window.handleSaveAdminDepositAddress = handleSaveAdminDepositAddress;
+
+async function handleAdminSaveUserWalletAddress() {
+  if (!currentInspectedUserId) { showToast('No user selected', 'error'); return; }
+  const walletAddress = document.getElementById('aud-usdt-input')?.value.trim();
+  if (!walletAddress) { showToast('Please enter wallet address', 'error'); return; }
+
+  try {
+    const res = await fetch(`${API_BASE}/admin/users/${currentInspectedUserId}/wallet-address`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ walletAddress })
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast('User wallet address updated successfully!', 'success');
+    } else {
+      showToast(data.error || 'Failed to update wallet address', 'error');
+    }
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+window.handleAdminSaveUserWalletAddress = handleAdminSaveUserWalletAddress;
 
 function previewAdminPopupImageFile(input) {
   if (input.files && input.files[0]) {
