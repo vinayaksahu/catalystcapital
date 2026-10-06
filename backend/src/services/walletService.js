@@ -331,7 +331,8 @@ class WalletService {
     if (!w) throw new Error('Withdrawal record not found');
     if (w.status !== 'pending') throw new Error(`Withdrawal is already ${w.status}`);
 
-    const hash = txHash || 'USDT-TX-' + Math.random().toString(36).substring(2, 12).toUpperCase();
+    const crypto = require('crypto');
+    const hash = txHash || ('0x' + crypto.randomBytes(32).toString('hex'));
     const nowExpr = db.isPostgres ? 'CURRENT_TIMESTAMP' : "datetime('now')";
 
     await db.run(`

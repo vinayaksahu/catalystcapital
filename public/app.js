@@ -3030,7 +3030,7 @@ async function loadAdminWithdrawals() {
 
         ${w.status === 'pending' ? `
           <div class="flex items-center gap-2 pt-1 border-t border-slate-800/80">
-            <button onclick="approveWithdrawal(${w.id})" class="flex-1 py-2 px-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs transition flex items-center justify-center gap-1.5 cursor-pointer shadow-sm shadow-emerald-500/20 active:scale-95">
+            <button onclick="approveWithdrawal(${w.id}, this)" class="flex-1 py-2 px-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs transition flex items-center justify-center gap-1.5 cursor-pointer shadow-sm shadow-emerald-500/20 active:scale-95">
               <i data-lucide="check-circle-2" class="w-3.5 h-3.5"></i>
               <span>Approve Payout</span>
             </button>
@@ -3048,8 +3048,14 @@ async function loadAdminWithdrawals() {
   }
 }
 
-async function approveWithdrawal(id) {
-  const txHash = prompt('Optional: Enter BEP-20 Blockchain Transaction Hash (0x...) or leave empty to auto-generate:');
+async function approveWithdrawal(id, btnElement) {
+  const btn = btnElement || (typeof event !== 'undefined' ? (event?.currentTarget || event?.target) : null);
+  const origHtml = btn ? btn.innerHTML : '';
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = `<span class="inline-block animate-spin mr-1">⏳</span><span>Approving...</span>`;
+  }
+
   try {
     const res = await fetch(`${API_BASE}/admin/withdrawals/${id}/approve`, {
       method: 'POST',
@@ -3057,7 +3063,7 @@ async function approveWithdrawal(id) {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`
       },
-      body: JSON.stringify({ txHash: txHash ? txHash.trim() : null })
+      body: JSON.stringify({})
     });
     const data = await res.json();
     if (data.success) {
@@ -3065,9 +3071,17 @@ async function approveWithdrawal(id) {
       loadAdminData();
     } else {
       showToast(data.error || 'Approval failed', 'error');
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = origHtml || '<span>Approve Payout</span>';
+      }
     }
   } catch (err) {
     showToast(err.message, 'error');
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = origHtml || '<span>Approve Payout</span>';
+    }
   }
 }
 window.approveWithdrawal = approveWithdrawal;
