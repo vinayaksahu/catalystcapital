@@ -1329,7 +1329,7 @@
             </div>
 
             <!-- Image Live Preview Box -->
-            <div id="admin-popup-preview-box" class="hidden p-3 rounded-xl bg-black/60 border border-slate-800 flex flex-col items-center">
+            <div id="admin-popup-preview-box" style="display: none;" class="hidden p-3 rounded-xl bg-black/60 border border-slate-800 flex-col items-center">
               <span class="text-[10px] text-slate-400 uppercase tracking-wider mb-2 font-bold">Pop Image Live Preview</span>
               <img id="admin-popup-preview-img" src="" alt="Popup Preview" class="max-h-56 max-w-full rounded-lg object-contain shadow-md">
             </div>
@@ -1341,8 +1341,8 @@
               <button type="button" onclick="previewMemberLoginPopupDirectly()" class="px-3.5 py-2 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/30 hover:bg-amber-500/30 text-xs font-bold transition active:scale-95 cursor-pointer flex items-center gap-1.5">
                 <i data-lucide="eye" class="w-3.5 h-3.5"></i> Preview Modal
               </button>
-              <button type="button" onclick="clearAdminPopupImage()" class="px-3 py-2 rounded-xl bg-rose-500/20 text-rose-300 border border-rose-500/30 hover:bg-rose-500/30 text-xs font-bold transition active:scale-95 cursor-pointer">
-                Remove Pop Image
+              <button type="button" id="btn-remove-popup" onclick="clearAdminPopupImage(this)" class="px-3 py-2 rounded-xl bg-rose-500/20 text-rose-300 border border-rose-500/30 hover:bg-rose-500/30 text-xs font-bold transition active:scale-95 cursor-pointer flex items-center gap-1.5">
+                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> Remove Pop Image
               </button>
             </div>
           </form>

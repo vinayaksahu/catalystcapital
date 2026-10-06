@@ -3556,9 +3556,21 @@ async function loadAdminSettings() {
       const imgUrl = settingsMap.popup_image_url || '';
       if (urlInput) urlInput.value = imgUrl.startsWith('data:') ? '' : imgUrl;
 
+      const box = document.getElementById('admin-popup-preview-box');
+      const previewImg = document.getElementById('admin-popup-preview-img');
       if (imgUrl) {
         currentPopupImageBase64 = imgUrl;
         showAdminPopupPreview(imgUrl);
+      } else {
+        currentPopupImageBase64 = '';
+        if (box) {
+          box.style.display = 'none';
+          box.classList.add('hidden');
+        }
+        if (previewImg) {
+          previewImg.src = '';
+          previewImg.removeAttribute('src');
+        }
       }
 
       // Deposit address
@@ -3772,6 +3784,21 @@ function previewAdminPopupImageUrl(url) {
     const chkActive = document.getElementById('admin-popup-active-checkbox');
     if (chkActive) chkActive.checked = true;
     showAdminPopupPreview(currentPopupImageBase64);
+  } else {
+    // If URL input was cleared
+    if (!currentPopupImageBase64 || currentPopupImageBase64.startsWith('http')) {
+      currentPopupImageBase64 = '';
+      const box = document.getElementById('admin-popup-preview-box');
+      if (box) {
+        box.style.display = 'none';
+        box.classList.add('hidden');
+      }
+      const img = document.getElementById('admin-popup-preview-img');
+      if (img) {
+        img.src = '';
+        img.removeAttribute('src');
+      }
+    }
   }
 }
 window.previewAdminPopupImageUrl = previewAdminPopupImageUrl;
@@ -3782,20 +3809,75 @@ function showAdminPopupPreview(src) {
   if (box && img && src) {
     img.src = src;
     box.classList.remove('hidden');
+    box.style.display = 'flex';
   }
 }
 
-function clearAdminPopupImage() {
+async function clearAdminPopupImage(btnElement) {
+  const btn = btnElement || document.getElementById('btn-remove-popup') || (typeof event !== 'undefined' ? (event?.currentTarget || event?.target) : null);
+  const origText = btn ? btn.innerHTML : '';
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Removing...';
+  }
+
+  // 1. Immediately reset all local memory, inputs, and preview
   currentPopupImageBase64 = '';
   const fileInput = document.getElementById('admin-popup-file-input');
   if (fileInput) fileInput.value = '';
   const urlInput = document.getElementById('admin-popup-url-input');
   if (urlInput) urlInput.value = '';
+
   const box = document.getElementById('admin-popup-preview-box');
-  if (box) box.classList.add('hidden');
+  if (box) {
+    box.style.display = 'none';
+    box.classList.add('hidden');
+  }
+  const previewImg = document.getElementById('admin-popup-preview-img');
+  if (previewImg) {
+    previewImg.src = '';
+    previewImg.removeAttribute('src');
+  }
+
   const chkActive = document.getElementById('admin-popup-active-checkbox');
   if (chkActive) chkActive.checked = false;
-  showToast('Popup image cleared. Click Save to apply.', 'info');
+
+  // 2. Persist deletion immediately to backend database
+  try {
+    const token = localStorage.getItem('token') || localStorage.getItem('authToken');
+    if (token) {
+      const res = await fetch(`${API_BASE}/admin/settings`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({
+          settings: {
+            popup_image_url: '',
+            popup_image_active: '0'
+          }
+        })
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error || 'Failed to remove popup image from server');
+    }
+
+    // 3. Clear public cache
+    if (!publicAnnouncementsCache) publicAnnouncementsCache = {};
+    publicAnnouncementsCache.popupImageUrl = '';
+    publicAnnouncementsCache.popupImageActive = false;
+
+    // 4. Close any open preview modal
+    closeModal('memberLoginPopupModal');
+
+    showToast('Pop image removed successfully!', 'success');
+  } catch (err) {
+    console.error('Failed to remove pop image:', err);
+    showToast(err.message || 'Error removing popup image', 'error');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = origText || 'Remove Pop Image';
+    }
+  }
 }
 window.clearAdminPopupImage = clearAdminPopupImage;
 
