@@ -65,8 +65,8 @@ router.get('/me', async (req, res) => {
     const isSuper = adminUser.role === 'superadmin' || adminUser.username === 'admin' || adminUser.id === 1;
     const teamAdmins = isSuper ? await db.all(`
       SELECT id, username, full_name, team_name, referral_code, status
-      FROM users WHERE role = 'admin' ORDER BY id ASC
-    `) : [];
+      FROM users WHERE (role = 'admin' OR username = 'admin') AND id != ? ORDER BY id ASC
+    `, [req.user.id]) : [];
 
     res.json({
       success: true,
@@ -94,9 +94,9 @@ router.get('/team-admins', requireSuperAdmin, async (req, res) => {
              COALESCE((SELECT SUM(amount) FROM deposits WHERE user_id IN (SELECT id FROM users WHERE (team_admin_id = a.id OR sponsor_id = a.id)) AND status = 'completed'), 0) as total_deposits,
              COALESCE((SELECT SUM(amount) FROM withdrawals WHERE user_id IN (SELECT id FROM users WHERE (team_admin_id = a.id OR sponsor_id = a.id)) AND status = 'approved'), 0) as total_withdrawals
       FROM users a
-      WHERE a.role = 'admin'
+      WHERE (a.role = 'admin' OR a.username = 'admin') AND a.id != ?
       ORDER BY a.id ASC
-    `);
+    `, [req.user.id]);
 
     res.json({ success: true, teamAdmins });
   } catch (err) {
@@ -155,7 +155,7 @@ router.post('/team-admins', requireSuperAdmin, async (req, res) => {
 router.put('/team-admins/:id', requireSuperAdmin, async (req, res) => {
   try {
     const adminId = parseInt(req.params.id, 10);
-    const target = await db.get("SELECT * FROM users WHERE id = ? AND role = 'admin'", [adminId]);
+    const target = await db.get("SELECT * FROM users WHERE id = ? AND (role = 'admin' OR username = 'admin')", [adminId]);
     if (!target) return res.status(404).json({ success: false, error: 'Team Admin not found' });
 
     const fullName = req.body.fullName || req.body.full_name;
@@ -202,7 +202,7 @@ router.put('/team-admins/:id', requireSuperAdmin, async (req, res) => {
 router.post('/team-admins/:id/toggle-status', requireSuperAdmin, async (req, res) => {
   try {
     const adminId = parseInt(req.params.id, 10);
-    const target = await db.get("SELECT * FROM users WHERE id = ? AND role = 'admin'", [adminId]);
+    const target = await db.get("SELECT * FROM users WHERE id = ? AND (role = 'admin' OR username = 'admin')", [adminId]);
     if (!target) return res.status(404).json({ success: false, error: 'Team Admin not found' });
     const newStatus = target.status === 'active' ? 'suspended' : 'active';
     await db.run('UPDATE users SET status = ? WHERE id = ?', [newStatus, adminId]);
@@ -218,7 +218,7 @@ router.get('/branch-inspector/:id', requireSuperAdmin, async (req, res) => {
     const adminId = parseInt(req.params.id, 10);
     const branchAdmin = await db.get(`
       SELECT id, username, email, full_name, phone, role, referral_code, team_name, usdt_address, wallet_balance, status, created_at
-      FROM users WHERE id = ? AND role = 'admin'
+      FROM users WHERE id = ? AND (role = 'admin' OR username = 'admin')
     `, [adminId]);
     if (!branchAdmin) return res.status(404).json({ success: false, error: 'Branch Admin not found' });
 
@@ -369,7 +369,7 @@ router.get('/audit-logs', async (req, res) => {
 router.post('/team-admins/:id/impersonate', requireSuperAdmin, async (req, res) => {
   try {
     const adminId = parseInt(req.params.id, 10);
-    const targetAdmin = await db.get("SELECT * FROM users WHERE id = ? AND role = 'admin'", [adminId]);
+    const targetAdmin = await db.get("SELECT * FROM users WHERE id = ? AND (role = 'admin' OR username = 'admin')", [adminId]);
     if (!targetAdmin) return res.status(404).json({ success: false, error: 'Team Admin not found' });
 
     const impersonationToken = jwt.sign(

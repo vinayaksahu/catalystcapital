@@ -469,10 +469,13 @@ async function initDatabase() {
       }
     }
 
-    // Backfill any orphaned users without team_admin_id to Team A
-    const teamA = await db.get("SELECT id FROM users WHERE username = 'DF_TEAM_A'");
-    if (teamA) {
-      await db.run("UPDATE users SET team_admin_id = ? WHERE role = 'user' AND (team_admin_id IS NULL OR team_admin_id = 0)", [teamA.id]);
+    // Ensure default primary 'admin' has team_admin_id = id and team_name
+    await db.run("UPDATE users SET team_admin_id = id, team_name = 'Headquarters (Main Admin)' WHERE (username = 'admin' OR id = 1) AND (team_name IS NULL OR team_admin_id IS NULL)");
+
+    // Backfill any orphaned users without team_admin_id to primary Admin (id: 1)
+    const mainAdmin = await db.get("SELECT id FROM users WHERE username = 'admin' OR id = 1");
+    if (mainAdmin) {
+      await db.run("UPDATE users SET team_admin_id = ? WHERE role IN ('user', 'member') AND (team_admin_id IS NULL OR team_admin_id = 0)", [mainAdmin.id]);
     }
   } catch (err) {
     console.warn('Auto-seed multi-admin note:', err.message);
