@@ -1645,7 +1645,8 @@ function promptPurchasePlan(planId) {
   document.getElementById('modal-plan-price').textContent = `$${plan.price} USDT`;
   document.getElementById('modal-plan-duration').textContent = `${plan.duration_days} Days`;
   document.getElementById('modal-plan-daily').textContent = `$${plan.daily_roi.toFixed(2)} USDT / day`;
-  document.getElementById('modal-user-bal').textContent = `$${(currentUser.wallet_balance || 0).toFixed(2)} USDT`;
+  const totalAvail = (currentUser.wallet_balance || 0) + (currentUser.roi_balance || 0) + (currentUser.commission_balance || 0);
+  document.getElementById('modal-user-bal').textContent = `$${totalAvail.toFixed(2)} USDT`;
   document.getElementById('modal-plan-id').value = plan.id;
 
   openModal('purchaseModal');
@@ -1653,6 +1654,14 @@ function promptPurchasePlan(planId) {
 
 async function confirmPlanPurchase() {
   const planId = document.getElementById('modal-plan-id').value;
+  const btn = document.querySelector('#purchaseModal button[onclick="confirmPlanPurchase()"]');
+  const origText = btn ? btn.textContent : 'Confirm & Start Earning';
+
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Activating Package...';
+  }
+
   try {
     const res = await fetch(`${API_BASE}/investments/purchase`, {
       method: 'POST',
@@ -1670,9 +1679,17 @@ async function confirmPlanPurchase() {
     closeModal('purchaseModal');
     showToast(`🎉 Activated ${data.planName}! Daily ROI started.`, 'success');
     await fetchUserProfile();
+    if (activeViewName === 'assets') await loadAssetsData();
+    if (activeViewName === 'home') await loadAssetsData();
+    if (activeViewName === 'history') await loadHistoryData();
     navigate('assets');
   } catch (err) {
     showToast(err.message, 'error');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = origText;
+    }
   }
 }
 
