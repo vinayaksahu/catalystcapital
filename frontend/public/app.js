@@ -82,18 +82,178 @@ function setupEventListeners() {
     openModal('registerModal');
   }
 
-  // Close demo dropdown when clicking outside
+  // Close profile dropdown when clicking outside
   document.addEventListener('click', (e) => {
-    const dropdown = document.getElementById('demo-dropdown');
-    if (dropdown && !dropdown.contains(e.target) && !e.target.closest('button[onclick="toggleDemoDropdown()"]')) {
-      dropdown.classList.add('hidden');
+    const profileDropdown = document.getElementById('crypto-profile-dropdown');
+    const profileBtn = document.getElementById('profile-pill-btn');
+    if (profileDropdown && !profileDropdown.classList.contains('hidden')) {
+      if (!profileDropdown.contains(e.target) && !profileBtn?.contains(e.target)) {
+        closeProfileDropdown();
+      }
     }
   });
 }
 
-function toggleDemoDropdown() {
-  const dropdown = document.getElementById('demo-dropdown');
-  if (dropdown) dropdown.classList.toggle('hidden');
+// ==================== CRYPTOFINANCE PROFILE DROPDOWN (Uploaded Image) ====================
+
+function toggleProfileDropdown(e) {
+  if (e) e.stopPropagation();
+  const dropdown = document.getElementById('crypto-profile-dropdown');
+  const chevron = document.getElementById('profile-chevron-icon');
+  if (!dropdown) return;
+
+  const isHidden = dropdown.classList.contains('hidden');
+  if (isHidden) {
+    dropdown.classList.remove('hidden');
+    if (chevron) {
+      chevron.setAttribute('data-lucide', 'chevron-up');
+      lucide.createIcons();
+    }
+  } else {
+    closeProfileDropdown();
+  }
+}
+
+function closeProfileDropdown() {
+  const dropdown = document.getElementById('crypto-profile-dropdown');
+  const chevron = document.getElementById('profile-chevron-icon');
+  if (dropdown) dropdown.classList.add('hidden');
+  if (chevron) {
+    chevron.setAttribute('data-lucide', 'chevron-down');
+    lucide.createIcons();
+  }
+}
+
+function openEditProfileModal() {
+  closeProfileDropdown();
+  if (!currentUser) return;
+  const uidEl = document.getElementById('edit-prof-uid');
+  if (uidEl) uidEl.textContent = currentUser.referral_code || 'CF163205';
+  const userEl = document.getElementById('edit-prof-username');
+  if (userEl) userEl.textContent = `@${currentUser.username}`;
+  const fullEl = document.getElementById('edit-prof-fullname');
+  if (fullEl) fullEl.value = currentUser.full_name || '';
+  const phoneEl = document.getElementById('edit-prof-phone');
+  if (phoneEl) phoneEl.value = currentUser.phone || '';
+  const emailEl = document.getElementById('edit-prof-email');
+  if (emailEl) emailEl.value = currentUser.email || '';
+  openModal('editProfileModal');
+}
+
+async function handleUpdateProfile(e) {
+  e.preventDefault();
+  const fullName = document.getElementById('edit-prof-fullname').value;
+  const phone = document.getElementById('edit-prof-phone').value;
+  const email = document.getElementById('edit-prof-email').value;
+
+  try {
+    const res = await fetch(`${API_BASE}/auth/profile`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ fullName, phone, email })
+    });
+    const data = await res.json();
+    if (data.success && data.user) {
+      currentUser = data.user;
+      updateAuthUI();
+      closeModal('editProfileModal');
+      showToast('Profile updated successfully!', 'success');
+    } else {
+      showToast(data.error || 'Failed to update profile', 'error');
+    }
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+function openChangePasswordModal() {
+  closeProfileDropdown();
+  const cpCurr = document.getElementById('cp-current');
+  if (cpCurr) cpCurr.value = '';
+  const cpNew = document.getElementById('cp-new');
+  if (cpNew) cpNew.value = '';
+  const cpConf = document.getElementById('cp-confirm');
+  if (cpConf) cpConf.value = '';
+  openModal('changePasswordModal');
+}
+
+async function handleChangePassword(e) {
+  e.preventDefault();
+  const currentPassword = document.getElementById('cp-current').value;
+  const newPassword = document.getElementById('cp-new').value;
+  const confirmPassword = document.getElementById('cp-confirm').value;
+
+  if (newPassword !== confirmPassword) {
+    showToast('New passwords do not match!', 'error');
+    return;
+  }
+  if (newPassword.length < 6) {
+    showToast('Password must be at least 6 characters long', 'error');
+    return;
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}/auth/change-password`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ currentPassword, newPassword })
+    });
+    const data = await res.json();
+    if (data.success) {
+      closeModal('changePasswordModal');
+      showToast('Password updated successfully!', 'success');
+    } else {
+      showToast(data.error || 'Failed to update password', 'error');
+    }
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+function openWalletAddressModal() {
+  closeProfileDropdown();
+  const dispEl = document.getElementById('bep20-current-display');
+  if (dispEl) dispEl.textContent = currentUser?.usdt_address || 'Not Set';
+  const inpEl = document.getElementById('bep20-address-input');
+  if (inpEl) inpEl.value = currentUser?.usdt_address || '';
+  openModal('bep20WalletModal');
+}
+
+async function handleUpdateWalletAddress(e) {
+  e.preventDefault();
+  const walletAddress = document.getElementById('bep20-address-input').value.trim();
+  if (!walletAddress) {
+    showToast('Please enter a valid wallet address', 'error');
+    return;
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}/auth/wallet-address`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ walletAddress })
+    });
+    const data = await res.json();
+    if (data.success && data.user) {
+      currentUser = data.user;
+      updateAuthUI();
+      closeModal('bep20WalletModal');
+      showToast('BEP-20 Wallet Address saved successfully!', 'success');
+    } else {
+      showToast(data.error || 'Failed to update wallet address', 'error');
+    }
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
 }
 
 // ==================== AUTHENTICATION ====================
@@ -136,6 +296,27 @@ function updateAuthUI() {
     if (profAvatar) profAvatar.textContent = initial;
 
     if (activeBadge) activeBadge.textContent = displayName;
+
+    // CryptoFinance Dropdown Information (Uploaded Screenshot)
+    const cfUid = document.getElementById('cf-prof-uid');
+    if (cfUid) cfUid.textContent = currentUser.referral_code || 'CF163205';
+
+    const cfStatus = document.getElementById('cf-prof-status');
+    if (cfStatus) {
+      if (currentUser.role === 'admin') {
+        cfStatus.textContent = 'Active (Admin)';
+      } else if (currentUser.status === 'active') {
+        cfStatus.textContent = 'Active';
+      } else {
+        cfStatus.textContent = 'Pending Activation';
+      }
+    }
+
+    const cfAdminLink = document.getElementById('cf-prof-admin-link');
+    if (cfAdminLink) {
+      if (currentUser.role === 'admin') cfAdminLink.classList.remove('hidden');
+      else cfAdminLink.classList.add('hidden');
+    }
 
     // Profile Modal Info
     const profFull = document.getElementById('prof-fullname');
@@ -660,58 +841,19 @@ async function confirmPlanPurchase() {
 
 // ==================== VIEW 3: TEAM & MLM SUBORDINATE LOGIC (Matches uploaded images) ====================
 
-// Realistic initial/fallback team data so UI and calendar filtering are active immediately
+// Initial/fallback team stats - defaults to 0 members until loaded from live network API
 const defaultTeamStats = {
-  totalTeam: 18,
-  validUsers: 12,
-  totalRecharge: 2450.00,
+  totalTeam: 0,
+  validUsers: 0,
+  totalRecharge: 0.00,
   minTransactionAmount: 11.00,
-  peopleToday: 3,
-  validToday: 2,
-  totalWithdrawals: 420.00,
+  peopleToday: 0,
+  validToday: 0,
+  totalWithdrawals: 0.00,
   levels: {
-    level1: {
-      count: 8,
-      effective: 5,
-      volume: 1250.00,
-      commission: 75.00,
-      users: [
-        { id: 101, username: 'alex99', full_name: 'Alex Johnson', active_investment: 250, commission_earned: 15.00, created_at: '2026-10-04 14:20:00' },
-        { id: 102, username: 'cryptomaster', full_name: 'Michael Chen', active_investment: 350, commission_earned: 21.00, created_at: '2026-10-05 10:15:00' },
-        { id: 103, username: 'sarah_w', full_name: 'Sarah Williams', active_investment: 115, commission_earned: 6.90, created_at: '2026-10-08 18:40:00' },
-        { id: 104, username: 'david_k', full_name: 'David Kim', active_investment: 225, commission_earned: 13.50, created_at: '2026-10-12 11:05:00' },
-        { id: 105, username: 'elena_v', full_name: 'Elena Vance', active_investment: 310, commission_earned: 18.60, created_at: '2026-10-15 09:30:00' },
-        { id: 106, username: 'marcus_b', full_name: 'Marcus Bell', active_investment: 0, commission_earned: 0.00, created_at: '2026-10-19 16:50:00' },
-        { id: 107, username: 'lisa_m', full_name: 'Lisa Miller', active_investment: 0, commission_earned: 0.00, created_at: '2026-10-22 13:10:00' },
-        { id: 108, username: 'rajesh_p', full_name: 'Rajesh Patel', active_investment: 0, commission_earned: 0.00, created_at: '2026-10-27 15:45:00' }
-      ]
-    },
-    level2: {
-      count: 6,
-      effective: 4,
-      volume: 800.00,
-      commission: 16.00,
-      users: [
-        { id: 201, username: 'vikram_s', full_name: 'Vikram Singh', active_investment: 225, commission_earned: 4.50, created_at: '2026-10-06 12:00:00' },
-        { id: 202, username: 'jessica_t', full_name: 'Jessica Taylor', active_investment: 350, commission_earned: 7.00, created_at: '2026-10-10 14:15:00' },
-        { id: 203, username: 'kevin_l', full_name: 'Kevin Lee', active_investment: 115, commission_earned: 2.30, created_at: '2026-10-14 17:30:00' },
-        { id: 204, username: 'anita_d', full_name: 'Anita Desai', active_investment: 110, commission_earned: 2.20, created_at: '2026-10-21 08:20:00' },
-        { id: 205, username: 'tom_h', full_name: 'Tom Hardy', active_investment: 0, commission_earned: 0.00, created_at: '2026-10-25 19:10:00' },
-        { id: 206, username: 'sophia_g', full_name: 'Sophia Garcia', active_investment: 0, commission_earned: 0.00, created_at: '2026-10-28 11:40:00' }
-      ]
-    },
-    level3: {
-      count: 4,
-      effective: 3,
-      volume: 400.00,
-      commission: 4.00,
-      users: [
-        { id: 301, username: 'daniel_c', full_name: 'Daniel Craig', active_investment: 115, commission_earned: 1.15, created_at: '2026-10-09 16:00:00' },
-        { id: 302, username: 'olivia_r', full_name: 'Olivia Ray', active_investment: 225, commission_earned: 2.25, created_at: '2026-10-16 10:45:00' },
-        { id: 303, username: 'arjun_m', full_name: 'Arjun Mehta', active_investment: 60, commission_earned: 0.60, created_at: '2026-10-23 14:00:00' },
-        { id: 304, username: 'chloe_b', full_name: 'Chloe Bennett', active_investment: 0, commission_earned: 0.00, created_at: '2026-10-26 18:20:00' }
-      ]
-    }
+    level1: { count: 0, effective: 0, volume: 0.00, commission: 0.00, users: [] },
+    level2: { count: 0, effective: 0, volume: 0.00, commission: 0.00, users: [] },
+    level3: { count: 0, effective: 0, volume: 0.00, commission: 0.00, users: [] }
   }
 };
 

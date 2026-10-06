@@ -206,6 +206,68 @@ html:not(.dark) .home-header-atmosphere {
   cursor: pointer;
 }
 
+/* CryptoFinance Header Profile Pill Trigger (Matches Uploaded Image) */
+.profile-pill-trigger {
+  border: 2px solid #eab308;
+  background-color: #0d111a;
+  border-radius: 9999px;
+  padding: 3px 8px 3px 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 10px rgba(234, 179, 8, 0.15);
+}
+.profile-pill-trigger:hover {
+  border-color: #facc15;
+  box-shadow: 0 0 14px rgba(234, 179, 8, 0.35);
+}
+.profile-pill-trigger:active {
+  transform: scale(0.96);
+}
+
+.profile-avatar-circle {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #eab308;
+  color: #000000;
+  font-weight: 900;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* CryptoFinance Profile Dropdown Menu Card (Matches Uploaded Image) */
+#crypto-profile-dropdown {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  width: 250px;
+  background: #0d111a;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  padding: 16px 14px;
+  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.8), 0 0 1px 1px rgba(255, 255, 255, 0.05);
+  z-index: 100;
+  color: #ffffff;
+  animation: dropdownFadeIn 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes dropdownFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 /* ----------------------------------------------------------
    THEME ADAPTIVE CARDS & CONTAINERS
    ---------------------------------------------------------- */

@@ -78,12 +78,68 @@
           <span id="portal-switch-text">Admin Portal</span>
         </button>
 
-        <!-- User Golden Circle Avatar with Chevron -->
-        <div onclick="openModal('profileModal')" class="flex items-center gap-1 cursor-pointer">
-          <div class="avatar-badge-btn" id="user-avatar-initial">
-            A
+        <!-- CryptoFinance Profile Pill Trigger (Matches Uploaded Image) -->
+        <div class="relative" id="profile-pill-wrapper">
+          <button onclick="toggleProfileDropdown(event)" id="profile-pill-btn" class="profile-pill-trigger" title="Account Menu">
+            <div class="profile-avatar-circle" id="user-avatar-initial">
+              A
+            </div>
+            <i data-lucide="chevron-down" id="profile-chevron-icon" class="w-3.5 h-3.5 text-slate-200 transition-transform duration-200"></i>
+          </button>
+
+          <!-- CRYPTOFINANCE PROFILE DROPDOWN MENU (Matches Uploaded Image Exactly) -->
+          <div id="crypto-profile-dropdown" class="hidden">
+            <!-- Header: UID & Status -->
+            <div class="pb-2.5 px-1">
+              <div class="font-extrabold text-sm tracking-wide text-white flex items-center gap-1.5 font-sans">
+                <span>UID:</span>
+                <span id="cf-prof-uid" class="font-mono text-white tracking-wider">CF163205</span>
+              </div>
+              <div class="flex items-center gap-1.5 mt-1">
+                <span class="w-2 h-2 rounded-full bg-[#10b981] inline-block shadow-[0_0_8px_#10b981]"></span>
+                <span class="text-[#10b981] font-semibold text-xs tracking-tight" id="cf-prof-status">Pending Activation</span>
+              </div>
+            </div>
+
+            <!-- Divider Line -->
+            <div class="border-t border-slate-800/90 my-2"></div>
+
+            <!-- Navigation Links -->
+            <div class="space-y-0.5">
+              <!-- 1. Edit Profile -->
+              <div onclick="openEditProfileModal()" class="flex items-center gap-3.5 px-2.5 py-2 rounded-xl hover:bg-slate-800/60 cursor-pointer transition group">
+                <i data-lucide="user" class="w-4.5 h-4.5 text-amber-400 group-hover:scale-110 transition"></i>
+                <span class="text-slate-200 group-hover:text-white font-medium text-xs sm:text-sm">Edit Profile</span>
+              </div>
+
+              <!-- 2. Change Password -->
+              <div onclick="openChangePasswordModal()" class="flex items-center gap-3.5 px-2.5 py-2 rounded-xl hover:bg-slate-800/60 cursor-pointer transition group">
+                <i data-lucide="key" class="w-4.5 h-4.5 text-amber-400 group-hover:scale-110 transition"></i>
+                <span class="text-slate-200 group-hover:text-white font-medium text-xs sm:text-sm">Change Password</span>
+              </div>
+
+              <!-- 3. BEP-20 Wallet Address -->
+              <div onclick="openWalletAddressModal()" class="flex items-center gap-3.5 px-2.5 py-2 rounded-xl hover:bg-slate-800/60 cursor-pointer transition group">
+                <i data-lucide="wallet" class="w-4.5 h-4.5 text-amber-400 group-hover:scale-110 transition"></i>
+                <span class="text-slate-200 group-hover:text-white font-medium text-xs sm:text-sm">BEP-20 Wallet Address</span>
+              </div>
+
+              <!-- Admin Portal Shortcut (Visible for Admin) -->
+              <div id="cf-prof-admin-link" onclick="navigate('admin'); closeProfileDropdown();" class="hidden flex items-center gap-3.5 px-2.5 py-2 rounded-xl hover:bg-amber-500/15 cursor-pointer transition group border border-amber-500/20">
+                <i data-lucide="shield-check" class="w-4.5 h-4.5 text-amber-400 group-hover:scale-110 transition"></i>
+                <span class="text-amber-400 font-medium text-xs sm:text-sm">Admin Control Panel</span>
+              </div>
+            </div>
+
+            <!-- Divider Line -->
+            <div class="border-t border-slate-800/90 my-2"></div>
+
+            <!-- 4. Sign Out -->
+            <div onclick="logout(); closeProfileDropdown();" class="flex items-center gap-3.5 px-2.5 py-2 rounded-xl hover:bg-rose-500/15 cursor-pointer transition group">
+              <i data-lucide="log-out" class="w-4.5 h-4.5 text-[#ef4444] group-hover:scale-110 transition"></i>
+              <span class="text-[#ef4444] font-medium text-xs sm:text-sm">Sign Out</span>
+            </div>
           </div>
-          <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-slate-400"></i>
         </div>
 
       </div>
@@ -104,7 +160,7 @@
               <div class="text-[12px] font-medium text-slate-500 dark:text-slate-400">Total balance</div>
               <div class="flex items-center gap-2 mt-1">
                 <span class="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight font-mono">
-                  $ <span id="home-total-balance">12412.48</span>
+                  $ <span id="home-total-balance">0.00</span>
                 </span>
                 <button onclick="refreshCurrentViewData()" class="p-1 rounded-full text-slate-400 hover:text-amber-500 transition" title="Refresh Balance">
                   <i data-lucide="refresh-cw" class="w-4 h-4"></i>
@@ -1423,6 +1479,124 @@
           Sign Out
         </button>
       </div>
+    </div>
+  </div>
+
+  <!-- 1. EDIT PROFILE MODAL (CryptoFinance Style) -->
+  <div id="editProfileModal" class="modal fixed inset-0 z-50 bg-black/85 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="theme-card max-w-sm w-full p-5 shadow-2xl relative border border-slate-800 bg-[#0d111a] text-white">
+      <button onclick="closeModal('editProfileModal')" class="absolute right-4 top-4 text-slate-400 hover:text-white transition">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+
+      <div class="flex items-center gap-2 mb-4 pb-2 border-b border-slate-800">
+        <i data-lucide="user" class="w-5 h-5 text-amber-400"></i>
+        <h3 class="font-bold text-base text-white">Edit Profile</h3>
+      </div>
+
+      <form id="edit-profile-form" onsubmit="handleUpdateProfile(event)" class="space-y-3.5 text-xs">
+        <div class="flex items-center justify-between p-2.5 rounded-xl bg-slate-900/80 border border-slate-800">
+          <div>
+            <div class="text-[10px] text-slate-400 uppercase font-bold tracking-wider">UID / Referral Code</div>
+            <div class="font-mono font-bold text-amber-400 text-sm mt-0.5" id="edit-prof-uid">CF163205</div>
+          </div>
+          <div class="text-right">
+            <div class="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Username</div>
+            <div class="font-mono text-slate-200 mt-0.5" id="edit-prof-username">@admin</div>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-slate-400 font-semibold mb-1">Full Name</label>
+          <input type="text" id="edit-prof-fullname" required class="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700/80 text-white placeholder-slate-500 focus:outline-none focus:border-amber-400 text-xs">
+        </div>
+
+        <div>
+          <label class="block text-slate-400 font-semibold mb-1">Phone Number</label>
+          <input type="tel" id="edit-prof-phone" placeholder="+91 9876543210" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700/80 text-white placeholder-slate-500 focus:outline-none focus:border-amber-400 text-xs">
+        </div>
+
+        <div>
+          <label class="block text-slate-400 font-semibold mb-1">Email Address</label>
+          <input type="email" id="edit-prof-email" required class="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700/80 text-white placeholder-slate-500 focus:outline-none focus:border-amber-400 text-xs">
+        </div>
+
+        <button type="submit" id="btn-save-profile" class="w-full mt-2 py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-extrabold text-xs shadow-lg shadow-amber-500/20 active:scale-95 transition">
+          Save Changes
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- 2. CHANGE PASSWORD MODAL (CryptoFinance Style) -->
+  <div id="changePasswordModal" class="modal fixed inset-0 z-50 bg-black/85 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="theme-card max-w-sm w-full p-5 shadow-2xl relative border border-slate-800 bg-[#0d111a] text-white">
+      <button onclick="closeModal('changePasswordModal')" class="absolute right-4 top-4 text-slate-400 hover:text-white transition">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+
+      <div class="flex items-center gap-2 mb-4 pb-2 border-b border-slate-800">
+        <i data-lucide="key" class="w-5 h-5 text-amber-400"></i>
+        <h3 class="font-bold text-base text-white">Change Password</h3>
+      </div>
+
+      <form id="change-password-form" onsubmit="handleChangePassword(event)" class="space-y-3.5 text-xs">
+        <div>
+          <label class="block text-slate-400 font-semibold mb-1">Current Password</label>
+          <input type="password" id="cp-current" required placeholder="Enter current password" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700/80 text-white placeholder-slate-500 focus:outline-none focus:border-amber-400 text-xs">
+        </div>
+
+        <div>
+          <label class="block text-slate-400 font-semibold mb-1">New Password</label>
+          <input type="password" id="cp-new" required placeholder="Min. 6 characters" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700/80 text-white placeholder-slate-500 focus:outline-none focus:border-amber-400 text-xs">
+        </div>
+
+        <div>
+          <label class="block text-slate-400 font-semibold mb-1">Confirm New Password</label>
+          <input type="password" id="cp-confirm" required placeholder="Re-enter new password" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700/80 text-white placeholder-slate-500 focus:outline-none focus:border-amber-400 text-xs">
+        </div>
+
+        <button type="submit" id="btn-save-password" class="w-full mt-2 py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-extrabold text-xs shadow-lg shadow-amber-500/20 active:scale-95 transition">
+          Update Password
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- 3. BEP-20 WALLET ADDRESS MODAL (CryptoFinance Style) -->
+  <div id="bep20WalletModal" class="modal fixed inset-0 z-50 bg-black/85 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="theme-card max-w-sm w-full p-5 shadow-2xl relative border border-slate-800 bg-[#0d111a] text-white">
+      <button onclick="closeModal('bep20WalletModal')" class="absolute right-4 top-4 text-slate-400 hover:text-white transition">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+
+      <div class="flex items-center gap-2 mb-3 pb-2 border-b border-slate-800">
+        <i data-lucide="wallet" class="w-5 h-5 text-amber-400"></i>
+        <h3 class="font-bold text-base text-white">BEP-20 Wallet Address</h3>
+      </div>
+
+      <div class="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 mb-3 text-[11px] text-amber-400 flex items-start gap-2">
+        <i data-lucide="info" class="w-4 h-4 flex-shrink-0 mt-0.5"></i>
+        <span>Used for automated deposits, payouts, and withdrawals via BNB Smart Chain (BEP-20).</span>
+      </div>
+
+      <form id="bep20-wallet-form" onsubmit="handleUpdateWalletAddress(event)" class="space-y-3.5 text-xs">
+        <div>
+          <label class="block text-slate-400 font-semibold mb-1">Current Saved Address</label>
+          <div class="p-2.5 rounded-xl bg-slate-900 border border-slate-800 font-mono text-[11px] text-slate-300 break-all" id="bep20-current-display">
+            Not Set
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-slate-400 font-semibold mb-1">New BEP-20 Address (0x...)</label>
+          <input type="text" id="bep20-address-input" required placeholder="0x..." class="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700/80 text-white placeholder-slate-500 focus:outline-none focus:border-amber-400 text-xs font-mono">
+        </div>
+
+        <button type="submit" id="btn-save-wallet" class="w-full mt-2 py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-extrabold text-xs shadow-lg shadow-amber-500/20 active:scale-95 transition">
+          Save BEP-20 Address
+        </button>
+      </form>
     </div>
   </div>
 

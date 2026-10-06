@@ -100,6 +100,63 @@ class AuthService {
     const { password_hash, ...safeUser } = user;
     return { user: safeUser, token };
   }
+
+  async updateProfile(userId, { fullName, phone, email }) {
+    if (!fullName || !email) {
+      throw new Error('Full Name and Email are required');
+    }
+    const cleanEmail = email.trim().toLowerCase();
+    const existing = await db.get('SELECT id FROM users WHERE lower(email) = ? AND id != ?', [cleanEmail, userId]);
+    if (existing) {
+      throw new Error('Email already used by another account');
+    }
+    await db.run(`
+      UPDATE users
+      SET full_name = ?, phone = ?, email = ?
+      WHERE id = ?
+    `, [fullName.trim(), phone ? phone.trim() : null, cleanEmail, userId]);
+
+    const updated = await db.get(`
+      SELECT id, username, email, full_name, phone, role, referral_code, sponsor_id,
+             wallet_balance, roi_balance, commission_balance, usdt_address, status
+      FROM users WHERE id = ?
+    `, [userId]);
+    return updated;
+  }
+
+  async changePassword(userId, { currentPassword, newPassword }) {
+    if (!currentPassword || !newPassword) {
+      throw new Error('Current password and new password are required');
+    }
+    if (newPassword.length < 6) {
+      throw new Error('New password must be at least 6 characters');
+    }
+    const user = await db.get('SELECT password_hash FROM users WHERE id = ?', [userId]);
+    if (!user) {
+      throw new Error('User not found');
+    }
+    const isMatch = await bcrypt.compare(currentPassword, user.password_hash);
+    if (!isMatch) {
+      throw new Error('Current password is incorrect');
+    }
+    const salt = await bcrypt.genSalt(10);
+    const newHash = await bcrypt.hash(newPassword, salt);
+    await db.run('UPDATE users SET password_hash = ? WHERE id = ?', [newHash, userId]);
+    return { success: true, message: 'Password updated successfully' };
+  }
+
+  async updateWalletAddress(userId, { walletAddress }) {
+    if (!walletAddress || !walletAddress.trim()) {
+      throw new Error('Valid wallet address is required');
+    }
+    await db.run('UPDATE users SET usdt_address = ? WHERE id = ?', [walletAddress.trim(), userId]);
+    const updated = await db.get(`
+      SELECT id, username, email, full_name, phone, role, referral_code, sponsor_id,
+             wallet_balance, roi_balance, commission_balance, usdt_address, status
+      FROM users WHERE id = ?
+    `, [userId]);
+    return updated;
+  }
 }
 
 module.exports = new AuthService();
