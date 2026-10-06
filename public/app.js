@@ -2367,6 +2367,18 @@ async function loadAssetsData() {
       if (data.rules.depositAddress) {
         updateRechargeModalAddress(data.rules.depositAddress);
       }
+
+      // Dynamic Minimum Withdrawal Threshold Update
+      if (data.rules.minWithdrawal) {
+        currentMinWithdrawal = parseFloat(data.rules.minWithdrawal) || 15;
+        const minDisp = document.getElementById('withdraw-min-display');
+        if (minDisp) minDisp.textContent = `${currentMinWithdrawal} USDT`;
+        const amtInput = document.getElementById('withdraw-amount');
+        if (amtInput) {
+          amtInput.min = currentMinWithdrawal;
+          amtInput.placeholder = `Min ${currentMinWithdrawal}`;
+        }
+      }
     }
   } catch (err) {
     console.error('Error loading assets data:', err);
@@ -2462,8 +2474,17 @@ async function loadHomeActivePackages() {
 }
 window.loadHomeActivePackages = loadHomeActivePackages;
 
+let currentMinWithdrawal = 15;
+
 function loadWithdrawalModalData() {
   updateWithdrawSourceAvailable();
+  const minDisp = document.getElementById('withdraw-min-display');
+  if (minDisp) minDisp.textContent = `${currentMinWithdrawal} USDT`;
+  const amtInput = document.getElementById('withdraw-amount');
+  if (amtInput) {
+    amtInput.min = currentMinWithdrawal;
+    amtInput.placeholder = `Min ${currentMinWithdrawal}`;
+  }
 }
 
 function updateWithdrawSourceAvailable() {
@@ -2582,8 +2603,8 @@ async function handleWithdrawSubmit(e) {
   const walletSource = document.getElementById('withdraw-source').value;
 
   const numAmount = Number(amount);
-  if (!amount || isNaN(numAmount) || numAmount < 15) {
-    showToast('Minimum withdrawal amount is 15 USDT', 'error');
+  if (!amount || isNaN(numAmount) || numAmount < currentMinWithdrawal) {
+    showToast(`Minimum withdrawal amount is ${currentMinWithdrawal} USDT`, 'error');
     return;
   }
 
@@ -4221,6 +4242,40 @@ async function handleSaveTeamRoiLevels() {
 }
 window.handleSaveTeamRoiLevels = handleSaveTeamRoiLevels;
 
+async function handleSaveMinWithdrawal(e) {
+  e.preventDefault();
+  const minVal = parseFloat(document.getElementById('admin-min-withdrawal')?.value);
+  if (isNaN(minVal) || minVal < 1) {
+    showToast('Please enter a valid minimum withdrawal amount (at least 1 USDT)', 'error');
+    return;
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}/admin/settings`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ key: 'min_withdrawal', value: String(minVal) })
+    });
+    const data = await res.json();
+    if (data.success) {
+      currentMinWithdrawal = minVal;
+      const minDisp = document.getElementById('withdraw-min-display');
+      if (minDisp) minDisp.textContent = `${minVal} USDT`;
+      const amtInput = document.getElementById('withdraw-amount');
+      if (amtInput) {
+        amtInput.min = minVal;
+        amtInput.placeholder = `Min ${minVal}`;
+      }
+      showToast(`Minimum withdrawal limit saved: ${minVal} USDT!`, 'success');
+    } else {
+      showToast(data.error || 'Failed to update minimum withdrawal', 'error');
+    }
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+window.handleSaveMinWithdrawal = handleSaveMinWithdrawal;
+
 function loadAdminPlatformSettings() {
   // Load settings from server and populate the settings tab
   if (!token) return;
@@ -4233,6 +4288,10 @@ function loadAdminPlatformSettings() {
       // ROI closing time
       const roiTimeInput = document.getElementById('admin-roi-closing-time');
       if (roiTimeInput) roiTimeInput.value = settingsMap.roi_closing_time || '00:00';
+
+      // Minimum withdrawal limit
+      const minWithdrawalInput = document.getElementById('admin-min-withdrawal');
+      if (minWithdrawalInput) minWithdrawalInput.value = settingsMap.min_withdrawal || '15';
 
       // Team commission levels
       try {

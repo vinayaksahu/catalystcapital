@@ -72,17 +72,45 @@ class WalletService {
       throw new Error('Invalid or inactive investment plan');
     }
 
-    const user = await db.get('SELECT id, username, wallet_balance, status FROM users WHERE id = ?', [userId]);
+    const user = await db.get('SELECT id, username, wallet_balance, roi_balance, commission_balance, status FROM users WHERE id = ?', [userId]);
     if (!user) {
       throw new Error('User not found');
     }
 
-    if (user.wallet_balance < plan.price) {
-      throw new Error(`Insufficient wallet balance ($${user.wallet_balance.toFixed(2)} available). Plan requires $${plan.price.toFixed(2)}. Please deposit funds.`);
+    const walBal = Math.max(0, parseFloat(user.wallet_balance) || 0);
+    const roiBal = Math.max(0, parseFloat(user.roi_balance) || 0);
+    const commBal = Math.max(0, parseFloat(user.commission_balance) || 0);
+    const totalAvailable = parseFloat((walBal + roiBal + commBal).toFixed(4));
+
+    if (totalAvailable < plan.price) {
+      throw new Error(`Insufficient wallet balance ($${totalAvailable.toFixed(2)} available). Plan requires $${plan.price.toFixed(2)}. Please deposit funds.`);
     }
 
-    // 1. Deduct price from wallet balance
-    await db.run('UPDATE users SET wallet_balance = wallet_balance - ? WHERE id = ?', [plan.price, userId]);
+    // 1. Deduct price from available balance (Deposit balance first, then ROI, then Commission)
+    let rem = plan.price;
+    const sourcesUsed = [];
+
+    if (walBal > 0) {
+      const take = Math.min(walBal, rem);
+      await db.run('UPDATE users SET wallet_balance = wallet_balance - ? WHERE id = ? AND wallet_balance >= ?', [take, userId, take]);
+      rem = parseFloat((rem - take).toFixed(4));
+      sourcesUsed.push(`Deposit: $${take.toFixed(2)}`);
+    }
+    if (rem > 0 && roiBal > 0) {
+      const take = Math.min(roiBal, rem);
+      await db.run('UPDATE users SET roi_balance = roi_balance - ? WHERE id = ? AND roi_balance >= ?', [take, userId, take]);
+      rem = parseFloat((rem - take).toFixed(4));
+      sourcesUsed.push(`ROI: $${take.toFixed(2)}`);
+    }
+    if (rem > 0 && commBal > 0) {
+      const take = Math.min(commBal, rem);
+      await db.run('UPDATE users SET commission_balance = commission_balance - ? WHERE id = ? AND commission_balance >= ?', [take, userId, take]);
+      rem = parseFloat((rem - take).toFixed(4));
+      sourcesUsed.push(`Commission: $${take.toFixed(2)}`);
+    }
+    if (rem > 0) {
+      throw new Error('Insufficient balance to complete purchase');
+    }
 
     // 2. Insert Investment record
     const invRes = await db.run(`
@@ -99,7 +127,7 @@ class WalletService {
     `, [
       userId,
       plan.price,
-      `Activated ${plan.name} ($${plan.price} for ${plan.duration_days} days @ $${plan.daily_roi}/day)`,
+      `Activated ${plan.name} ($${plan.price} for ${plan.duration_days} days @ $${plan.daily_roi}/day) [Paid via ${sourcesUsed.join(', ')}]`,
       `INV-${investmentId}`
     ]);
 
@@ -382,9 +410,11 @@ class WalletService {
     if (!w) throw new Error('Withdrawal record not found');
     if (w.status !== 'pending') throw new Error(`Withdrawal is already ${w.status}`);
 
-    let refundWallet = 'roi_balance';
-    if (w.wallet_type === 'commission_balance') refundWallet = 'commission_balance';
+    let refundWallet = 'wallet_balance';
+    if (w.wallet_type === 'roi_balance') refundWallet = 'roi_balance';
+    else if (w.wallet_type === 'commission_balance') refundWallet = 'commission_balance';
     else if (w.wallet_type === 'wallet_balance') refundWallet = 'wallet_balance';
+    else if (w.wallet_type === 'all') refundWallet = 'wallet_balance';
 
     await db.run(`UPDATE users SET ${refundWallet} = ${refundWallet} + ? WHERE id = ?`, [w.amount, w.user_id]);
 
