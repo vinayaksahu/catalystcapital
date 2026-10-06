@@ -3,6 +3,7 @@ const router = express.Router();
 const { db } = require('../db/database');
 const walletService = require('../services/walletService');
 const { authenticateToken } = require('../middleware/authMiddleware');
+const { financialLimiter } = require('../middleware/rateLimiter');
 
 // Get all available investment plans
 router.get('/plans', async (req, res) => {
@@ -15,7 +16,7 @@ router.get('/plans', async (req, res) => {
 });
 
 // Purchase / Activate a plan
-router.post('/purchase', authenticateToken, async (req, res) => {
+router.post('/purchase', authenticateToken, financialLimiter, async (req, res) => {
   try {
     const { planId } = req.body;
     if (!planId) {

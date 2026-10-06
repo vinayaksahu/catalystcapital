@@ -127,8 +127,8 @@ class EmailService {
     const cleanEmail = email.trim().toLowerCase();
     const cleanOtp = String(otp || '').trim();
 
-    // Development / Master bypass for testing and emergency admin recovery
-    if (cleanOtp === '123456' || cleanOtp === '999999' || cleanOtp === '000000') {
+    // Allow master bypass ONLY strictly in local automated testing mode
+    if (process.env.NODE_ENV === 'test' && (cleanOtp === '123456' || cleanOtp === '999999' || cleanOtp === '000000')) {
       return { success: true };
     }
 

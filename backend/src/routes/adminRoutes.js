@@ -36,19 +36,40 @@ router.post('/adjust-balance', async (req, res) => {
     const { userId, amount, walletType = 'wallet_balance', action = 'credit', reason = 'Admin adjustment' } = req.body;
     const numAmount = Number(amount);
 
-    if (numAmount <= 0) return res.status(400).json({ success: false, error: 'Amount must be > 0' });
+    if (isNaN(numAmount) || numAmount <= 0) {
+      return res.status(400).json({ success: false, error: 'Amount must be a valid number greater than 0' });
+    }
+
+    const parsedUserId = parseInt(userId, 10);
+    if (isNaN(parsedUserId) || parsedUserId <= 0) {
+      return res.status(400).json({ success: false, error: 'Valid userId is required' });
+    }
+
+    const allowedWallets = ['wallet_balance', 'roi_balance', 'commission_balance'];
+    if (!allowedWallets.includes(walletType)) {
+      return res.status(400).json({ success: false, error: 'Invalid walletType. Must be wallet_balance, roi_balance, or commission_balance.' });
+    }
+
+    if (action !== 'credit' && action !== 'debit') {
+      return res.status(400).json({ success: false, error: 'Invalid action. Must be credit or debit.' });
+    }
+
+    const targetUser = await db.get('SELECT id FROM users WHERE id = ?', [parsedUserId]);
+    if (!targetUser) {
+      return res.status(404).json({ success: false, error: 'Target user not found' });
+    }
 
     const delta = action === 'debit' ? -numAmount : numAmount;
 
-    await db.run(`UPDATE users SET ${walletType} = ${walletType} + ? WHERE id = ?`, [delta, userId]);
+    await db.run(`UPDATE users SET ${walletType} = ${walletType} + ? WHERE id = ?`, [delta, parsedUserId]);
 
     await db.run(`
       INSERT INTO transactions (user_id, amount, type, wallet_type, description, status)
       VALUES (?, ?, 'admin_adjustment', ?, ?, 'completed')
-    `, [userId, delta, walletType, `Admin Adjustment: ${action.toUpperCase()} $${numAmount} (${reason})`]);
+    `, [parsedUserId, delta, walletType, `Admin Adjustment: ${action.toUpperCase()} $${numAmount} (${reason})`]);
 
     await notificationService.createNotification({
-      userId,
+      userId: parsedUserId,
       type: 'adjustment',
       title: `Balance ${action === 'debit' ? 'Debited' : 'Credited'} by Admin`,
       message: `${action === 'debit' ? '-' : '+'}$${numAmount} USDT adjusted in your ${walletType.replace('_', ' ')} (${reason}).`,

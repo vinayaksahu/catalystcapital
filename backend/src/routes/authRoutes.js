@@ -3,6 +3,7 @@ const router = express.Router();
 const authService = require('../services/authService');
 const { authenticateToken } = require('../middleware/authMiddleware');
 const emailService = require('../services/emailService');
+const { authLimiter, otpLimiter } = require('../middleware/rateLimiter');
 
 // Public Announcement & Pop Image Ticker Endpoint
 router.get('/announcements', async (req, res) => {
@@ -34,7 +35,7 @@ router.get('/announcements', async (req, res) => {
 });
 
 // Send Email OTP (for registration, forgot_password, or wallet_update)
-router.post('/send-otp', async (req, res) => {
+router.post('/send-otp', otpLimiter, async (req, res) => {
   try {
     const { email, purpose = 'registration' } = req.body;
     if (!email || !email.trim()) {
@@ -66,7 +67,7 @@ router.post('/send-otp', async (req, res) => {
 });
 
 // Member requesting OTP for BEP-20 wallet address change
-router.post('/wallet-address/send-otp', authenticateToken, async (req, res) => {
+router.post('/wallet-address/send-otp', authenticateToken, otpLimiter, async (req, res) => {
   try {
     const userEmail = req.user.email;
     if (!userEmail) {
@@ -80,7 +81,7 @@ router.post('/wallet-address/send-otp', authenticateToken, async (req, res) => {
 });
 
 // Reset password with OTP
-router.post('/reset-password', async (req, res) => {
+router.post('/reset-password', authLimiter, async (req, res) => {
   try {
     const { email, otp, newPassword } = req.body;
     const result = await authService.resetPasswordWithOtp({ email, otp, newPassword });
@@ -90,7 +91,7 @@ router.post('/reset-password', async (req, res) => {
   }
 });
 
-router.post('/register', async (req, res) => {
+router.post('/register', authLimiter, async (req, res) => {
   try {
     const { username, email, password, fullName, phone, sponsorCode, otp } = req.body;
     const result = await authService.register({ username, email, password, fullName, phone, sponsorCode, otp });
@@ -100,7 +101,7 @@ router.post('/register', async (req, res) => {
   }
 });
 
-router.post('/login', async (req, res) => {
+router.post('/login', authLimiter, async (req, res) => {
   try {
     const { loginId, password, portalType } = req.body;
     const result = await authService.login({ loginId, password, portalType });
@@ -115,7 +116,7 @@ router.get('/me', authenticateToken, (req, res) => {
 });
 
 // Member requesting OTP for Email Address change (sent to their current/old email)
-router.post('/email/send-change-otp', authenticateToken, async (req, res) => {
+router.post('/email/send-change-otp', authenticateToken, otpLimiter, async (req, res) => {
   try {
     const userEmail = req.user.email;
     if (!userEmail) {
@@ -138,7 +139,7 @@ router.put('/profile', authenticateToken, async (req, res) => {
   }
 });
 
-router.post('/change-password', authenticateToken, async (req, res) => {
+router.post('/change-password', authenticateToken, authLimiter, async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
     const result = await authService.changePassword(req.user.id, { currentPassword, newPassword });

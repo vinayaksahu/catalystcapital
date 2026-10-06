@@ -7,6 +7,11 @@ const { JWT_SECRET } = require('../middleware/authMiddleware');
 const emailService = require('./emailService');
 const notificationService = require('./notificationService');
 
+// Account-level lockout protection (5 failed attempts -> 15 min lock)
+const failedLoginAttemptsMap = new Map();
+const MAX_FAILED_ATTEMPTS = 5;
+const LOCKOUT_DURATION_MS = 15 * 60 * 1000;
+
 class AuthService {
   generateUserId() {
     // Generate 'CC' followed by 5 random digits (10000 - 99999)
@@ -158,13 +163,42 @@ class AuthService {
 
     const cleanLogin = loginId.trim().toLowerCase();
     const cleanUpper = loginId.trim().toUpperCase();
+
+    // Check account lockout
+    const now = Date.now();
+    const lockKey = cleanLogin;
+    const existingLock = failedLoginAttemptsMap.get(lockKey);
+
+    if (existingLock && existingLock.lockedUntil && existingLock.lockedUntil > now) {
+      const remainingMinutes = Math.ceil((existingLock.lockedUntil - now) / 60000);
+      throw new Error(`Account temporarily locked due to multiple failed login attempts. Please try again in ${remainingMinutes} minute(s) or reset your password.`);
+    }
+
     const user = await db.get(`
       SELECT * FROM users
       WHERE lower(username) = ? OR lower(email) = ? OR upper(referral_code) = ?
     `, [cleanLogin, cleanLogin, cleanUpper]);
 
+    const handleFailedAttempt = () => {
+      const current = failedLoginAttemptsMap.get(lockKey) || { count: 0, firstAttemptAt: now };
+      if (now - current.firstAttemptAt > LOCKOUT_DURATION_MS) {
+        current.count = 0;
+        current.firstAttemptAt = now;
+      }
+      current.count += 1;
+      if (current.count >= MAX_FAILED_ATTEMPTS) {
+        current.lockedUntil = now + LOCKOUT_DURATION_MS;
+        failedLoginAttemptsMap.set(lockKey, current);
+        throw new Error('Too many failed login attempts. Account temporarily locked for 15 minutes.');
+      } else {
+        failedLoginAttemptsMap.set(lockKey, current);
+        const remaining = MAX_FAILED_ATTEMPTS - current.count;
+        throw new Error(`Invalid credentials. (${remaining} attempt(s) remaining before temporary lockout)`);
+      }
+    };
+
     if (!user) {
-      throw new Error('Invalid credentials');
+      handleFailedAttempt();
     }
 
     if (user.status !== 'active') {
@@ -173,8 +207,11 @@ class AuthService {
 
     const isMatch = await bcrypt.compare(password, user.password_hash);
     if (!isMatch) {
-      throw new Error('Invalid credentials');
+      handleFailedAttempt();
     }
+
+    // Credentials verified! Reset any failed attempts
+    failedLoginAttemptsMap.delete(lockKey);
 
     // Role vs Portal restriction:
     // If admin tries to login from Member portal:

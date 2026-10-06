@@ -3,6 +3,7 @@ const router = express.Router();
 const { db } = require('../db/database');
 const walletService = require('../services/walletService');
 const { authenticateToken } = require('../middleware/authMiddleware');
+const { financialLimiter } = require('../middleware/rateLimiter');
 
 // Public endpoint for anyone (members, guests) to get active BEP-20 deposit address
 router.get('/deposit-address', async (req, res) => {
@@ -148,7 +149,7 @@ router.get('/overview', authenticateToken, async (req, res) => {
 });
 
 // Deposit USDT (BEP-20)
-router.post('/deposit', authenticateToken, async (req, res) => {
+router.post('/deposit', authenticateToken, financialLimiter, async (req, res) => {
   try {
     const { amount, network = 'USDT-BEP20', txHash } = req.body;
     if (!amount || Number(amount) <= 0) {
@@ -163,7 +164,7 @@ router.post('/deposit', authenticateToken, async (req, res) => {
 });
 
 // Reinvestment Transfer (ROI or Commission wallet -> Deposit wallet)
-router.post('/transfer', authenticateToken, async (req, res) => {
+router.post('/transfer', authenticateToken, financialLimiter, async (req, res) => {
   try {
     const { amount, fromWallet } = req.body;
     const result = await walletService.transferEarningsToDepositWallet(req.user.id, Number(amount), fromWallet);
@@ -174,7 +175,7 @@ router.post('/transfer', authenticateToken, async (req, res) => {
 });
 
 // Request Withdrawal (Min 15 USDT, 0% Fee, 0-24hr, BEP-20)
-router.post('/withdraw', authenticateToken, async (req, res) => {
+router.post('/withdraw', authenticateToken, financialLimiter, async (req, res) => {
   try {
     const { amount, usdtAddress, network = 'USDT-BEP20', walletSource } = req.body;
     const result = await walletService.requestWithdrawal(req.user.id, {
@@ -201,8 +202,9 @@ router.get('/transactions', authenticateToken, async (req, res) => {
       params.push(type);
     }
 
+    const safeLimit = Math.min(Math.max(1, parseInt(limit, 10) || 50), 100);
     query += ' ORDER BY created_at DESC LIMIT ?';
-    params.push(Number(limit));
+    params.push(safeLimit);
 
     const transactions = await db.all(query, params);
     res.json({ success: true, transactions });
