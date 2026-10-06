@@ -101,6 +101,28 @@ function setupEventListeners() {
     navigate('admin');
   }
 
+  // Handle browser back and forward navigation
+  window.addEventListener('popstate', (e) => {
+    const state = e.state;
+    if (state && state.view) {
+      navigate(state.view, false);
+    } else {
+      const currentParams = new URLSearchParams(window.location.search);
+      const currRef = currentParams.get('ref');
+      const currAction = currentParams.get('action');
+      const currView = currentParams.get('view');
+      if (currRef || currAction === 'register') {
+        navigate('register', false);
+      } else if (currAction === 'login') {
+        navigate('login', false);
+      } else if (currView === 'admin' || currAction === 'admin') {
+        navigate('admin', false);
+      } else {
+        navigate('home', false);
+      }
+    }
+  });
+
   // Close profile dropdown when clicking outside
   document.addEventListener('click', (e) => {
     const profileDropdown = document.getElementById('crypto-profile-dropdown');
@@ -382,6 +404,16 @@ function getAppBaseUrl() {
     if (btnProfile) btnProfile.classList.add('hidden');
     if (activeBadge) activeBadge.textContent = 'Guest';
   }
+
+  // Ensure Admin Portal button in header is strictly hidden for non-admins or logged out users
+  const portalBtn = document.getElementById('portal-switch-btn');
+  if (portalBtn) {
+    if (currentUser && currentUser.role === 'admin' && activeViewName !== 'login' && activeViewName !== 'register') {
+      portalBtn.classList.remove('hidden');
+    } else {
+      portalBtn.classList.add('hidden');
+    }
+  }
 }
 
 async function quickLogin(username) {
@@ -511,13 +543,39 @@ function toggleAdminPortal() {
   }
 }
 
-function navigate(viewName) {
+function navigate(viewName, updateHistory = true) {
   // If user is not logged in, force navigation to login or register
   if (!token && !currentUser && viewName !== 'login' && viewName !== 'register') {
     viewName = 'login';
   }
 
   activeViewName = viewName;
+
+  // Update browser URL in address bar if requested
+  if (updateHistory) {
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (viewName === 'login') {
+        window.history.pushState({ view: 'login' }, '', '/?action=login');
+      } else if (viewName === 'register') {
+        const ref = urlParams.get('ref') || (document.getElementById('reg-sponsor')?.value || '').trim();
+        if (ref) {
+          window.history.pushState({ view: 'register' }, '', `/?ref=${encodeURIComponent(ref)}`);
+        } else {
+          window.history.pushState({ view: 'register' }, '', '/?action=register');
+        }
+      } else if (viewName === 'admin') {
+        window.history.pushState({ view: 'admin' }, '', '/?view=admin');
+      } else if (viewName === 'home') {
+        window.history.pushState({ view: 'home' }, '', '/');
+      } else {
+        window.history.pushState({ view: viewName }, '', `/?tab=${encodeURIComponent(viewName)}`);
+      }
+    } catch (e) {
+      console.warn('History pushState error:', e);
+    }
+  }
+
   const views = ['home', 'quotes', 'invest', 'team', 'history', 'assets', 'admin', 'login', 'register'];
   views.forEach(v => {
     const el = document.getElementById(`view-${v}`);
@@ -544,6 +602,10 @@ function navigate(viewName) {
         if (currentUser.role === 'admin') portalBtn.classList.remove('hidden');
         else portalBtn.classList.add('hidden');
       }
+    } else {
+      if (bottomNav) bottomNav.classList.add('hidden');
+      if (profilePill) profilePill.classList.add('hidden');
+      if (portalBtn) portalBtn.classList.add('hidden');
     }
   }
 

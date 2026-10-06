@@ -72,14 +72,14 @@
           <i data-lucide="sun" id="theme-icon" class="w-4 h-4 text-amber-500"></i>
         </button>
 
-        <!-- Portal Switcher Button: Quick toggle between Admin Portal & User Portal -->
-        <button onclick="toggleAdminPortal()" id="portal-switch-btn" class="px-2.5 py-1 rounded-full text-[11px] font-bold flex items-center gap-1.5 shadow-sm transition bg-amber-500/15 border border-amber-500/40 text-amber-400 hover:bg-amber-500/25 active:scale-95" title="Switch between Admin Portal and User Portal">
+        <!-- Portal Switcher Button: Quick toggle between Admin Portal & User Portal (Hidden by default, only shown for logged in admin) -->
+        <button onclick="toggleAdminPortal()" id="portal-switch-btn" class="hidden px-2.5 py-1 rounded-full text-[11px] font-bold flex items-center gap-1.5 shadow-sm transition bg-amber-500/15 border border-amber-500/40 text-amber-400 hover:bg-amber-500/25 active:scale-95" title="Switch between Admin Portal and User Portal">
           <i data-lucide="shield-check" id="portal-switch-icon" class="w-3.5 h-3.5 text-amber-400"></i>
           <span id="portal-switch-text">Admin Portal</span>
         </button>
 
-        <!-- CryptoFinance Profile Pill Trigger (Matches Uploaded Image) -->
-        <div class="relative" id="profile-pill-wrapper">
+        <!-- CryptoFinance Profile Pill Trigger (Hidden by default until logged in) -->
+        <div class="relative hidden" id="profile-pill-wrapper">
           <button onclick="toggleProfileDropdown(event)" id="profile-pill-btn" class="profile-pill-trigger" title="Account Menu">
             <div class="profile-avatar-circle" id="user-avatar-initial">
               A
