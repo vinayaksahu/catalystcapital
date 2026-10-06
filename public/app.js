@@ -2356,6 +2356,31 @@ async function loadAssetsData() {
         homeTotalEl.textContent = (w.totalAssets || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       }
 
+      const withdrawableAmt = (w.totalWithdrawable !== undefined) 
+        ? w.totalWithdrawable 
+        : ((w.depositWallet || 0) + (w.roiWallet || 0) + (w.commissionWallet || 0));
+      const stakedAmt = w.tradingAssets || 0;
+
+      const homeWithdrawableEl = document.getElementById('home-withdrawable-balance');
+      if (homeWithdrawableEl) {
+        homeWithdrawableEl.textContent = withdrawableAmt.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      }
+
+      const homeStakedEl = document.getElementById('home-staked-balance');
+      if (homeStakedEl) {
+        homeStakedEl.textContent = stakedAmt.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      }
+
+      const assetWithdrawableEl = document.getElementById('asset-withdrawable-amount');
+      if (assetWithdrawableEl) {
+        assetWithdrawableEl.textContent = withdrawableAmt.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      }
+
+      const assetStakedEl = document.getElementById('asset-staked-amount');
+      if (assetStakedEl) {
+        assetStakedEl.textContent = stakedAmt.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      }
+
       const totalRechargeEl = document.getElementById('asset-total-recharge');
       if (totalRechargeEl) {
         totalRechargeEl.textContent = `${(w.totalRecharge || 0).toFixed(2)} USDT`;

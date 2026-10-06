@@ -172,6 +172,9 @@
                   <i data-lucide="refresh-cw" class="w-4 h-4"></i>
                 </button>
               </div>
+              <div class="text-[11px] text-slate-400 font-mono mt-1 flex items-center gap-1.5 flex-wrap">
+                <span>(Withdrawable: <strong class="text-emerald-400 font-bold">$<span id="home-withdrawable-balance">0.00</span></strong> | Staked: <strong class="text-cyan-400 font-bold">$<span id="home-staked-balance">0.00</span></strong>)</span>
+              </div>
             </div>
 
             <!-- Enter Wallet Button -->
@@ -981,8 +984,11 @@
         <div class="relative z-10 flex justify-between items-start">
           <div>
             <span class="text-xs font-medium opacity-80">Total Assets</span>
-            <div id="asset-total-amount" class="text-2xl sm:text-3xl font-extrabold tracking-tight mt-1 mb-3 font-mono">
+            <div id="asset-total-amount" class="text-2xl sm:text-3xl font-extrabold tracking-tight mt-1 mb-1 font-mono">
               0.00 USDT
+            </div>
+            <div class="text-[11px] font-mono text-purple-200/90 mb-3 flex items-center gap-1.5 flex-wrap">
+              <span>(Withdrawable: <strong class="text-emerald-300 font-bold">$<span id="asset-withdrawable-amount">0.00</span></strong> | Staked: <strong class="text-cyan-300 font-bold">$<span id="asset-staked-amount">0.00</span></strong>)</span>
             </div>
           </div>
 
