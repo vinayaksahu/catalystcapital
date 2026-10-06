@@ -3721,3 +3721,170 @@ function previewMemberLoginPopupDirectly() {
   openModal('memberLoginPopupModal');
 }
 window.previewMemberLoginPopupDirectly = previewMemberLoginPopupDirectly;
+
+// ==================== ADMIN PLATFORM SETTINGS (ROI Time, Commission Levels) ====================
+
+let teamCommissionLevelsData = [];
+let teamRoiLevelsData = [];
+
+function renderCommissionLevelRow(container, levels, type) {
+  container.innerHTML = '';
+  levels.forEach((item, idx) => {
+    const row = document.createElement('div');
+    row.className = 'flex items-center gap-2';
+    row.innerHTML = `
+      <span class="text-xs font-bold text-slate-300 w-16 shrink-0">Level ${item.level}</span>
+      <input type="number" step="0.1" min="0" max="100" value="${item.rate}" onchange="updateCommissionLevel('${type}', ${idx}, this.value)" class="flex-1 px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs font-mono focus:outline-none focus:border-amber-400">
+      <span class="text-xs text-slate-400">%</span>
+      <button type="button" onclick="removeCommissionLevel('${type}', ${idx})" class="p-1 rounded-lg bg-rose-500/20 text-rose-400 hover:bg-rose-500/30 transition active:scale-95 cursor-pointer">
+        <i data-lucide="trash-2" class="w-3 h-3"></i>
+      </button>
+    `;
+    container.appendChild(row);
+  });
+  if (window.lucide) lucide.createIcons();
+}
+
+function updateCommissionLevel(type, idx, value) {
+  const arr = type === 'commission' ? teamCommissionLevelsData : teamRoiLevelsData;
+  if (arr[idx]) arr[idx].rate = parseFloat(value) || 0;
+}
+window.updateCommissionLevel = updateCommissionLevel;
+
+function removeCommissionLevel(type, idx) {
+  if (type === 'commission') {
+    teamCommissionLevelsData.splice(idx, 1);
+    teamCommissionLevelsData.forEach((item, i) => item.level = i + 1);
+    renderCommissionLevelRow(document.getElementById('team-commission-levels-container'), teamCommissionLevelsData, 'commission');
+  } else {
+    teamRoiLevelsData.splice(idx, 1);
+    teamRoiLevelsData.forEach((item, i) => item.level = i + 1);
+    renderCommissionLevelRow(document.getElementById('team-roi-levels-container'), teamRoiLevelsData, 'roi');
+  }
+}
+window.removeCommissionLevel = removeCommissionLevel;
+
+function addTeamCommissionLevel() {
+  const nextLevel = teamCommissionLevelsData.length + 1;
+  teamCommissionLevelsData.push({ level: nextLevel, rate: 0 });
+  renderCommissionLevelRow(document.getElementById('team-commission-levels-container'), teamCommissionLevelsData, 'commission');
+}
+window.addTeamCommissionLevel = addTeamCommissionLevel;
+
+function addTeamRoiLevel() {
+  const nextLevel = teamRoiLevelsData.length + 1;
+  teamRoiLevelsData.push({ level: nextLevel, rate: 0 });
+  renderCommissionLevelRow(document.getElementById('team-roi-levels-container'), teamRoiLevelsData, 'roi');
+}
+window.addTeamRoiLevel = addTeamRoiLevel;
+
+async function handleSaveRoiClosingTime(e) {
+  e.preventDefault();
+  const timeVal = document.getElementById('admin-roi-closing-time')?.value;
+  if (!timeVal) { showToast('Please select a valid time', 'error'); return; }
+
+  try {
+    const res = await fetch(`${API_BASE}/admin/settings`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ key: 'roi_closing_time', value: timeVal })
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast(`ROI closing time updated to ${timeVal}!`, 'success');
+    } else {
+      showToast(data.error || 'Failed to update ROI closing time', 'error');
+    }
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+window.handleSaveRoiClosingTime = handleSaveRoiClosingTime;
+
+async function handleSaveTeamCommissionLevels() {
+  if (teamCommissionLevelsData.length === 0) { showToast('Add at least one commission level', 'error'); return; }
+  try {
+    const res = await fetch(`${API_BASE}/admin/settings`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ key: 'team_commission_levels', value: JSON.stringify(teamCommissionLevelsData) })
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast('Team commission levels saved successfully!', 'success');
+    } else {
+      showToast(data.error || 'Failed to save commission levels', 'error');
+    }
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+window.handleSaveTeamCommissionLevels = handleSaveTeamCommissionLevels;
+
+async function handleSaveTeamRoiLevels() {
+  if (teamRoiLevelsData.length === 0) { showToast('Add at least one ROI level', 'error'); return; }
+  try {
+    const res = await fetch(`${API_BASE}/admin/settings`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ key: 'team_roi_levels', value: JSON.stringify(teamRoiLevelsData) })
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast('Team ROI of ROI levels saved successfully!', 'success');
+    } else {
+      showToast(data.error || 'Failed to save ROI levels', 'error');
+    }
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+window.handleSaveTeamRoiLevels = handleSaveTeamRoiLevels;
+
+function loadAdminPlatformSettings() {
+  // Load settings from server and populate the settings tab
+  if (!token) return;
+  fetch(`${API_BASE}/admin/settings`, {
+    headers: { 'Authorization': `Bearer ${token}` }
+  }).then(r => r.json()).then(data => {
+    if (data.success && data.settings) {
+      const settingsMap = data.settings.reduce((acc, row) => { acc[row.key] = row.value; return acc; }, {});
+
+      // ROI closing time
+      const roiTimeInput = document.getElementById('admin-roi-closing-time');
+      if (roiTimeInput) roiTimeInput.value = settingsMap.roi_closing_time || '00:00';
+
+      // Team commission levels
+      try {
+        teamCommissionLevelsData = JSON.parse(settingsMap.team_commission_levels || '[]');
+      } catch(e) {
+        teamCommissionLevelsData = [];
+      }
+      if (teamCommissionLevelsData.length === 0) {
+        // Default: L1=6%, L2=2%, L3=1%
+        teamCommissionLevelsData = [
+          { level: 1, rate: 6 },
+          { level: 2, rate: 2 },
+          { level: 3, rate: 1 }
+        ];
+      }
+      renderCommissionLevelRow(document.getElementById('team-commission-levels-container'), teamCommissionLevelsData, 'commission');
+
+      // Team ROI levels
+      try {
+        teamRoiLevelsData = JSON.parse(settingsMap.team_roi_levels || '[]');
+      } catch(e) {
+        teamRoiLevelsData = [];
+      }
+      if (teamRoiLevelsData.length === 0) {
+        // Default: L1=10%, L2=4%, L3=2%
+        teamRoiLevelsData = [
+          { level: 1, rate: 10 },
+          { level: 2, rate: 4 },
+          { level: 3, rate: 2 }
+        ];
+      }
+      renderCommissionLevelRow(document.getElementById('team-roi-levels-container'), teamRoiLevelsData, 'roi');
+    }
+  }).catch(err => console.error('Failed to load platform settings:', err));
+}
