@@ -1249,9 +1249,12 @@
               <img id="admin-popup-preview-img" src="" alt="Popup Preview" class="max-h-56 max-w-full rounded-lg object-contain shadow-md">
             </div>
 
-            <div class="flex items-center gap-2 pt-1">
+            <div class="flex flex-wrap items-center gap-2 pt-1">
               <button type="submit" id="btn-save-popup" class="px-4 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-extrabold text-xs transition shadow-md shadow-cyan-500/20 active:scale-95 cursor-pointer">
                 Save & Update Pop Image
+              </button>
+              <button type="button" onclick="previewMemberLoginPopupDirectly()" class="px-3.5 py-2 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/30 hover:bg-amber-500/30 text-xs font-bold transition active:scale-95 cursor-pointer flex items-center gap-1.5">
+                <i data-lucide="eye" class="w-3.5 h-3.5"></i> Preview Modal
               </button>
               <button type="button" onclick="clearAdminPopupImage()" class="px-3 py-2 rounded-xl bg-rose-500/20 text-rose-300 border border-rose-500/30 hover:bg-rose-500/30 text-xs font-bold transition active:scale-95 cursor-pointer">
                 Remove Pop Image
@@ -2542,6 +2545,6 @@
   <div id="toast-container" class="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-2 w-11/12 max-w-sm pointer-events-none"></div>
 
   <!-- Main JavaScript App -->
-  <script src="app.js?v=6.0"></script>
+  <script src="app.js?v=6.1"></script>
 </body>
 </html>

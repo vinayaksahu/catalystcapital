@@ -59,7 +59,7 @@ let publicAnnouncementsCache = null;
 
 async function loadPublicAnnouncements() {
   try {
-    const res = await fetch(`${API_BASE}/auth/announcements`);
+    const res = await fetch(`${API_BASE}/auth/announcements?t=${Date.now()}`);
     const data = await res.json();
     if (data.success) {
       publicAnnouncementsCache = data;
@@ -68,8 +68,8 @@ async function loadPublicAnnouncements() {
         const tickerEl = document.getElementById('home-ticker-text');
         if (tickerEl) tickerEl.textContent = data.announcementTicker;
       }
-      // If user is already logged in as member and viewing member views, trigger popup
-      if (currentUser && currentUser.role !== 'admin' && data.popupImageActive && data.popupImageUrl) {
+      // If popup is active and has an image, trigger popup (works for both members and admin previewing member portal)
+      if (data.popupImageActive && data.popupImageUrl) {
         checkAndShowMemberLoginPopup(data.popupImageUrl, data.popupImageTitle);
       }
     }
@@ -839,6 +839,7 @@ let activeViewName = 'home';
 
 function toggleAdminPortal() {
   if (activeViewName === 'admin') {
+    hasShownLoginPopupThisSession = false; // Allow admin to preview pop image as regular user sees it
     navigate('home');
   } else {
     navigate('admin');
@@ -1001,6 +1002,15 @@ function navigate(viewName, updateHistory = true) {
 
   // Refresh view data
   refreshCurrentViewData();
+
+  // If entering home/member portal, check if announcement pop image should be displayed
+  if (viewName === 'home') {
+    if (publicAnnouncementsCache && publicAnnouncementsCache.popupImageActive && publicAnnouncementsCache.popupImageUrl) {
+      checkAndShowMemberLoginPopup(publicAnnouncementsCache.popupImageUrl, publicAnnouncementsCache.popupImageTitle);
+    } else {
+      loadPublicAnnouncements();
+    }
+  }
 
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
@@ -3109,6 +3119,9 @@ async function handleSaveTickerNotice(e) {
     });
     const data = await res.json();
     if (data.success) {
+      if (!publicAnnouncementsCache) publicAnnouncementsCache = {};
+      publicAnnouncementsCache.announcementTicker = value;
+
       const tickerEl = document.getElementById('home-ticker-text');
       if (tickerEl) tickerEl.textContent = value;
       showToast('Scrolling notification message updated live!', 'success');
@@ -3210,10 +3223,12 @@ window.clearAdminPopupImage = clearAdminPopupImage;
 
 async function handleSavePopupImage(e) {
   e.preventDefault();
-  const isActive = document.getElementById('admin-popup-active-checkbox')?.checked ? '1' : '0';
-  const title = document.getElementById('admin-popup-title-input')?.value.trim() || 'Special Platform Announcement';
   const urlVal = document.getElementById('admin-popup-url-input')?.value.trim();
   const finalImage = urlVal || currentPopupImageBase64 || '';
+  // If an image exists and admin clicked save, default to active unless explicitly unchecked
+  const chkActive = document.getElementById('admin-popup-active-checkbox');
+  const isActive = chkActive ? (chkActive.checked ? '1' : '0') : (finalImage ? '1' : '0');
+  const title = document.getElementById('admin-popup-title-input')?.value.trim() || 'Special Platform Announcement';
 
   if (isActive === '1' && !finalImage) {
     showToast('Please upload an image file or provide an Image URL first', 'error');
@@ -3242,7 +3257,13 @@ async function handleSavePopupImage(e) {
     const data = await res.json();
     if (!data.success) throw new Error(data.error || 'Failed to save settings');
 
-    // Reset session flag so admin can immediately preview the popup in their session if active
+    // Update in-memory public announcement cache immediately
+    if (!publicAnnouncementsCache) publicAnnouncementsCache = {};
+    publicAnnouncementsCache.popupImageUrl = finalImage;
+    publicAnnouncementsCache.popupImageActive = (isActive === '1');
+    publicAnnouncementsCache.popupImageTitle = title;
+
+    // Reset session flag so admin can immediately see the popup when viewing member portal
     hasShownLoginPopupThisSession = false;
 
     showToast('Member login pop image announcement saved live!', 'success');
@@ -3259,8 +3280,10 @@ window.handleSavePopupImage = handleSavePopupImage;
 
 let hasShownLoginPopupThisSession = false;
 
-function checkAndShowMemberLoginPopup(imgUrl, title) {
-  if (hasShownLoginPopupThisSession || !imgUrl) return;
+function checkAndShowMemberLoginPopup(imgUrl, title, force = false) {
+  if (!imgUrl) return;
+  if (!force && hasShownLoginPopupThisSession) return;
+  // Don't show popup on purely auth pages or inside admin dashboard
   if (activeViewName === 'login' || activeViewName === 'register' || activeViewName === 'adminlogin' || activeViewName === 'admin') return;
 
   const modalImg = document.getElementById('login-popup-img');
@@ -3271,6 +3294,22 @@ function checkAndShowMemberLoginPopup(imgUrl, title) {
   hasShownLoginPopupThisSession = true;
   setTimeout(() => {
     openModal('memberLoginPopupModal');
-  }, 600);
+  }, 400);
 }
 window.checkAndShowMemberLoginPopup = checkAndShowMemberLoginPopup;
+
+function previewMemberLoginPopupDirectly() {
+  const urlVal = document.getElementById('admin-popup-url-input')?.value.trim();
+  const finalImage = urlVal || currentPopupImageBase64 || (publicAnnouncementsCache && publicAnnouncementsCache.popupImageUrl);
+  const title = document.getElementById('admin-popup-title-input')?.value.trim() || 'Special Platform Announcement';
+  if (!finalImage) {
+    showToast('No pop image uploaded or configured yet!', 'info');
+    return;
+  }
+  const modalImg = document.getElementById('login-popup-img');
+  const modalTitle = document.getElementById('login-popup-title');
+  if (modalImg) modalImg.src = finalImage;
+  if (modalTitle) modalTitle.textContent = title;
+  openModal('memberLoginPopupModal');
+}
+window.previewMemberLoginPopupDirectly = previewMemberLoginPopupDirectly;
