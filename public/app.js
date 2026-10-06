@@ -75,11 +75,22 @@ function applyTheme(theme) {
 // Setup global event listeners
 function setupEventListeners() {
   const urlParams = new URLSearchParams(window.location.search);
+  const path = window.location.pathname.toLowerCase();
+  const hash = window.location.hash.toLowerCase();
+  const action = urlParams.get('action');
+  const view = urlParams.get('view');
   const ref = urlParams.get('ref');
+
   if (ref) {
     const regSponsor = document.getElementById('reg-sponsor');
     if (regSponsor) regSponsor.value = ref;
     openModal('registerModal');
+  } else if (action === 'register' || hash === '#register' || path === '/register') {
+    openModal('registerModal');
+  } else if (action === 'login' || hash === '#login' || path === '/login') {
+    openModal('loginModal');
+  } else if (action === 'admin' || view === 'admin' || hash === '#admin' || path === '/admin') {
+    navigate('admin');
   }
 
   // Close profile dropdown when clicking outside
