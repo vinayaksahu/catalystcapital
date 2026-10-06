@@ -1945,130 +1945,133 @@
           </div>
         </div>
 
-        <!-- 4. DATABASE BACKUP & RESTORE CARDS (Matches Mockup Exactly) -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 pt-2">
-          <!-- Card A: Export & Download Backup Locally -->
-          <div class="p-5 rounded-2xl bg-[#0b101b] border border-slate-800 space-y-4 shadow-xl">
+        <!-- 4. DATABASE BACKUP EXPORT (Standalone Card) -->
+        <div class="p-5 rounded-2xl bg-[#0b101b] border border-slate-800 space-y-4 shadow-xl">
+          <div class="flex items-center justify-between">
             <div class="flex items-center gap-2.5">
               <i data-lucide="download" class="w-5 h-5 text-amber-400"></i>
               <h3 class="text-sm font-bold text-white">Export & Download Backup Locally</h3>
             </div>
-            <p class="text-[11px] text-slate-400 leading-relaxed">
-              Generate a snapshot of your entire database right now. Download it in <strong class="text-slate-200">JSON</strong> (for exact system restore) or <strong class="text-slate-200">Excel (.xlsx)</strong> (for human review and spreadsheets).
-            </p>
+            <span class="text-[10px] text-amber-400 font-bold bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">Backup Storage</span>
+          </div>
+          <p class="text-[11px] text-slate-400 leading-relaxed">
+            Generate a snapshot of your entire database right now. Download it in <strong class="text-slate-200">JSON</strong> (for exact system restore) or <strong class="text-slate-200">Excel (.xlsx)</strong> (for human review and spreadsheets).
+          </p>
 
-            <div class="space-y-3 pt-1">
-              <!-- JSON Row -->
-              <div class="p-3.5 rounded-xl bg-slate-950/90 border border-slate-800/90 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div class="flex items-start gap-3 min-w-0">
-                  <div class="p-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400 shrink-0">
-                    <i data-lucide="file-code" class="w-5 h-5"></i>
-                  </div>
-                  <div class="min-w-0">
-                    <div class="flex items-center gap-2 flex-wrap">
-                      <span class="font-bold text-xs text-white">Full System JSON (.json)</span>
-                      <span class="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30">Recommended for Restore</span>
-                    </div>
-                    <p class="text-[10px] text-slate-400 mt-1 leading-snug">
-                      Includes all 7 tables with relations, passwords, decimals, and timestamps.
-                    </p>
-                  </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+            <!-- JSON Row -->
+            <div class="p-3.5 rounded-xl bg-slate-950/90 border border-slate-800/90 flex flex-col justify-between gap-3">
+              <div class="flex items-start gap-3 min-w-0">
+                <div class="p-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400 shrink-0">
+                  <i data-lucide="file-code" class="w-5 h-5"></i>
                 </div>
-                <button type="button" onclick="downloadDatabaseBackup('json')" class="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-extrabold text-xs transition shadow-md shadow-amber-500/20 active:scale-95 cursor-pointer whitespace-nowrap flex items-center justify-center gap-1.5 shrink-0">
-                  <i data-lucide="download" class="w-3.5 h-3.5"></i>
-                  <span>Download JSON</span>
-                </button>
+                <div class="min-w-0">
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <span class="font-bold text-xs text-white">Full System JSON (.json)</span>
+                    <span class="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30">Recommended for Restore</span>
+                  </div>
+                  <p class="text-[10px] text-slate-400 mt-1 leading-snug">
+                    Includes all 7 tables with relations, passwords, decimals, and timestamps.
+                  </p>
+                </div>
               </div>
+              <button type="button" onclick="downloadDatabaseBackup('json')" class="w-full py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-extrabold text-xs transition shadow-md shadow-amber-500/20 active:scale-95 cursor-pointer whitespace-nowrap flex items-center justify-center gap-1.5">
+                <i data-lucide="download" class="w-3.5 h-3.5"></i>
+                <span>Download JSON Backup</span>
+              </button>
+            </div>
 
-              <!-- Excel Row -->
-              <div class="p-3.5 rounded-xl bg-slate-950/90 border border-slate-800/90 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div class="flex items-start gap-3 min-w-0">
-                  <div class="p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 shrink-0">
-                    <i data-lucide="file-spreadsheet" class="w-5 h-5"></i>
-                  </div>
-                  <div class="min-w-0">
-                    <div class="flex items-center gap-2 flex-wrap">
-                      <span class="font-bold text-xs text-white">Multi-Sheet Excel (.xlsx)</span>
-                      <span class="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">Human-Readable</span>
-                    </div>
-                    <p class="text-[10px] text-slate-400 mt-1 leading-snug">
-                      7 Worksheets: Users, Queue, Ledger, Deposits, Withdrawals, Tickets, Configs.
-                    </p>
-                  </div>
+            <!-- Excel Row -->
+            <div class="p-3.5 rounded-xl bg-slate-950/90 border border-slate-800/90 flex flex-col justify-between gap-3">
+              <div class="flex items-start gap-3 min-w-0">
+                <div class="p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 shrink-0">
+                  <i data-lucide="file-spreadsheet" class="w-5 h-5"></i>
                 </div>
-                <button type="button" onclick="downloadDatabaseBackup('excel')" class="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold text-xs transition shadow-md shadow-emerald-500/20 active:scale-95 cursor-pointer whitespace-nowrap flex items-center justify-center gap-1.5 shrink-0">
-                  <i data-lucide="download" class="w-3.5 h-3.5"></i>
-                  <span>Download Excel</span>
-                </button>
+                <div class="min-w-0">
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <span class="font-bold text-xs text-white">Multi-Sheet Excel (.xlsx)</span>
+                    <span class="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">Human-Readable</span>
+                  </div>
+                  <p class="text-[10px] text-slate-400 mt-1 leading-snug">
+                    7 Worksheets: Users, Queue, Ledger, Deposits, Withdrawals, Tickets, Configs.
+                  </p>
+                </div>
               </div>
+              <button type="button" onclick="downloadDatabaseBackup('excel')" class="w-full py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold text-xs transition shadow-md shadow-emerald-500/20 active:scale-95 cursor-pointer whitespace-nowrap flex items-center justify-center gap-1.5">
+                <i data-lucide="download" class="w-3.5 h-3.5"></i>
+                <span>Download Excel Backup</span>
+              </button>
             </div>
           </div>
+        </div>
 
-          <!-- Card B: Restore / Populate New Database -->
-          <div class="p-5 rounded-2xl bg-[#0b101b] border border-slate-800 space-y-4 shadow-xl">
+        <!-- 5. RESTORE / POPULATE NEW DATABASE (Standalone Card - Strictly In Settings) -->
+        <div class="p-5 rounded-2xl bg-[#0b101b] border border-slate-800 space-y-4 shadow-xl">
+          <div class="flex items-center justify-between">
             <div class="flex items-center gap-2.5">
               <i data-lucide="upload" class="w-5 h-5 text-cyan-400"></i>
               <h3 class="text-sm font-bold text-white">Restore / Populate New Database</h3>
             </div>
-            <p class="text-[11px] text-slate-400 leading-relaxed">
-              Upload a previously exported <strong class="text-slate-200">.json</strong> or <strong class="text-slate-200">.xlsx</strong> backup file to restore or populate your database.
-            </p>
+            <span class="text-[10px] text-cyan-400 font-bold bg-cyan-500/10 px-2 py-0.5 rounded-full border border-cyan-500/20">Disaster Recovery</span>
+          </div>
+          <p class="text-[11px] text-slate-400 leading-relaxed">
+            Upload a previously exported <strong class="text-slate-200">.json</strong> or <strong class="text-slate-200">.xlsx</strong> backup file to restore or populate your database.
+          </p>
 
-            <div class="space-y-3 pt-1">
-              <div>
-                <label class="block text-[11px] font-bold text-slate-300 mb-1.5">Restoration Mode:</label>
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  <!-- Mode 1: Clean & Restore -->
-                  <label id="restore-mode-clean-label" class="flex items-start gap-2.5 p-3 rounded-xl border border-rose-500/40 bg-rose-500/10 cursor-pointer transition select-none">
-                    <input type="radio" name="restore_mode" value="clean" checked onchange="updateRestoreModeUI()" class="mt-0.5 accent-rose-500">
-                    <div>
-                      <div class="text-xs font-bold text-white flex items-center gap-1.5">
-                        <span class="w-2 h-2 rounded-full bg-rose-500 inline-block animate-pulse"></span>
-                        <span>Clean & Restore</span>
-                      </div>
-                      <p class="text-[10px] text-slate-400 mt-0.5 leading-snug">
-                        Best for Fresh Database. Wipes conflicting records and restores exact state.
-                      </p>
+          <div class="space-y-3 pt-1">
+            <div>
+              <label class="block text-[11px] font-bold text-slate-300 mb-1.5">Restoration Mode:</label>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <!-- Mode 1: Clean & Restore -->
+                <label id="restore-mode-clean-label" class="flex items-start gap-2.5 p-3 rounded-xl border border-rose-500/40 bg-rose-500/10 cursor-pointer transition select-none">
+                  <input type="radio" name="restore_mode" value="clean" checked onchange="updateRestoreModeUI()" class="mt-0.5 accent-rose-500">
+                  <div>
+                    <div class="text-xs font-bold text-white flex items-center gap-1.5">
+                      <span class="w-2 h-2 rounded-full bg-rose-500 inline-block animate-pulse"></span>
+                      <span>Clean & Restore</span>
                     </div>
-                  </label>
+                    <p class="text-[10px] text-slate-400 mt-0.5 leading-snug">
+                      Best for Fresh Database. Wipes conflicting records and restores exact state.
+                    </p>
+                  </div>
+                </label>
 
-                  <!-- Mode 2: Safe Merge / Upsert -->
-                  <label id="restore-mode-merge-label" class="flex items-start gap-2.5 p-3 rounded-xl border border-slate-800 bg-slate-950/80 hover:border-slate-700 cursor-pointer transition select-none">
-                    <input type="radio" name="restore_mode" value="merge" onchange="updateRestoreModeUI()" class="mt-0.5 accent-cyan-500">
-                    <div>
-                      <div class="text-xs font-bold text-white flex items-center gap-1.5">
-                        <span class="w-2 h-2 rounded-full bg-cyan-500 inline-block"></span>
-                        <span>Safe Merge / Upsert</span>
-                      </div>
-                      <p class="text-[10px] text-slate-400 mt-0.5 leading-snug">
-                        Updates existing and inserts new entries without clearing database.
-                      </p>
+                <!-- Mode 2: Safe Merge / Upsert -->
+                <label id="restore-mode-merge-label" class="flex items-start gap-2.5 p-3 rounded-xl border border-slate-800 bg-slate-950/80 hover:border-slate-700 cursor-pointer transition select-none">
+                  <input type="radio" name="restore_mode" value="merge" onchange="updateRestoreModeUI()" class="mt-0.5 accent-cyan-500">
+                  <div>
+                    <div class="text-xs font-bold text-white flex items-center gap-1.5">
+                      <span class="w-2 h-2 rounded-full bg-cyan-500 inline-block"></span>
+                      <span>Safe Merge / Upsert</span>
                     </div>
-                  </label>
-                </div>
+                    <p class="text-[10px] text-slate-400 mt-0.5 leading-snug">
+                      Updates existing and inserts new entries without clearing database.
+                    </p>
+                  </div>
+                </label>
               </div>
+            </div>
 
-              <!-- Upload Drag & Drop Box -->
-              <div onclick="document.getElementById('db-restore-file-input').click()" ondragover="event.preventDefault(); this.classList.add('border-cyan-400');" ondragleave="this.classList.remove('border-cyan-400');" ondrop="handleRestoreFileDrop(event)" class="border-2 border-dashed border-slate-700/80 hover:border-cyan-400 rounded-2xl p-6 text-center cursor-pointer transition bg-slate-950/60 group">
-                <input type="file" id="db-restore-file-input" accept=".json,.xlsx,.xls" onchange="handleRestoreFileSelected(event)" class="hidden">
-                <div class="w-10 h-10 rounded-2xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 flex items-center justify-center mx-auto mb-2.5 group-hover:scale-110 transition">
-                  <i data-lucide="upload" class="w-5 h-5"></i>
-                </div>
-                <div id="restore-drop-title" class="font-bold text-xs text-white group-hover:text-cyan-300 transition">
-                  Click to select or drag & drop backup file
-                </div>
-                <p id="restore-drop-subtitle" class="text-[10px] text-slate-400 mt-1 font-sans">
-                  Supports .json and .xlsx files up to 50MB
-                </p>
+            <!-- Upload Drag & Drop Box -->
+            <div onclick="document.getElementById('db-restore-file-input').click()" ondragover="event.preventDefault(); this.classList.add('border-cyan-400');" ondragleave="this.classList.remove('border-cyan-400');" ondrop="handleRestoreFileDrop(event)" class="border-2 border-dashed border-slate-700/80 hover:border-cyan-400 rounded-2xl p-6 text-center cursor-pointer transition bg-slate-950/60 group">
+              <input type="file" id="db-restore-file-input" accept=".json,.xlsx,.xls" onchange="handleRestoreFileSelected(event)" class="hidden">
+              <div class="w-10 h-10 rounded-2xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 flex items-center justify-center mx-auto mb-2.5 group-hover:scale-110 transition">
+                <i data-lucide="upload" class="w-5 h-5"></i>
               </div>
+              <div id="restore-drop-title" class="font-bold text-xs text-white group-hover:text-cyan-300 transition">
+                Click to select or drag & drop backup file
+              </div>
+              <p id="restore-drop-subtitle" class="text-[10px] text-slate-400 mt-1 font-sans">
+                Supports .json and .xlsx files up to 50MB
+              </p>
+            </div>
 
-              <!-- Action Confirmation Button (Shown when file selected) -->
-              <div id="restore-action-container" class="hidden pt-1">
-                <button type="button" id="btn-execute-restore" onclick="executeDatabaseRestore()" class="w-full py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-black font-extrabold text-xs transition shadow-lg shadow-cyan-500/20 active:scale-95 cursor-pointer flex items-center justify-center gap-2">
-                  <i data-lucide="refresh-cw" class="w-4 h-4"></i>
-                  <span id="btn-execute-restore-text">Proceed With Database Restore</span>
-                </button>
-              </div>
+            <!-- Action Confirmation Button (Shown when file selected) -->
+            <div id="restore-action-container" class="hidden pt-1">
+              <button type="button" id="btn-execute-restore" onclick="executeDatabaseRestore()" class="w-full py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-black font-extrabold text-xs transition shadow-lg shadow-cyan-500/20 active:scale-95 cursor-pointer flex items-center justify-center gap-2">
+                <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+                <span id="btn-execute-restore-text">Proceed With Database Restore</span>
+              </button>
             </div>
           </div>
         </div>
