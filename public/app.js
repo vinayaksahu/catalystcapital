@@ -696,7 +696,7 @@ function updateAuthUI() {
     if (activeBadge) activeBadge.textContent = 'Guest';
   }
 
-  // Ensure Admin Portal button in header is strictly hidden for non-admins or logged out users
+    // Ensure Admin Portal button in header is strictly hidden for non-admins or logged out users
   const portalBtn = document.getElementById('portal-switch-btn');
   if (portalBtn) {
     if (currentUser && (currentUser.role === 'admin' || currentUser.role === 'superadmin') && activeViewName !== 'login' && activeViewName !== 'adminlogin' && activeViewName !== 'superrootadminlogin' && activeViewName !== 'register') {
@@ -705,6 +705,23 @@ function updateAuthUI() {
     } else {
       portalBtn.classList.add('hidden');
       portalBtn.style.setProperty('display', 'none', 'important');
+    }
+  }
+
+  // Super Root Impersonation Sticky Bar Handling
+  const srOrigToken = localStorage.getItem('catalyst_superadmin_orig_token');
+  const srBanner = document.getElementById('super-root-impersonation-bar');
+  if (srBanner) {
+    if (srOrigToken && currentUser) {
+      srBanner.classList.remove('hidden');
+      document.body.classList.add('has-sr-impersonation-bar');
+      const uEl = document.getElementById('sr-impersonated-user');
+      const rEl = document.getElementById('sr-impersonated-role-badge');
+      if (uEl) uEl.textContent = `@${currentUser.username}${currentUser.team_name ? ' (' + currentUser.team_name + ')' : ''}`;
+      if (rEl) rEl.textContent = `(Role: ${currentUser.role})`;
+    } else {
+      srBanner.classList.add('hidden');
+      document.body.classList.remove('has-sr-impersonation-bar');
     }
   }
 }
@@ -2855,30 +2872,20 @@ async function loadAdminData() {
       const teamTabBtn = document.getElementById('admin-tab-btn-teamadmins');
       const inviteBanner = document.getElementById('team-admin-invite-banner');
 
-      if (adminCurrentScope.isSuperAdmin) {
-        if (roleBadge) {
-          roleBadge.textContent = 'SUPER ROOT ADMIN';
-          roleBadge.className = 'text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/40 uppercase tracking-wider flex items-center gap-1';
-        }
-        if (userTag) {
-          userTag.textContent = 'Global Platform Architecture & Multi-Team Governance';
-        }
-        if (scopeWrapper) scopeWrapper.classList.remove('hidden');
-        if (teamTabBtn) teamTabBtn.classList.remove('hidden');
-        if (inviteBanner) inviteBanner.classList.add('hidden');
+      if (adminCurrentScope.isSuperAdmin || currentUser.role === 'superadmin') {
+        const srContainer = document.getElementById('super-root-master-container');
+        const teamContainer = document.getElementById('team-admin-container');
+        if (srContainer) srContainer.classList.remove('hidden');
+        if (teamContainer) teamContainer.classList.add('hidden');
 
-        // Populate team select if needed
-        if (teamSelect && (!teamSelect.children || teamSelect.children.length <= 1)) {
-          const currentVal = adminCurrentScope.selectedTeamId || 'all';
-          teamSelect.innerHTML = `
-            <option value="all">Global (All Teams Platform-Wide)</option>
-            ${adminCurrentScope.teamAdmins.map(ta => `
-              <option value="${ta.id}">${ta.team_name || ta.username} (@${ta.username})</option>
-            `).join('')}
-          `;
-          teamSelect.value = currentVal;
-        }
+        await loadSuperRootMasterDashboard();
+        return;
       } else {
+        const srContainer = document.getElementById('super-root-master-container');
+        const teamContainer = document.getElementById('team-admin-container');
+        if (srContainer) srContainer.classList.add('hidden');
+        if (teamContainer) teamContainer.classList.remove('hidden');
+
         if (roleBadge) {
           roleBadge.textContent = 'TEAM ADMIN';
           roleBadge.className = 'text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 uppercase tracking-wider flex items-center gap-1';
@@ -2891,10 +2898,12 @@ async function loadAdminData() {
         if (teamTabBtn) teamTabBtn.classList.add('hidden');
         if (inviteBanner) {
           inviteBanner.classList.remove('hidden');
-          const tNameEl = document.getElementById('team-admin-banner-team-name');
+          const tNameEl = document.getElementById('team-admin-banner-name');
           if (tNameEl) tNameEl.textContent = meData.user.team_name || meData.user.username;
-          const linkInput = document.getElementById('team-admin-banner-link-input');
+          const codeEl = document.getElementById('team-admin-banner-code');
           const myRef = meData.user.referral_code || meData.user.username;
+          if (codeEl) codeEl.textContent = myRef;
+          const linkInput = document.getElementById('team-admin-ref-link-input');
           if (linkInput) linkInput.value = `${window.location.origin}/?ref=${encodeURIComponent(myRef)}`;
         }
       }
@@ -4851,3 +4860,725 @@ async function impersonateTeamAdmin(id) {
   }
 }
 window.impersonateTeamAdmin = impersonateTeamAdmin;
+
+// ========================================================
+// SUPER ROOT ADMIN: MASTER COMMANDER DASHBOARD SYSTEM
+// (Dubai Finance & Seoralink Reference Implementations)
+// ========================================================
+
+function escapeHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+window.escapeHtml = escapeHtml;
+
+let cachedSuperRootBranches = [];
+let currentInspectedBranchId = null;
+let universalMemberSearchTimer = null;
+
+// 1. Enter Portal As Admin (Super Root Impersonation of any Sub-Admin)
+async function enterPortalAsAdmin(adminId) {
+  try {
+    const origSuperToken = localStorage.getItem('catalyst_superadmin_orig_token');
+    if (!origSuperToken) {
+      localStorage.setItem('catalyst_superadmin_orig_token', token);
+    }
+
+    const res = await fetch(`${API_BASE}/admin/team-admins/${adminId}/impersonate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    const data = await res.json();
+    if (!data.success || !data.token) throw new Error(data.error || 'Failed to switch into branch portal');
+
+    token = data.token;
+    currentUser = data.user;
+    localStorage.setItem('catalyst_token', token);
+
+    showToast(`👑 Operating as Sub-Admin @${currentUser.username} (${currentUser.team_name || 'Team Admin'})!`, 'success');
+    updateAuthUI();
+    navigate('admin');
+    await loadAdminData();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+window.enterPortalAsAdmin = enterPortalAsAdmin;
+
+// 2. Enter Portal As Member (Super Root or Admin Impersonation of any Member)
+async function enterPortalAsMember(memberId) {
+  try {
+    if (currentUser?.role === 'superadmin') {
+      const origSuperToken = localStorage.getItem('catalyst_superadmin_orig_token');
+      if (!origSuperToken) {
+        localStorage.setItem('catalyst_superadmin_orig_token', token);
+      }
+    } else if (currentUser?.role === 'admin') {
+      if (!originalAdminToken) {
+        originalAdminToken = token;
+        localStorage.setItem('catalyst_admin_orig_token', originalAdminToken);
+      }
+    }
+
+    const res = await fetch(`${API_BASE}/admin/impersonate/${memberId}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    const data = await res.json();
+    if (!data.success || !data.token) throw new Error(data.error || 'Failed to switch into member portal');
+
+    token = data.token;
+    currentUser = data.user;
+    localStorage.setItem('catalyst_token', token);
+
+    closeModal('adminUserDetailModal');
+    showToast(`👑 Operating as Member @${currentUser.username}!`, 'info');
+    updateAuthUI();
+    navigate('home');
+    await refreshCurrentViewData();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+window.enterPortalAsMember = enterPortalAsMember;
+
+// 3. Exit Super Root Impersonation (Return to Super Root Master Commander)
+async function exitSuperRootImpersonation() {
+  const origSuperToken = localStorage.getItem('catalyst_superadmin_orig_token');
+  if (!origSuperToken) return;
+
+  token = origSuperToken;
+  localStorage.setItem('catalyst_token', token);
+  localStorage.removeItem('catalyst_superadmin_orig_token');
+
+  const banner = document.getElementById('super-root-impersonation-bar');
+  if (banner) banner.classList.add('hidden');
+  document.body.classList.remove('has-sr-impersonation-bar');
+
+  await fetchUserProfile();
+  showToast('Returned to Super Root Master Commander!', 'success');
+  navigate('admin');
+  await loadAdminData();
+}
+window.exitSuperRootImpersonation = exitSuperRootImpersonation;
+
+// 4. Load Super Root Master Dashboard
+async function loadSuperRootMasterDashboard() {
+  try {
+    const res = await fetch(`${API_BASE}/admin/team-admins`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error || 'Failed to load branch records');
+
+    cachedSuperRootBranches = data.teamAdmins || [];
+
+    const totalBranches = cachedSuperRootBranches.length;
+    const activeBranches = cachedSuperRootBranches.filter(b => b.status === 'active').length;
+    const totalMembers = cachedSuperRootBranches.reduce((s, b) => s + (parseInt(b.total_members) || 0), 0);
+    const activeInvestors = cachedSuperRootBranches.reduce((s, b) => s + (parseInt(b.active_investors) || 0), 0);
+    const totalDeposits = cachedSuperRootBranches.reduce((s, b) => s + (parseFloat(b.total_deposits) || 0), 0);
+    const totalWithdrawals = cachedSuperRootBranches.reduce((s, b) => s + (parseFloat(b.total_withdrawals) || 0), 0);
+
+    // Update 4 Hero Metric Cards
+    const elBranches = document.getElementById('sr-stat-branches');
+    if (elBranches) elBranches.textContent = totalBranches;
+    const elMembers = document.getElementById('sr-stat-members');
+    if (elMembers) elMembers.textContent = totalMembers;
+    const elActiveInv = document.getElementById('sr-stat-active-investors');
+    if (elActiveInv) elActiveInv.textContent = activeInvestors;
+    const elDeposits = document.getElementById('sr-stat-deposits');
+    if (elDeposits) elDeposits.textContent = `$${totalDeposits.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    const elPayouts = document.getElementById('sr-stat-payouts');
+    if (elPayouts) elPayouts.textContent = `$${totalWithdrawals.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+    const badgeBranches = document.getElementById('sr-badge-branches-count');
+    if (badgeBranches) badgeBranches.textContent = totalBranches;
+    const activeBadge = document.getElementById('sr-branches-active-badge');
+    if (activeBadge) activeBadge.textContent = `(${activeBranches} Active Branches)`;
+    const headerUser = document.getElementById('sr-header-user');
+    if (headerUser && currentUser) headerUser.textContent = `SUPER ROOT (@${currentUser.username})`;
+
+    // Populate Inspector Select Dropdown
+    const inspectSelect = document.getElementById('sr-inspector-branch-select');
+    if (inspectSelect) {
+      inspectSelect.innerHTML = `<option value="">Choose a branch to inspect...</option>` +
+        cachedSuperRootBranches.map(b => `<option value="${b.id}">${b.team_name || b.username} (@${b.username})</option>`).join('');
+      if (currentInspectedBranchId) inspectSelect.value = String(currentInspectedBranchId);
+    }
+
+    // Populate Branch Status Quick Controls in Tab 7
+    const quickControls = document.getElementById('sr-branch-quick-controls');
+    if (quickControls) {
+      quickControls.innerHTML = cachedSuperRootBranches.map(b => `
+        <div class="flex items-center justify-between p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs">
+          <div class="min-w-0">
+            <span class="font-bold text-white">${b.team_name || b.username}</span>
+            <span class="text-[10px] text-slate-400 font-mono ml-1">(@${b.username})</span>
+          </div>
+          <button onclick="toggleTeamAdminStatus(${b.id})" class="px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase transition ${b.status === 'active' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-rose-500/20 text-rose-300 border border-rose-500/30'}">
+            ${b.status === 'active' ? 'Active' : 'Suspended'}
+          </button>
+        </div>
+      `).join('');
+    }
+
+    renderSuperRootBranchesTable(cachedSuperRootBranches);
+    if (window.lucide) lucide.createIcons();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+window.loadSuperRootMasterDashboard = loadSuperRootMasterDashboard;
+
+// 5. Render Super Root Branches Table (Tab 1)
+function renderSuperRootBranchesTable(branches) {
+  const tbody = document.getElementById('sr-branches-table-body');
+  if (!tbody) return;
+
+  if (!branches || branches.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="7" class="py-8 text-center text-slate-500">No sub-admin branches registered yet</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = branches.map((b, idx) => {
+    const num = String(idx + 1).padStart(2, '0');
+    const isAct = (b.status === 'active');
+    const depVol = parseFloat(b.total_deposits || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const wthVol = parseFloat(b.total_withdrawals || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const vaultShort = b.usdt_address ? `${b.usdt_address.substring(0, 6)}...${b.usdt_address.substring(b.usdt_address.length - 4)}` : null;
+
+    return `
+      <tr class="hover:bg-slate-800/40 transition">
+        <td class="py-3 px-4">
+          <div class="flex items-center gap-2.5">
+            <span class="w-7 h-7 rounded-lg bg-slate-800 text-slate-300 font-mono text-[11px] font-bold flex items-center justify-center shrink-0 border border-slate-700/60">${num}</span>
+            <div class="min-w-0">
+              <div class="font-extrabold text-white text-xs truncate">${b.team_name || b.username}</div>
+              <div class="flex items-center gap-2 mt-0.5 flex-wrap">
+                <span class="text-[10px] text-slate-400 font-mono">@${b.username}</span>
+                <button onclick="enterPortalAsAdmin(${b.id})" class="text-[10px] text-cyan-400 hover:text-cyan-300 font-bold flex items-center gap-1 bg-cyan-500/10 hover:bg-cyan-500/20 px-2 py-0.5 rounded border border-cyan-500/30 transition cursor-pointer">
+                  <i data-lucide="external-link" class="w-3 h-3"></i>
+                  <span>Portal</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </td>
+        <td class="py-3 px-4">
+          <div class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400 font-mono text-[11px] font-bold">
+            <span>${b.referral_code || b.username}</span>
+          </div>
+        </td>
+        <td class="py-3 px-4">
+          <div class="text-[11px] text-slate-300 font-mono truncate max-w-[170px]">${b.email || 'N/A'}</div>
+          <div class="text-[10px] text-slate-400 font-mono">${b.phone || 'N/A'}</div>
+          ${vaultShort ? `<div class="text-[9px] text-amber-400/90 font-mono truncate max-w-[140px]" title="${b.usdt_address}">Vault: ${vaultShort}</div>` : ''}
+        </td>
+        <td class="py-3 px-4">
+          <div class="font-bold text-white text-xs">${b.total_members || 0} Members</div>
+          <div class="text-[10px] text-emerald-400 font-semibold">${b.active_investors || 0} Active</div>
+        </td>
+        <td class="py-3 px-4">
+          <div class="font-extrabold text-emerald-400 font-mono text-xs">$${depVol}</div>
+          <div class="text-[10px] text-slate-400 font-mono">Payouts: $${wthVol}</div>
+        </td>
+        <td class="py-3 px-4">
+          <span class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider inline-flex items-center gap-1 ${isAct ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' : 'bg-rose-500/15 text-rose-400 border border-rose-500/30'}">
+            <span>${isAct ? '● ACTIVE' : '⛔ SUSPENDED'}</span>
+          </span>
+        </td>
+        <td class="py-3 px-4 text-right">
+          <div class="inline-flex items-center gap-1.5 justify-end flex-wrap">
+            <button onclick="enterPortalAsAdmin(${b.id})" title="Enter Sub-Admin Portal" class="px-2.5 py-1.5 rounded-xl bg-amber-500/15 border border-amber-500/40 text-amber-300 hover:bg-amber-500/25 transition text-xs font-bold flex items-center gap-1 active:scale-95 cursor-pointer">
+              <i data-lucide="log-in" class="w-3.5 h-3.5"></i>
+              <span>Enter Portal</span>
+            </button>
+            <button onclick="inspectBranchFromBranchesTab(${b.id})" title="Inspect Branch" class="px-2.5 py-1.5 rounded-xl bg-cyan-500/15 border border-cyan-500/40 text-cyan-300 hover:bg-cyan-500/25 transition text-xs font-bold flex items-center gap-1 active:scale-95 cursor-pointer">
+              <i data-lucide="eye" class="w-3.5 h-3.5"></i>
+              <span>Inspect</span>
+            </button>
+            <button onclick="openEditTeamAdminModal(${b.id}, '${escapeHtml(b.username)}', '${escapeHtml(b.team_name || '')}', '${b.status}')" title="Configure Branch" class="p-1.5 rounded-xl bg-rose-500/15 border border-rose-500/40 text-rose-300 hover:bg-rose-500/25 transition text-xs font-bold flex items-center gap-1 active:scale-95 cursor-pointer">
+              <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
+            </button>
+            <button onclick="openQuickPasswordResetModal(${b.id}, '${escapeHtml(b.username)}')" title="Reset Password" class="p-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition text-xs border border-slate-700 active:scale-95 cursor-pointer">
+              <i data-lucide="key" class="w-3.5 h-3.5"></i>
+            </button>
+            <button onclick="toggleTeamAdminStatus(${b.id})" title="${isAct ? 'Suspend Branch' : 'Activate Branch'}" class="p-1.5 rounded-xl ${isAct ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30' : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'} transition text-xs active:scale-95 cursor-pointer">
+              <i data-lucide="${isAct ? 'lock' : 'unlock'}" class="w-3.5 h-3.5"></i>
+            </button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
+
+  if (window.lucide) lucide.createIcons();
+}
+
+// 6. Switch Super Root Tab
+function switchSuperRootTab(tabName) {
+  const tabs = ['branches', 'inspector', 'universal', 'config', 'credit-debit', 'logs', 'bep20'];
+  tabs.forEach(t => {
+    const btn = document.getElementById(`sr-tab-btn-${t}`);
+    const content = document.getElementById(`sr-tab-content-${t}`);
+    if (btn) btn.classList.toggle('active', t === tabName);
+    if (content) content.classList.toggle('hidden', t !== tabName);
+  });
+
+  if (tabName === 'universal') searchUniversalMembers('');
+  if (tabName === 'logs') loadSuperRootAuditLogs();
+  if (tabName === 'config') {
+    // Load config into inputs
+    loadAdminPlatformSettings().then(() => {
+      const srcRoi = document.getElementById('admin-roi-closing-time')?.value;
+      const srcMin = document.getElementById('admin-min-withdrawal')?.value;
+      const targetRoi = document.getElementById('sr-config-roi-time');
+      const targetMin = document.getElementById('sr-config-min-withdrawal');
+      if (targetRoi && srcRoi) targetRoi.value = srcRoi;
+      if (targetMin && srcMin) targetMin.value = srcMin;
+    });
+  }
+  if (tabName === 'bep20') {
+    const addr = currentUser?.usdt_address || document.getElementById('admin-deposit-address-input')?.value;
+    const inp = document.getElementById('sr-bep20-address-input');
+    const link = document.getElementById('sr-bep20-bscscan-link');
+    if (inp && addr) inp.value = addr;
+    if (link && addr) link.href = `https://bscscan.com/address/${addr}`;
+  }
+
+  if (window.lucide) lucide.createIcons();
+}
+window.switchSuperRootTab = switchSuperRootTab;
+
+// 7. Filter Branches (Search Input in Tab 1)
+function filterSuperRootBranches() {
+  const q = document.getElementById('sr-branch-search-input')?.value.trim().toLowerCase() || '';
+  if (!q) {
+    renderSuperRootBranchesTable(cachedSuperRootBranches);
+    return;
+  }
+  const filtered = cachedSuperRootBranches.filter(b =>
+    (b.username && b.username.toLowerCase().includes(q)) ||
+    (b.team_name && b.team_name.toLowerCase().includes(q)) ||
+    (b.referral_code && b.referral_code.toLowerCase().includes(q)) ||
+    (b.email && b.email.toLowerCase().includes(q)) ||
+    (b.phone && b.phone.includes(q))
+  );
+  renderSuperRootBranchesTable(filtered);
+}
+window.filterSuperRootBranches = filterSuperRootBranches;
+
+// 8. Inspect Branch from Tab 1
+function inspectBranchFromBranchesTab(branchId) {
+  currentInspectedBranchId = branchId;
+  switchSuperRootTab('inspector');
+  const sel = document.getElementById('sr-inspector-branch-select');
+  if (sel) sel.value = String(branchId);
+  loadBranchInspectorData(branchId);
+}
+window.inspectBranchFromBranchesTab = inspectBranchFromBranchesTab;
+
+// 9. Load Branch Inspector Data (Tab 2)
+async function loadBranchInspectorData(branchId) {
+  if (!branchId) return;
+  currentInspectedBranchId = branchId;
+  const container = document.getElementById('sr-inspector-content-container');
+  if (!container) return;
+
+  container.innerHTML = `<div class="py-12 text-center text-slate-500">Loading branch records...</div>`;
+
+  try {
+    const res = await fetch(`${API_BASE}/admin/branch-inspector/${branchId}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error || 'Failed to inspect branch');
+
+    const { branchAdmin, stats, members, deposits, withdrawals } = data;
+
+    container.innerHTML = `
+      <!-- Leader & Stats Grid -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <!-- Branch Leader Info Card -->
+        <div class="p-4 rounded-3xl bg-slate-900/90 border border-cyan-500/30 space-y-2.5">
+          <div class="flex items-center justify-between">
+            <span class="text-[10px] uppercase font-bold text-cyan-400">Branch Leader</span>
+            <span class="px-2 py-0.5 rounded-full text-[9px] font-bold ${branchAdmin.status === 'active' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'}">${branchAdmin.status.toUpperCase()}</span>
+          </div>
+          <div class="text-base font-extrabold text-white">${branchAdmin.team_name || branchAdmin.username}</div>
+          <div class="text-xs text-slate-300 font-mono">@${branchAdmin.username} (ID: ${branchAdmin.id})</div>
+          <div class="text-xs text-slate-400 font-mono">${branchAdmin.email || 'N/A'} • ${branchAdmin.phone || 'N/A'}</div>
+          ${branchAdmin.usdt_address ? `<div class="text-[10px] text-amber-400 font-mono truncate">Vault: ${branchAdmin.usdt_address}</div>` : ''}
+          <div class="pt-2 border-t border-slate-800 flex items-center justify-between">
+            <span class="text-xs text-slate-400">Wallet Balance:</span>
+            <span class="text-sm font-extrabold text-emerald-400 font-mono">$${parseFloat(branchAdmin.wallet_balance || 0).toFixed(2)}</span>
+          </div>
+          <button onclick="enterPortalAsAdmin(${branchAdmin.id})" class="w-full mt-2 py-2 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-300 hover:bg-amber-500/30 font-bold text-xs transition flex items-center justify-center gap-1.5 cursor-pointer">
+            <i data-lucide="log-in" class="w-3.5 h-3.5"></i>
+            <span>Enter @${branchAdmin.username} Admin Portal</span>
+          </button>
+        </div>
+
+        <!-- Branch Metrics Cards (2 Columns) -->
+        <div class="md:col-span-2 grid grid-cols-2 gap-3">
+          <div class="p-3.5 rounded-2xl bg-slate-900/90 border border-slate-800 flex flex-col justify-between">
+            <div class="text-[10px] uppercase font-bold text-cyan-400">Total Members</div>
+            <div class="text-2xl font-black text-white font-mono mt-1">${stats.totalMembers}</div>
+            <div class="text-[10px] text-slate-400 mt-1">Branch Community</div>
+          </div>
+          <div class="p-3.5 rounded-2xl bg-slate-900/90 border border-slate-800 flex flex-col justify-between">
+            <div class="text-[10px] uppercase font-bold text-emerald-400">Active Investors</div>
+            <div class="text-2xl font-black text-emerald-400 font-mono mt-1">${stats.activeMembers}</div>
+            <div class="text-[10px] text-slate-400 mt-1">With Live Contracts</div>
+          </div>
+          <div class="p-3.5 rounded-2xl bg-slate-900/90 border border-slate-800 flex flex-col justify-between">
+            <div class="text-[10px] uppercase font-bold text-emerald-400">Total Deposits Volume</div>
+            <div class="text-2xl font-black text-emerald-400 font-mono mt-1">$${parseFloat(stats.totalDepositsVolume || 0).toFixed(2)}</div>
+            <div class="text-[10px] text-slate-400 mt-1">Total Inflow</div>
+          </div>
+          <div class="p-3.5 rounded-2xl bg-slate-900/90 border border-slate-800 flex flex-col justify-between">
+            <div class="text-[10px] uppercase font-bold text-rose-400">Total Withdrawals Volume</div>
+            <div class="text-2xl font-black text-rose-400 font-mono mt-1">$${parseFloat(stats.totalWithdrawalsVolume || 0).toFixed(2)}</div>
+            <div class="text-[10px] text-slate-400 mt-1">Total Payouts</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Branch Members Directory Table -->
+      <div class="p-4 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-3">
+        <div class="flex items-center justify-between">
+          <h4 class="text-sm font-extrabold text-white flex items-center gap-2">
+            <i data-lucide="users" class="w-4 h-4 text-amber-400"></i>
+            <span>Branch Members Directory (${members.length})</span>
+          </h4>
+        </div>
+        <div class="overflow-x-auto rounded-2xl border border-slate-800">
+          <table class="w-full text-left text-xs text-slate-300">
+            <thead class="bg-slate-950 text-[10px] uppercase font-bold text-slate-400 border-b border-slate-800">
+              <tr>
+                <th class="py-2.5 px-3">Member Info</th>
+                <th class="py-2.5 px-3">Sponsor</th>
+                <th class="py-2.5 px-3">Balances (Wallet / ROI / Comm)</th>
+                <th class="py-2.5 px-3">Active Invested</th>
+                <th class="py-2.5 px-3">Status</th>
+                <th class="py-2.5 px-3 text-right">Master Actions</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-800/80">
+              ${members.length === 0 ? `<tr><td colspan="6" class="py-6 text-center text-slate-500">No members in this branch yet</td></tr>` : members.map(m => `
+                <tr class="hover:bg-slate-800/40 transition">
+                  <td class="py-2.5 px-3">
+                    <div class="font-bold text-white">${m.full_name || m.username}</div>
+                    <div class="text-[10px] text-slate-400 font-mono">@${m.username} (ID: ${m.id}) • ${m.email || 'N/A'}</div>
+                  </td>
+                  <td class="py-2.5 px-3 text-slate-300 font-mono text-[11px]">${m.sponsor_username ? '@' + m.sponsor_username : 'None'}</td>
+                  <td class="py-2.5 px-3 font-mono text-[11px]">
+                    <span class="text-emerald-400 font-bold">$${parseFloat(m.wallet_balance || 0).toFixed(2)}</span> /
+                    <span class="text-amber-400">$${parseFloat(m.roi_balance || 0).toFixed(2)}</span> /
+                    <span class="text-purple-400">$${parseFloat(m.commission_balance || 0).toFixed(2)}</span>
+                  </td>
+                  <td class="py-2.5 px-3 font-mono font-bold ${parseFloat(m.active_invested || 0) > 0 ? 'text-emerald-400' : 'text-slate-400'}">
+                    $${parseFloat(m.active_invested || 0).toFixed(2)}
+                  </td>
+                  <td class="py-2.5 px-3">
+                    <span class="px-2 py-0.5 rounded-full text-[9px] font-bold ${m.status === 'active' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'}">${m.status.toUpperCase()}</span>
+                  </td>
+                  <td class="py-2.5 px-3 text-right">
+                    <div class="inline-flex items-center gap-1.5 justify-end">
+                      <button onclick="enterPortalAsMember(${m.id})" class="px-2 py-1 rounded-lg bg-amber-500/20 border border-amber-500/40 text-amber-300 hover:bg-amber-500/30 text-[11px] font-bold transition flex items-center gap-1 cursor-pointer">
+                        <i data-lucide="log-in" class="w-3.5 h-3.5"></i>
+                        <span>Enter Member Portal</span>
+                      </button>
+                      <button onclick="openQuickPasswordResetModal(${m.id}, '${escapeHtml(m.username)}')" title="Reset Password" class="p-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition text-xs border border-slate-700 cursor-pointer">
+                        <i data-lucide="key" class="w-3.5 h-3.5"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+
+    if (window.lucide) lucide.createIcons();
+  } catch (err) {
+    container.innerHTML = `<div class="py-8 text-center text-rose-400 bg-rose-500/10 rounded-2xl border border-rose-500/30">${err.message}</div>`;
+  }
+}
+window.loadBranchInspectorData = loadBranchInspectorData;
+
+// 10. Universal Member Search (Tab 3)
+function debounceUniversalMemberSearch() {
+  clearTimeout(universalMemberSearchTimer);
+  universalMemberSearchTimer = setTimeout(() => {
+    const q = document.getElementById('sr-universal-search-input')?.value.trim() || '';
+    searchUniversalMembers(q);
+  }, 350);
+}
+window.debounceUniversalMemberSearch = debounceUniversalMemberSearch;
+
+async function searchUniversalMembers(q = '') {
+  const tbody = document.getElementById('sr-universal-members-table-body');
+  if (!tbody) return;
+
+  try {
+    const res = await fetch(`${API_BASE}/admin/universal-members?q=${encodeURIComponent(q)}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error || 'Failed to search members');
+
+    const members = data.members || [];
+    if (members.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="7" class="py-8 text-center text-slate-500">No members match your search criteria</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = members.map(m => `
+      <tr class="hover:bg-slate-800/40 transition">
+        <td class="py-3 px-4">
+          <div class="font-extrabold text-white text-xs">${m.full_name || m.username}</div>
+          <div class="text-[10px] text-slate-400 font-mono">@${m.username} (ID: ${m.id}) • ${m.email || 'N/A'} • ${m.phone || 'N/A'}</div>
+          <div class="text-[9px] text-amber-400/90 font-mono">Ref: ${m.referral_code}</div>
+        </td>
+        <td class="py-3 px-4">
+          <div class="text-xs font-bold text-purple-300">${m.team_admin_team_name || m.team_admin_username || 'Default'}</div>
+          <div class="text-[10px] text-slate-400 font-mono">@${m.team_admin_username || 'admin'}</div>
+        </td>
+        <td class="py-3 px-4 text-slate-300 font-mono text-[11px]">${m.sponsor_username ? '@' + m.sponsor_username : 'None'}</td>
+        <td class="py-3 px-4 font-mono text-[11px]">
+          <div class="text-emerald-400 font-bold">W: $${parseFloat(m.wallet_balance || 0).toFixed(2)}</div>
+          <div class="text-amber-400">ROI: $${parseFloat(m.roi_balance || 0).toFixed(2)}</div>
+          <div class="text-purple-400">Comm: $${parseFloat(m.commission_balance || 0).toFixed(2)}</div>
+        </td>
+        <td class="py-3 px-4 font-mono font-bold ${parseFloat(m.active_invested || 0) > 0 ? 'text-emerald-400' : 'text-slate-400'}">
+          $${parseFloat(m.active_invested || 0).toFixed(2)}
+        </td>
+        <td class="py-3 px-4">
+          <span class="px-2 py-0.5 rounded-full text-[9px] font-bold ${m.status === 'active' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'}">${m.status.toUpperCase()}</span>
+        </td>
+        <td class="py-3 px-4 text-right">
+          <div class="inline-flex items-center gap-1.5 justify-end">
+            <button onclick="enterPortalAsMember(${m.id})" class="px-2.5 py-1.5 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-300 hover:bg-amber-500/30 text-xs font-bold transition flex items-center gap-1 active:scale-95 cursor-pointer">
+              <i data-lucide="log-in" class="w-3.5 h-3.5"></i>
+              <span>Enter Portal</span>
+            </button>
+            <button onclick="openQuickPasswordResetModal(${m.id}, '${escapeHtml(m.username)}')" title="Reset Password" class="p-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition text-xs border border-slate-700 active:scale-95 cursor-pointer">
+              <i data-lucide="key" class="w-3.5 h-3.5"></i>
+            </button>
+          </div>
+        </td>
+      </tr>
+    `).join('');
+
+    if (window.lucide) lucide.createIcons();
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="7" class="py-8 text-center text-rose-400">${err.message}</td></tr>`;
+  }
+}
+window.searchUniversalMembers = searchUniversalMembers;
+
+// 11. Super Root Audit Logs (Tab 6)
+async function loadSuperRootAuditLogs() {
+  const tbody = document.getElementById('sr-audit-logs-table-body');
+  if (!tbody) return;
+
+  try {
+    const res = await fetch(`${API_BASE}/admin/audit-logs`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error || 'Failed to load audit logs');
+
+    const logs = data.logs || [];
+    if (logs.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="7" class="py-8 text-center text-slate-500">No platform activity recorded yet</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = logs.map(l => {
+      const dt = new Date(l.created_at).toLocaleString();
+      return `
+        <tr class="hover:bg-slate-800/40 transition">
+          <td class="py-2.5 px-3 text-[10px] text-slate-400 font-mono">${dt}</td>
+          <td class="py-2.5 px-3">
+            <span class="font-bold text-white">@${l.username}</span>
+            ${l.team_name ? `<span class="text-[10px] text-purple-300 ml-1">(${l.team_name})</span>` : ''}
+          </td>
+          <td class="py-2.5 px-3 uppercase text-[10px] font-bold text-slate-300">${l.type}</td>
+          <td class="py-2.5 px-3 text-[10px] text-slate-400 font-mono">${l.wallet_type || 'wallet_balance'}</td>
+          <td class="py-2.5 px-3 font-mono font-bold ${l.type.includes('withdraw') ? 'text-rose-400' : 'text-emerald-400'}">
+            $${parseFloat(l.amount || 0).toFixed(2)}
+          </td>
+          <td class="py-2.5 px-3 text-[11px] text-slate-300">${l.description || 'N/A'}</td>
+          <td class="py-2.5 px-3">
+            <span class="px-2 py-0.5 rounded-full text-[9px] font-bold ${l.status === 'completed' || l.status === 'approved' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-300'}">${(l.status || 'DONE').toUpperCase()}</span>
+          </td>
+        </tr>
+      `;
+    }).join('');
+
+    if (window.lucide) lucide.createIcons();
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="7" class="py-8 text-center text-rose-400">${err.message}</td></tr>`;
+  }
+}
+window.loadSuperRootAuditLogs = loadSuperRootAuditLogs;
+
+// 12. Super Root Manual Fund Credit / Debit (Tab 5)
+async function handleSuperRootAdjustBalance(e) {
+  e.preventDefault();
+  const userId = document.getElementById('sradj-user-id')?.value;
+  const walletType = document.getElementById('sradj-wallet-type')?.value;
+  const action = document.getElementById('sradj-action')?.value;
+  const amount = document.getElementById('sradj-amount')?.value;
+  const reason = document.getElementById('sradj-reason')?.value || 'Super Root balance adjustment';
+
+  const btn = document.getElementById('btn-sradj-submit');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Processing...';
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}/admin/adjust-balance`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ userId, walletType, action, amount, reason })
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error || 'Failed to adjust balance');
+
+    showToast(data.message || 'Balance updated successfully!', 'success');
+    document.getElementById('sradj-amount').value = '';
+    document.getElementById('sradj-reason').value = '';
+    await loadSuperRootMasterDashboard();
+  } catch (err) {
+    showToast(err.message, 'error');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = 'Execute Balance Adjustment';
+    }
+  }
+}
+window.handleSuperRootAdjustBalance = handleSuperRootAdjustBalance;
+
+// 13. Execute Global ROI Closing
+async function executeGlobalRoiClosing() {
+  if (!confirm('Execute Global Daily ROI cycle for all branches and active investor contracts now?')) return;
+  try {
+    const res = await fetch(`${API_BASE}/admin/execute-daily-roi`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast(`Global ROI Cycle Executed! Processed ${data.investmentsProcessed || 0} contracts ($${parseFloat(data.totalDistributed || 0).toFixed(2)})`, 'success');
+      await loadSuperRootMasterDashboard();
+    } else {
+      showToast(data.error || 'Failed to execute ROI cycle', 'error');
+    }
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+window.executeGlobalRoiClosing = executeGlobalRoiClosing;
+
+// 14. Toggle Team Admin Status (Active / Suspended)
+async function toggleTeamAdminStatus(adminId) {
+  try {
+    const res = await fetch(`${API_BASE}/admin/team-admins/${adminId}/toggle-status`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast(data.message, 'success');
+      await loadSuperRootMasterDashboard();
+    } else {
+      showToast(data.error || 'Failed to toggle status', 'error');
+    }
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+window.toggleTeamAdminStatus = toggleTeamAdminStatus;
+
+// 15. Quick Password Reset Modal Handlers
+function openQuickPasswordResetModal(userId, username) {
+  const inpId = document.getElementById('qpr-user-id');
+  const label = document.getElementById('qpr-target-label');
+  const inpPass = document.getElementById('qpr-new-password');
+  if (inpId) inpId.value = userId;
+  if (label) label.textContent = `Reset credentials for @${username} (ID: ${userId})`;
+  if (inpPass) inpPass.value = '';
+  openModal('quickPasswordResetModal');
+}
+window.openQuickPasswordResetModal = openQuickPasswordResetModal;
+
+async function handleQuickPasswordResetSubmit(e) {
+  e.preventDefault();
+  const userId = document.getElementById('qpr-user-id')?.value;
+  const newPassword = document.getElementById('qpr-new-password')?.value;
+  const btn = document.getElementById('btn-qpr-submit');
+
+  if (!userId || !newPassword || newPassword.trim().length < 6) {
+    showToast('Password must be at least 6 characters', 'error');
+    return;
+  }
+
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Updating...';
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}/admin/reset-password`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ userId, newPassword: newPassword.trim() })
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast(data.message || 'Password updated successfully!', 'success');
+      closeModal('quickPasswordResetModal');
+    } else {
+      showToast(data.error || 'Failed to reset password', 'error');
+    }
+  } catch (err) {
+    showToast(err.message, 'error');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = 'Update & Enforce New Password';
+    }
+  }
+}
+window.handleQuickPasswordResetSubmit = handleQuickPasswordResetSubmit;
