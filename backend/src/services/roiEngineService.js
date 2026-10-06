@@ -26,12 +26,26 @@ class RoiEngineService {
     const details = [];
 
     for (const inv of activeInvestments) {
-      if (!force && inv.last_roi_at) {
-        const lastDate = typeof inv.last_roi_at === 'string'
-          ? inv.last_roi_at.split(' ')[0].split('T')[0]
-          : new Date(inv.last_roi_at).toISOString().split('T')[0];
-        if (lastDate === today) {
-          continue;
+      if (!force) {
+        // 1. Newly created package rule: A package bought today must NOT get ROI on the same day.
+        // First ROI is credited on the next calendar day's closing time.
+        if (inv.created_at) {
+          const createdDate = typeof inv.created_at === 'string'
+            ? inv.created_at.split(' ')[0].split('T')[0]
+            : new Date(inv.created_at).toISOString().split('T')[0];
+          if (createdDate >= today) {
+            continue;
+          }
+        }
+
+        // 2. Already credited today rule: Only credit once per day
+        if (inv.last_roi_at) {
+          const lastDate = typeof inv.last_roi_at === 'string'
+            ? inv.last_roi_at.split(' ')[0].split('T')[0]
+            : new Date(inv.last_roi_at).toISOString().split('T')[0];
+          if (lastDate === today) {
+            continue;
+          }
         }
       }
 
@@ -157,7 +171,31 @@ class RoiEngineService {
     let estimatedDailyRoi = 0;
     let estimatedReferralRoi = 0;
 
+    const today = new Date().toISOString().split('T')[0];
+    let eligibleCount = 0;
+
     for (const inv of activeInvestments) {
+      // Skip if created today (first ROI eligible next day at closing)
+      if (inv.created_at) {
+        const createdDate = typeof inv.created_at === 'string'
+          ? inv.created_at.split(' ')[0].split('T')[0]
+          : new Date(inv.created_at).toISOString().split('T')[0];
+        if (createdDate >= today) {
+          continue;
+        }
+      }
+
+      // Skip if already credited today
+      if (inv.last_roi_at) {
+        const lastDate = typeof inv.last_roi_at === 'string'
+          ? inv.last_roi_at.split(' ')[0].split('T')[0]
+          : new Date(inv.last_roi_at).toISOString().split('T')[0];
+        if (lastDate === today) {
+          continue;
+        }
+      }
+
+      eligibleCount++;
       estimatedDailyRoi += inv.daily_roi;
       const uplines = await mlmService.getUplineChain(inv.user_id, 3);
       for (const { level } of uplines) {
@@ -169,6 +207,7 @@ class RoiEngineService {
 
     return {
       activeInvestmentCount: activeInvestments.length,
+      eligibleInvestmentCount: eligibleCount,
       estimatedDailyRoi: parseFloat(estimatedDailyRoi.toFixed(2)),
       estimatedReferralRoi: parseFloat(estimatedReferralRoi.toFixed(2)),
       estimatedTotalPayout: parseFloat((estimatedDailyRoi + estimatedReferralRoi).toFixed(2))
