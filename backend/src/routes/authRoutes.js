@@ -4,6 +4,28 @@ const authService = require('../services/authService');
 const { authenticateToken } = require('../middleware/authMiddleware');
 const emailService = require('../services/emailService');
 
+// Public Announcement & Pop Image Ticker Endpoint
+router.get('/announcements', async (req, res) => {
+  try {
+    const { db } = require('../db/database');
+    const settingsRows = await db.all('SELECT key, value FROM system_settings');
+    const settings = settingsRows.reduce((acc, row) => {
+      acc[row.key] = row.value;
+      return acc;
+    }, {});
+
+    res.json({
+      success: true,
+      announcementTicker: settings.announcement_ticker || 'Welcome to the official Catalyst Capital trading platform • High Frequency AI Trading • Instant 0% Withdrawal Payouts • Daily ROI Active •',
+      popupImageUrl: settings.popup_image_url || '',
+      popupImageActive: settings.popup_image_active === '1' || settings.popup_image_active === 'true',
+      popupImageTitle: settings.popup_image_title || 'Special Platform Announcement'
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // Send Email OTP (for registration, forgot_password, or wallet_update)
 router.post('/send-otp', async (req, res) => {
   try {

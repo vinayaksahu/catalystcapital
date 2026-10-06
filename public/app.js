@@ -24,6 +24,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Load official investment plans
   await loadPlans();
 
+  // Load public announcements (ticker and pop image) immediately
+  await loadPublicAnnouncements();
+
   // Authenticate current user or direct to login page
   if (token) {
     await fetchUserProfile();
@@ -50,6 +53,31 @@ document.addEventListener('DOMContentLoaded', async () => {
   renderInteractiveCalendar();
   if (teamStatsCache) updateTeamUIWithStats(teamStatsCache);
 });
+
+// Cache for public announcements
+let publicAnnouncementsCache = null;
+
+async function loadPublicAnnouncements() {
+  try {
+    const res = await fetch(`${API_BASE}/auth/announcements`);
+    const data = await res.json();
+    if (data.success) {
+      publicAnnouncementsCache = data;
+      // Update scrolling ticker text immediately in header
+      if (data.announcementTicker) {
+        const tickerEl = document.getElementById('home-ticker-text');
+        if (tickerEl) tickerEl.textContent = data.announcementTicker;
+      }
+      // If user is already logged in as member and viewing member views, trigger popup
+      if (currentUser && currentUser.role !== 'admin' && data.popupImageActive && data.popupImageUrl) {
+        checkAndShowMemberLoginPopup(data.popupImageUrl, data.popupImageTitle);
+      }
+    }
+  } catch (e) {
+    console.warn('Failed to load announcements:', e);
+  }
+}
+window.loadPublicAnnouncements = loadPublicAnnouncements;
 
 // ==================== THEME MANAGEMENT (Dark / Light Mode) ====================
 
@@ -652,6 +680,9 @@ async function handleLogin(e) {
     currentUser = data.user;
     localStorage.setItem('catalyst_token', token);
 
+    // Reset login popup session flag on fresh login so member sees latest active popup
+    hasShownLoginPopupThisSession = false;
+
     updateAuthUI();
     showToast(`Welcome ${currentUser.full_name || currentUser.username}!`, 'success');
     await refreshCurrentViewData();
@@ -660,6 +691,10 @@ async function handleLogin(e) {
       navigate('admin');
     } else {
       navigate('home');
+      // Trigger pop image check immediately
+      if (publicAnnouncementsCache && publicAnnouncementsCache.popupImageActive && publicAnnouncementsCache.popupImageUrl) {
+        checkAndShowMemberLoginPopup(publicAnnouncementsCache.popupImageUrl, publicAnnouncementsCache.popupImageTitle);
+      }
     }
   } catch (err) {
     showToast(err.message, 'error');
@@ -2967,16 +3002,51 @@ window.handleSaveTickerNotice = handleSaveTickerNotice;
 function previewAdminPopupImageFile(input) {
   if (input.files && input.files[0]) {
     const file = input.files[0];
-    if (file.size > 5 * 1024 * 1024) {
-      showToast('Image file too large! Maximum 5MB allowed.', 'error');
-      return;
-    }
     const reader = new FileReader();
     reader.onload = function(e) {
-      currentPopupImageBase64 = e.target.result;
-      const urlInput = document.getElementById('admin-popup-url-input');
-      if (urlInput) urlInput.value = '';
-      showAdminPopupPreview(currentPopupImageBase64);
+      const rawDataUrl = e.target.result;
+      // Auto-compress and downscale image to fit safely under Vercel payload limits (<300KB)
+      const img = new Image();
+      img.onload = function() {
+        const maxWidth = 900;
+        const maxHeight = 1200;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > maxWidth || height > maxHeight) {
+          if (width / height > maxWidth / maxHeight) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          } else {
+            width = Math.round((width * maxHeight) / height);
+            height = maxHeight;
+          }
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+
+        // Quality 0.8 JPEG provides ultra crisp graphics while reducing size down to ~80-150 KB
+        currentPopupImageBase64 = canvas.toDataURL('image/jpeg', 0.82);
+
+        const urlInput = document.getElementById('admin-popup-url-input');
+        if (urlInput) urlInput.value = '';
+
+        // Auto-check "Enable Popup on Login" checkbox so admin doesn't forget
+        const chkActive = document.getElementById('admin-popup-active-checkbox');
+        if (chkActive) chkActive.checked = true;
+
+        showAdminPopupPreview(currentPopupImageBase64);
+        showToast('Image uploaded & optimized successfully!', 'success');
+      };
+      img.onerror = function() {
+        currentPopupImageBase64 = rawDataUrl;
+        showAdminPopupPreview(currentPopupImageBase64);
+      };
+      img.src = rawDataUrl;
     };
     reader.readAsDataURL(file);
   }
@@ -2986,6 +3056,8 @@ window.previewAdminPopupImageFile = previewAdminPopupImageFile;
 function previewAdminPopupImageUrl(url) {
   if (url && url.trim()) {
     currentPopupImageBase64 = url.trim();
+    const chkActive = document.getElementById('admin-popup-active-checkbox');
+    if (chkActive) chkActive.checked = true;
     showAdminPopupPreview(currentPopupImageBase64);
   }
 }
@@ -3026,31 +3098,39 @@ async function handleSavePopupImage(e) {
     return;
   }
 
+  const saveBtn = e.target.querySelector('button[type="submit"]') || document.getElementById('btn-save-popup');
+  if (saveBtn) {
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Saving...';
+  }
+
   try {
-    // Save image URL
-    await fetch(`${API_BASE}/admin/settings`, {
+    // Single batch request to update all popup settings simultaneously
+    const res = await fetch(`${API_BASE}/admin/settings`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-      body: JSON.stringify({ key: 'popup_image_url', value: finalImage })
+      body: JSON.stringify({
+        settings: {
+          popup_image_url: finalImage,
+          popup_image_active: isActive,
+          popup_image_title: title
+        }
+      })
     });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error || 'Failed to save settings');
 
-    // Save active flag
-    await fetch(`${API_BASE}/admin/settings`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-      body: JSON.stringify({ key: 'popup_image_active', value: isActive })
-    });
+    // Reset session flag so admin can immediately preview the popup in their session if active
+    hasShownLoginPopupThisSession = false;
 
-    // Save title
-    await fetch(`${API_BASE}/admin/settings`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-      body: JSON.stringify({ key: 'popup_image_title', value: title })
-    });
-
-    showToast('Member login pop image announcement saved successfully!', 'success');
+    showToast('Member login pop image announcement saved live!', 'success');
   } catch (err) {
     showToast(err.message, 'error');
+  } finally {
+    if (saveBtn) {
+      saveBtn.disabled = false;
+      saveBtn.textContent = 'Save & Update Pop Image';
+    }
   }
 }
 window.handleSavePopupImage = handleSavePopupImage;

@@ -393,7 +393,28 @@ router.get('/settings', async (req, res) => {
 
 router.post('/settings', async (req, res) => {
   try {
-    const { key, value } = req.body;
+    const { key, value, settings } = req.body;
+
+    // Support batch saving multiple settings in one single fast transaction
+    if (settings && typeof settings === 'object') {
+      for (const [k, v] of Object.entries(settings)) {
+        if (db.isPostgres) {
+          await db.run(
+            'INSERT INTO system_settings (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value',
+            [k, String(v)]
+          );
+        } else {
+          await db.run(
+            'INSERT INTO system_settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = ?',
+            [k, String(v), String(v)]
+          );
+        }
+      }
+      return res.json({ success: true, message: 'Settings updated successfully' });
+    }
+
+    if (!key) return res.status(400).json({ success: false, error: 'Key is required' });
+
     if (db.isPostgres) {
       await db.run(
         'INSERT INTO system_settings (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value',
