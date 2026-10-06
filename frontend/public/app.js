@@ -2874,13 +2874,8 @@ async function loadAdminData() {
       adminCurrentScope.isSuperAdmin = !!meData.isSuperAdmin;
       adminCurrentScope.teamAdmins = meData.teamAdmins || [];
 
-      // Update Top Status Badges
-      const roleBadge = document.getElementById('admin-portal-role-badge');
-      const userTag = document.getElementById('admin-portal-user-tag');
       const scopeWrapper = document.getElementById('superadmin-scope-wrapper');
-      const teamSelect = document.getElementById('superadmin-team-select');
       const teamTabBtn = document.getElementById('admin-tab-btn-teamadmins');
-      const inviteBanner = document.getElementById('team-admin-invite-banner');
 
       const isImpersonatingFromSuper = !!localStorage.getItem('catalyst_superadmin_orig_token');
       const isSuperRootMode = (adminCurrentScope.isSuperAdmin || currentUser.role === 'superadmin') && !isImpersonatingFromSuper;
@@ -2899,27 +2894,8 @@ async function loadAdminData() {
         if (srContainer) srContainer.classList.add('hidden');
         if (teamContainer) teamContainer.classList.remove('hidden');
 
-        if (roleBadge) {
-          roleBadge.textContent = 'TEAM ADMIN';
-          roleBadge.className = 'text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 uppercase tracking-wider flex items-center gap-1';
-        }
-        const adminObj = meData.admin || meData.user || currentUser;
-        if (userTag) {
-          const tName = adminObj.team_name || adminObj.username;
-          userTag.textContent = `${tName} — Isolated Team Network`;
-        }
         if (scopeWrapper) scopeWrapper.classList.add('hidden');
         if (teamTabBtn) teamTabBtn.classList.add('hidden');
-        if (inviteBanner) {
-          inviteBanner.classList.remove('hidden');
-          const tNameEl = document.getElementById('team-admin-banner-name');
-          if (tNameEl) tNameEl.textContent = adminObj.team_name || adminObj.username;
-          const codeEl = document.getElementById('team-admin-banner-code');
-          const myRef = adminObj.referral_code || adminObj.username;
-          if (codeEl) codeEl.textContent = myRef;
-          const linkInput = document.getElementById('team-admin-ref-link-input');
-          if (linkInput) linkInput.value = `${window.location.origin}/?ref=${encodeURIComponent(myRef)}`;
-        }
       }
     }
 

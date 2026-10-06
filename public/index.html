@@ -1556,50 +1556,13 @@
            ======================================================== -->
       <div id="team-admin-container" class="space-y-4 w-full">
         <!-- Admin Portal Status Bar -->
-      <div class="flex items-center justify-between gap-2 flex-wrap">
-        <div class="flex items-center gap-2 flex-wrap">
-          <span id="admin-portal-role-badge" class="px-2.5 py-0.5 rounded-md text-[10px] font-bold bg-amber-500/20 border border-amber-500/30 text-amber-400 font-mono">ADMIN PORTAL</span>
-          <span id="admin-portal-user-tag" class="text-xs text-amber-500 font-mono font-bold">@admin</span>
-          
-          <!-- Team Switcher for Super Root Admin -->
-          <div id="superadmin-scope-wrapper" class="hidden flex items-center gap-1.5 ml-2">
-            <span class="text-[11px] text-purple-300 font-medium">Viewing Team:</span>
-            <select id="superadmin-team-selector" onchange="handleSuperAdminTeamChange(this.value)" class="px-2.5 py-1 rounded-xl bg-slate-900 border border-purple-500/40 text-purple-300 text-xs font-semibold focus:outline-none focus:border-purple-400">
-              <option value="">All Teams (Global Platform)</option>
-            </select>
-          </div>
-        </div>
-        <div class="flex items-center gap-2">
+        <div class="flex items-center justify-end gap-2">
           <button onclick="openNotificationsModal()" class="relative px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 hover:border-amber-500/50 text-slate-300 hover:text-white transition flex items-center gap-2 cursor-pointer shadow-sm text-xs font-semibold">
             <i data-lucide="bell" class="w-3.5 h-3.5 text-amber-400"></i>
             <span>Notifications</span>
             <span id="admin-notification-badge" class="hidden px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-[#ff4e91] text-white font-mono">0</span>
           </button>
         </div>
-      </div>
-
-      <!-- Team Admin Exclusive Invite Banner (Shown for Team Admins, e.g. DF_TEAM_A) -->
-      <div id="team-admin-invite-banner" class="hidden p-3.5 rounded-2xl bg-gradient-to-r from-emerald-950/60 via-slate-900 to-slate-900 border border-emerald-500/40 shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs">
-        <div class="flex items-center gap-2.5 min-w-0">
-          <div class="w-8 h-8 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center shrink-0 text-emerald-400">
-            <i data-lucide="share-2" class="w-4 h-4"></i>
-          </div>
-          <div class="min-w-0">
-            <div class="font-bold text-white flex items-center gap-1.5">
-              <span id="team-admin-banner-name">Your Team Referral Link</span>
-              <span id="team-admin-banner-code" class="px-2 py-0.2 rounded text-[10px] font-mono font-extrabold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">DF_TEAM_A</span>
-            </div>
-            <div class="text-[10px] text-slate-400 truncate">Members joining via this link or code are automatically added to your isolated team downline</div>
-          </div>
-        </div>
-        <div class="flex items-center gap-2 shrink-0">
-          <input type="text" id="team-admin-ref-link-input" readonly class="hidden">
-          <button onclick="copyTeamAdminInviteLink()" class="px-3.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold text-xs transition flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95 whitespace-nowrap">
-            <i data-lucide="copy" class="w-3.5 h-3.5"></i>
-            <span>Copy Team Link</span>
-          </button>
-        </div>
-      </div>
 
       <!-- Impersonation Active Banner (shows when admin is impersonating a member) -->
       <div id="impersonation-alert-banner" class="hidden p-3 rounded-2xl bg-amber-500/20 border border-amber-500/50 flex items-center justify-between gap-2 text-xs shadow-md">
@@ -3528,6 +3491,6 @@
   <div id="toast-container" class="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-2 w-11/12 max-w-sm pointer-events-none"></div>
 
   <!-- Main JavaScript App -->
-  <script src="app.js?v=7.6"></script>
+  <script src="app.js?v=7.7"></script>
 </body>
 </html>

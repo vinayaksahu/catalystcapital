@@ -353,6 +353,35 @@ async function initDatabase() {
     `);
   }
 
+  // Performance Indexes for fast lookups and sub-queries
+  try {
+    if (isPostgres) {
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS idx_users_team_admin_id ON users(team_admin_id);
+        CREATE INDEX IF NOT EXISTS idx_users_sponsor_id ON users(sponsor_id);
+        CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
+        CREATE INDEX IF NOT EXISTS idx_investments_user_status ON investments(user_id, status);
+        CREATE INDEX IF NOT EXISTS idx_deposits_user_status ON deposits(user_id, status);
+        CREATE INDEX IF NOT EXISTS idx_withdrawals_user_status ON withdrawals(user_id, status);
+        CREATE INDEX IF NOT EXISTS idx_transactions_user_type ON transactions(user_id, type);
+        CREATE INDEX IF NOT EXISTS idx_notifications_user_unread ON notifications(user_id, is_read);
+      `);
+    } else {
+      sqliteDb.exec(`
+        CREATE INDEX IF NOT EXISTS idx_users_team_admin_id ON users(team_admin_id);
+        CREATE INDEX IF NOT EXISTS idx_users_sponsor_id ON users(sponsor_id);
+        CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
+        CREATE INDEX IF NOT EXISTS idx_investments_user_status ON investments(user_id, status);
+        CREATE INDEX IF NOT EXISTS idx_deposits_user_status ON deposits(user_id, status);
+        CREATE INDEX IF NOT EXISTS idx_withdrawals_user_status ON withdrawals(user_id, status);
+        CREATE INDEX IF NOT EXISTS idx_transactions_user_type ON transactions(user_id, type);
+        CREATE INDEX IF NOT EXISTS idx_notifications_user_unread ON notifications(user_id, is_read);
+      `);
+    }
+  } catch (idxErr) {
+    console.warn('Index creation notice:', idxErr.message);
+  }
+
   // Insert Catalyst Capital Plans if not exists
   const existingPlans = await db.get('SELECT COUNT(*) as count FROM plans');
   if (parseInt(existingPlans.count, 10) === 0) {

@@ -16,8 +16,15 @@ const adminRoutes = require('./routes/adminRoutes');
 const cronRoutes = require('./routes/cronRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 
+const compression = require('compression');
+
 const app = express();
 const PORT = process.env.PORT || 5000;
+
+// Performance: Gzip/Deflate compression for JSON APIs and static responses
+app.use(compression({
+  threshold: 1024 // Only compress responses larger than 1KB
+}));
 
 // Security Hardening & Headers
 app.disable('x-powered-by');
@@ -67,12 +74,25 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Serve Frontend Static Assets
+// Serve Frontend Static Assets with HTTP Caching
 const rootPublic = path.join(__dirname, '..', '..', 'public');
 const frontendPublic = path.join(__dirname, '..', '..', 'frontend', 'public');
 const frontendPath = require('node:fs').existsSync(rootPublic) ? rootPublic : frontendPublic;
 
-app.use(express.static(frontendPath));
+app.use(express.static(frontendPath, {
+  maxAge: '1d',
+  etag: true,
+  setHeaders: (res, filePath) => {
+    // HTML is not cached heavily so app updates apply immediately
+    if (filePath.endsWith('.html')) {
+      res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+    } else if (filePath.match(/\.(png|jpg|jpeg|gif|webp|svg|ico)$/)) {
+      res.setHeader('Cache-Control', 'public, max-age=604800, immutable'); // 7 days for images
+    } else if (filePath.match(/\.(css|js)$/)) {
+      res.setHeader('Cache-Control', 'public, max-age=86400'); // 1 day for CSS/JS
+    }
+  }
+}));
 
 // Fallback to SPA index.html for frontend routing
 app.use((req, res) => {
