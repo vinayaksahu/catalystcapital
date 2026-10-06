@@ -4,6 +4,24 @@ const { db } = require('../db/database');
 const walletService = require('../services/walletService');
 const { authenticateToken } = require('../middleware/authMiddleware');
 
+// Public endpoint for anyone (members, guests) to get active BEP-20 deposit address
+router.get('/deposit-address', async (req, res) => {
+  try {
+    const setting = await db.get("SELECT value FROM system_settings WHERE key = 'usdt_deposit_address'");
+    let depositAddress = setting && setting.value ? setting.value.trim() : null;
+    if (!depositAddress) {
+      const admin = await db.get("SELECT usdt_address FROM users WHERE (role = 'admin' OR id = 1) AND usdt_address IS NOT NULL AND usdt_address != '' ORDER BY id ASC LIMIT 1");
+      depositAddress = admin && admin.usdt_address ? admin.usdt_address.trim() : null;
+    }
+    res.json({
+      success: true,
+      depositAddress: depositAddress || '0x71C87050fA86BD1b297bB3B6a8d6C9081B1A53b5'
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // Get wallet overview & balances
 router.get('/overview', authenticateToken, async (req, res) => {
   try {
@@ -84,6 +102,12 @@ router.get('/overview', authenticateToken, async (req, res) => {
 
     const totalAssets = (user.wallet_balance || 0) + (user.roi_balance || 0) + (user.commission_balance || 0) + tradingAssets;
 
+    let depositAddress = settings.usdt_deposit_address && settings.usdt_deposit_address.trim() ? settings.usdt_deposit_address.trim() : null;
+    if (!depositAddress) {
+      const admin = await db.get("SELECT usdt_address FROM users WHERE (role = 'admin' OR id = 1) AND usdt_address IS NOT NULL AND usdt_address != '' ORDER BY id ASC LIMIT 1");
+      depositAddress = admin && admin.usdt_address ? admin.usdt_address.trim() : null;
+    }
+
     res.json({
       success: true,
       wallets: {
@@ -111,7 +135,7 @@ router.get('/overview', authenticateToken, async (req, res) => {
         minWithdrawal: parseFloat(settings.min_withdrawal || '15'),
         withdrawalFee: parseFloat(settings.withdrawal_fee_percent || '0'),
         processingTime: settings.withdrawal_processing_time || '0 - 24 Hours',
-        depositAddress: settings.usdt_deposit_address || '0x71C87050fA86BD1b297bB3B6a8d6C9081B1A53b5',
+        depositAddress: depositAddress || '0x71C87050fA86BD1b297bB3B6a8d6C9081B1A53b5',
         announcementTicker: settings.announcement_ticker || 'Welcome to the official Catalyst Capital trading platform • High Frequency AI Trading • Instant 0% Withdrawal Payouts • Daily ROI Active •',
         popupImageUrl: settings.popup_image_url || '',
         popupImageActive: settings.popup_image_active === '1' || settings.popup_image_active === 'true',
