@@ -54,14 +54,22 @@ router.post('/adjust-balance', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Invalid action. Must be credit or debit.' });
     }
 
-    const targetUser = await db.get('SELECT id FROM users WHERE id = ?', [parsedUserId]);
+    const targetUser = await db.get(`SELECT id, ${walletType} FROM users WHERE id = ?`, [parsedUserId]);
     if (!targetUser) {
       return res.status(404).json({ success: false, error: 'Target user not found' });
     }
 
+    const currentBalance = parseFloat(targetUser[walletType]) || 0;
+    if (action === 'debit' && currentBalance < numAmount) {
+      return res.status(400).json({
+        success: false,
+        error: `Cannot debit $${numAmount}. User only has $${currentBalance.toFixed(2)} in ${walletType.replace('_', ' ')}.`
+      });
+    }
+
     const delta = action === 'debit' ? -numAmount : numAmount;
 
-    await db.run(`UPDATE users SET ${walletType} = ${walletType} + ? WHERE id = ?`, [delta, parsedUserId]);
+    await db.run(`UPDATE users SET ${walletType} = ${walletType} + ? WHERE id = ? AND (${action === 'debit' ? `${walletType} >= ${numAmount}` : '1=1'})`, [delta, parsedUserId]);
 
     await db.run(`
       INSERT INTO transactions (user_id, amount, type, wallet_type, description, status)
