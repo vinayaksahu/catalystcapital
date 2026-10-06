@@ -1681,32 +1681,47 @@
         </div>
       </div>
 
-      <!-- 2. ADMIN SECTION TABS -->
-      <div class="flex items-center gap-2 overflow-x-auto pb-1.5 border-b border-slate-800 text-xs no-scrollbar">
-        <button onclick="switchAdminTab('users')" id="admin-tab-btn-users" class="admin-tab-btn active px-3.5 py-2 rounded-xl font-bold transition flex items-center gap-1.5 whitespace-nowrap shrink-0">
-          <i data-lucide="users" class="w-3.5 h-3.5"></i> <span>Members & Portals</span>
+      <!-- 2. ADMIN SECTION TABS with Slide Controls -->
+      <div class="relative flex items-center group/tabslider my-1">
+        <!-- Slide Left Button -->
+        <button type="button" onclick="slideTabTrack('admin-tabs-container', -220)" aria-label="Slide tabs left"
+                class="tab-slide-arrow tab-slide-prev flex items-center justify-center shrink-0 w-8 h-8 rounded-xl bg-slate-900/90 hover:bg-amber-500/20 text-slate-300 hover:text-amber-400 border border-slate-700/80 hover:border-amber-500/40 shadow-lg backdrop-blur-md transition-all active:scale-90 cursor-pointer mr-2 z-10">
+          <i data-lucide="chevron-left" class="w-4 h-4"></i>
         </button>
-        <button onclick="switchAdminTab('withdrawals')" id="admin-tab-btn-withdrawals" class="admin-tab-btn px-3.5 py-2 rounded-xl font-bold transition flex items-center gap-1.5 whitespace-nowrap shrink-0">
-          <i data-lucide="arrow-up-right" class="w-3.5 h-3.5"></i> <span>Withdrawals</span>
-          <span id="admin-badge-wth" class="hidden text-[9px] px-1.5 py-0.2 rounded-full bg-rose-500 text-white font-mono">0</span>
-        </button>
-        <button onclick="switchAdminTab('deposits')" id="admin-tab-btn-deposits" class="admin-tab-btn px-3.5 py-2 rounded-xl font-bold transition flex items-center gap-1.5 whitespace-nowrap shrink-0">
-          <i data-lucide="arrow-down-left" class="w-3.5 h-3.5"></i> <span>Deposits</span>
-          <span id="admin-badge-dep" class="hidden text-[9px] px-1.5 py-0.2 rounded-full bg-emerald-500 text-black font-bold font-mono">0</span>
-        </button>
-        <button onclick="switchAdminTab('tickets')" id="admin-tab-btn-tickets" class="admin-tab-btn px-3.5 py-2 rounded-xl font-bold transition flex items-center gap-1.5 whitespace-nowrap shrink-0">
-          <i data-lucide="headphones" class="w-3.5 h-3.5"></i> <span>Support Tickets</span>
-          <span id="admin-badge-tickets" class="hidden text-[9px] px-1.5 py-0.2 rounded-full bg-amber-500 text-black font-mono">0</span>
-        </button>
-        <button onclick="switchAdminTab('announcements')" id="admin-tab-btn-announcements" class="admin-tab-btn px-3.5 py-2 rounded-xl font-bold transition flex items-center gap-1.5 whitespace-nowrap shrink-0">
-          <i data-lucide="megaphone" class="w-3.5 h-3.5"></i> <span>Notice & Pop Image</span>
-        </button>
-        <button onclick="switchAdminTab('settings')" id="admin-tab-btn-settings" class="admin-tab-btn px-3.5 py-2 rounded-xl font-bold transition flex items-center gap-1.5 whitespace-nowrap shrink-0">
-          <i data-lucide="settings" class="w-3.5 h-3.5"></i> <span>Settings</span>
-        </button>
-        <button onclick="switchAdminTab('teamadmins')" id="admin-tab-btn-teamadmins" class="admin-tab-btn hidden px-3.5 py-2 rounded-xl font-bold transition flex items-center gap-1.5 whitespace-nowrap shrink-0">
-          <i data-lucide="shield-check" class="w-3.5 h-3.5 text-purple-400"></i> <span>Team Admins</span>
-          <span id="admin-badge-teamadmins" class="hidden text-[9px] px-1.5 py-0.2 rounded-full bg-purple-500 text-white font-mono">0</span>
+
+        <!-- Admin Section Tabs Track -->
+        <div id="admin-tabs-container" class="tab-slider-track flex items-center gap-2 overflow-x-auto pb-1.5 border-b border-slate-800 text-xs no-scrollbar scrollbar-none scroll-smooth flex-1 select-none">
+          <button onclick="switchAdminTab('users')" id="admin-tab-btn-users" class="admin-tab-btn active px-3.5 py-2 rounded-xl font-bold transition flex items-center gap-1.5 whitespace-nowrap shrink-0">
+            <i data-lucide="users" class="w-3.5 h-3.5"></i> <span>Members & Portals</span>
+          </button>
+          <button onclick="switchAdminTab('withdrawals')" id="admin-tab-btn-withdrawals" class="admin-tab-btn px-3.5 py-2 rounded-xl font-bold transition flex items-center gap-1.5 whitespace-nowrap shrink-0">
+            <i data-lucide="arrow-up-right" class="w-3.5 h-3.5"></i> <span>Withdrawals</span>
+            <span id="admin-badge-wth" class="hidden text-[9px] px-1.5 py-0.2 rounded-full bg-rose-500 text-white font-mono">0</span>
+          </button>
+          <button onclick="switchAdminTab('deposits')" id="admin-tab-btn-deposits" class="admin-tab-btn px-3.5 py-2 rounded-xl font-bold transition flex items-center gap-1.5 whitespace-nowrap shrink-0">
+            <i data-lucide="arrow-down-left" class="w-3.5 h-3.5"></i> <span>Deposits</span>
+            <span id="admin-badge-dep" class="hidden text-[9px] px-1.5 py-0.2 rounded-full bg-emerald-500 text-black font-bold font-mono">0</span>
+          </button>
+          <button onclick="switchAdminTab('tickets')" id="admin-tab-btn-tickets" class="admin-tab-btn px-3.5 py-2 rounded-xl font-bold transition flex items-center gap-1.5 whitespace-nowrap shrink-0">
+            <i data-lucide="headphones" class="w-3.5 h-3.5"></i> <span>Support Tickets</span>
+            <span id="admin-badge-tickets" class="hidden text-[9px] px-1.5 py-0.2 rounded-full bg-amber-500 text-black font-mono">0</span>
+          </button>
+          <button onclick="switchAdminTab('announcements')" id="admin-tab-btn-announcements" class="admin-tab-btn px-3.5 py-2 rounded-xl font-bold transition flex items-center gap-1.5 whitespace-nowrap shrink-0">
+            <i data-lucide="megaphone" class="w-3.5 h-3.5"></i> <span>Notice & Pop Image</span>
+          </button>
+          <button onclick="switchAdminTab('settings')" id="admin-tab-btn-settings" class="admin-tab-btn px-3.5 py-2 rounded-xl font-bold transition flex items-center gap-1.5 whitespace-nowrap shrink-0">
+            <i data-lucide="settings" class="w-3.5 h-3.5"></i> <span>Settings</span>
+          </button>
+          <button onclick="switchAdminTab('teamadmins')" id="admin-tab-btn-teamadmins" class="admin-tab-btn hidden px-3.5 py-2 rounded-xl font-bold transition flex items-center gap-1.5 whitespace-nowrap shrink-0">
+            <i data-lucide="shield-check" class="w-3.5 h-3.5 text-purple-400"></i> <span>Team Admins</span>
+            <span id="admin-badge-teamadmins" class="hidden text-[9px] px-1.5 py-0.2 rounded-full bg-purple-500 text-white font-mono">0</span>
+          </button>
+        </div>
+
+        <!-- Slide Right Button -->
+        <button type="button" onclick="slideTabTrack('admin-tabs-container', 220)" aria-label="Slide tabs right"
+                class="tab-slide-arrow tab-slide-next flex items-center justify-center shrink-0 w-8 h-8 rounded-xl bg-slate-900/90 hover:bg-amber-500/20 text-slate-300 hover:text-amber-400 border border-slate-700/80 hover:border-amber-500/40 shadow-lg backdrop-blur-md transition-all active:scale-90 cursor-pointer ml-2 z-10">
+          <i data-lucide="chevron-right" class="w-4 h-4"></i>
         </button>
       </div>
 

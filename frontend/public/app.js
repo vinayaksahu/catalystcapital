@@ -20,6 +20,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   initThemeMode();
   lucide.createIcons();
   setupEventListeners();
+  initTabSliderControls('sr-tabs-container');
+  initTabSliderControls('admin-tabs-container');
 
   // Load official investment plans
   await loadPlans();
@@ -1115,7 +1117,15 @@ async function refreshCurrentViewData() {
   if (activeViewName === 'quotes') renderPresentationPlans();
   if (activeViewName === 'team') await loadTeamData();
   if (activeViewName === 'history') await loadHistoryData();
-  if (activeViewName === 'admin') await loadAdminData();
+  if (activeViewName === 'admin') {
+    await loadAdminData();
+    initTabSliderControls('sr-tabs-container');
+    initTabSliderControls('admin-tabs-container');
+    setTimeout(() => {
+      updateTabSlideArrowStates('sr-tabs-container');
+      updateTabSlideArrowStates('admin-tabs-container');
+    }, 250);
+  }
 }
 
 // ==================== VIEW 1: HOME PAGE LOGIC ====================
@@ -3056,6 +3066,11 @@ function switchAdminTab(tabName) {
   if (tabName === 'settings') loadAdminPlatformSettings();
   if (tabName === 'teamadmins') loadTeamAdminsList();
   if (window.lucide) lucide.createIcons();
+  const activeBtn = document.getElementById(`admin-tab-btn-${tabName}`);
+  if (activeBtn) {
+    activeBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+  }
+  setTimeout(() => updateTabSlideArrowStates('admin-tabs-container'), 300);
 }
 window.switchAdminTab = switchAdminTab;
 
@@ -5194,6 +5209,11 @@ function switchSuperRootTab(tabName) {
   }
 
   if (window.lucide) lucide.createIcons();
+  const activeBtn = document.getElementById(`sr-tab-btn-${tabName}`);
+  if (activeBtn) {
+    activeBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+  }
+  setTimeout(() => updateTabSlideArrowStates('sr-tabs-container'), 300);
 }
 window.switchSuperRootTab = switchSuperRootTab;
 
@@ -5632,3 +5652,186 @@ async function handleQuickPasswordResetSubmit(e) {
   }
 }
 window.handleQuickPasswordResetSubmit = handleQuickPasswordResetSubmit;
+
+// 16. Quick Vault Address Modal Handlers (Super Root & Team Admins)
+function openQuickVaultAddressModal(userId, username, currentAddress = '') {
+  const inpId = document.getElementById('qva-user-id');
+  const label = document.getElementById('qva-target-label');
+  const curLabel = document.getElementById('qva-current-address');
+  const inpNew = document.getElementById('qva-new-address');
+
+  if (inpId) inpId.value = userId;
+  if (label) label.textContent = `Modify Vault for @${username} (ID: ${userId})`;
+  if (curLabel) curLabel.textContent = currentAddress ? currentAddress : 'None / Not configured';
+  if (inpNew) inpNew.value = currentAddress || '';
+
+  openModal('quickVaultAddressModal');
+}
+window.openQuickVaultAddressModal = openQuickVaultAddressModal;
+
+async function pasteToVaultInput(elementId) {
+  try {
+    const text = await navigator.clipboard.readText();
+    const el = document.getElementById(elementId);
+    if (el && text) {
+      el.value = text.trim();
+      showToast('Address pasted from clipboard', 'info');
+    }
+  } catch (err) {
+    showToast('Clipboard access denied. Please paste manually.', 'warning');
+  }
+}
+window.pasteToVaultInput = pasteToVaultInput;
+
+async function handleQuickVaultAddressSubmit(e) {
+  e.preventDefault();
+  const userId = document.getElementById('qva-user-id')?.value;
+  const usdtAddress = document.getElementById('qva-new-address')?.value.trim();
+  const btn = document.getElementById('btn-qva-submit');
+
+  if (!userId) {
+    showToast('User ID is required', 'error');
+    return;
+  }
+
+  if (!usdtAddress || !/^0x[a-fA-F0-9]{40}$/.test(usdtAddress)) {
+    showToast('Invalid USDT (BEP20) address. Must start with 0x and be 42 characters hex.', 'error');
+    return;
+  }
+
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Updating Vault...';
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}/admin/update-vault-address`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ userId: parseInt(userId, 10), usdtAddress })
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast(data.message || 'Vault address updated successfully!', 'success');
+      closeModal('quickVaultAddressModal');
+      if (typeof loadSuperRootMasterDashboard === 'function') {
+        await loadSuperRootMasterDashboard();
+      }
+      if (typeof loadAdminData === 'function') {
+        await loadAdminData();
+      }
+      if (typeof loadTeamAdminsList === 'function') {
+        await loadTeamAdminsList();
+      }
+    } else {
+      showToast(data.error || 'Failed to update vault address', 'error');
+    }
+  } catch (err) {
+    showToast(err.message, 'error');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = 'Update Vault Address';
+    }
+  }
+}
+window.handleQuickVaultAddressSubmit = handleQuickVaultAddressSubmit;
+
+// ==================== TABS HORIZONTAL SLIDER CONTROLS ====================
+
+function slideTabTrack(containerId, distance) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  container.scrollBy({ left: distance, behavior: 'smooth' });
+  setTimeout(() => updateTabSlideArrowStates(containerId), 250);
+}
+window.slideTabTrack = slideTabTrack;
+
+function updateTabSlideArrowStates(containerId) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+
+  const isAtStart = container.scrollLeft <= 8;
+  const isAtEnd = container.scrollLeft + container.clientWidth >= container.scrollWidth - 8;
+
+  const prevBtn = container.parentElement?.querySelector('.tab-slide-prev');
+  const nextBtn = container.parentElement?.querySelector('.tab-slide-next');
+
+  if (prevBtn) {
+    if (isAtStart) prevBtn.classList.add('is-disabled');
+    else prevBtn.classList.remove('is-disabled');
+  }
+
+  if (nextBtn) {
+    if (isAtEnd) nextBtn.classList.add('is-disabled');
+    else nextBtn.classList.remove('is-disabled');
+  }
+}
+window.updateTabSlideArrowStates = updateTabSlideArrowStates;
+
+function initTabSliderControls(containerId) {
+  const container = document.getElementById(containerId);
+  if (!container || container._sliderInitDone) return;
+  container._sliderInitDone = true;
+
+  // 1. Mouse wheel horizontal scrolling
+  container.addEventListener('wheel', (e) => {
+    if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+      e.preventDefault();
+      container.scrollLeft += e.deltaY;
+      updateTabSlideArrowStates(containerId);
+    }
+  }, { passive: false });
+
+  // 2. Drag-to-scroll with mouse
+  let isDown = false;
+  let startX = 0;
+  let scrollLeft = 0;
+  let moved = false;
+
+  container.addEventListener('mousedown', (e) => {
+    isDown = true;
+    moved = false;
+    startX = e.pageX - container.offsetLeft;
+    scrollLeft = container.scrollLeft;
+    container.classList.add('is-dragging');
+  });
+
+  window.addEventListener('mouseup', () => {
+    if (!isDown) return;
+    isDown = false;
+    container.classList.remove('is-dragging');
+    updateTabSlideArrowStates(containerId);
+  });
+
+  container.addEventListener('mousemove', (e) => {
+    if (!isDown) return;
+    e.preventDefault();
+    const x = e.pageX - container.offsetLeft;
+    const walk = (x - startX) * 1.5;
+    if (Math.abs(walk) > 4) moved = true;
+    container.scrollLeft = scrollLeft - walk;
+    updateTabSlideArrowStates(containerId);
+  });
+
+  // Prevent clicking tab if it was dragged
+  container.addEventListener('click', (e) => {
+    if (moved) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  }, true);
+
+  // Update arrow states on scroll
+  container.addEventListener('scroll', () => {
+    updateTabSlideArrowStates(containerId);
+  }, { passive: true });
+
+  // Initial update
+  setTimeout(() => updateTabSlideArrowStates(containerId), 250);
+}
+window.initTabSliderControls = initTabSliderControls;
+

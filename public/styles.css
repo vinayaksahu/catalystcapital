@@ -872,4 +872,25 @@ body.has-sr-impersonation-bar {
   }
 }
 
+/* Horizontal Tab Slider Controls & Smooth Drag */
+.tab-slide-arrow {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  user-select: none;
+}
+.tab-slide-arrow.is-disabled {
+  opacity: 0.2;
+  pointer-events: none;
+  cursor: default;
+}
+.tab-slider-track {
+  cursor: grab;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
+.tab-slider-track.is-dragging {
+  cursor: grabbing !important;
+  user-select: none !important;
+  scroll-behavior: auto !important;
+}
+
 
