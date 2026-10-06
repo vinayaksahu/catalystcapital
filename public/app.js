@@ -1929,7 +1929,22 @@ async function loadAssetsData() {
         totalWithdrawnEl.textContent = `${(w.totalWithdrawn || 0).toFixed(2)} USDT`;
       }
 
-      // Assets Income Stats (Total ROI, Team ROI, Team Commission)
+      // Assets & Home Income Stats (Total Income, Referral Income, Team Commission)
+      const totalEarnedVal = (w.totalEarned || (w.totalRoiIncome || 0) + (w.totalTeamRoiIncome || 0) + (w.totalTeamCommission || 0));
+      const refIncomeVal = (w.totalTeamRoiIncome || 0);
+      const teamCommVal = (w.totalTeamCommission || 0);
+
+      // 1. Update 3 Home Income Cards directly above BTC/ETH/ETC
+      const homeTotalIncomeEl = document.getElementById('home-stat-total-income');
+      if (homeTotalIncomeEl) homeTotalIncomeEl.textContent = `$${totalEarnedVal.toFixed(2)}`;
+
+      const homeRefIncomeEl = document.getElementById('home-stat-referral-income');
+      if (homeRefIncomeEl) homeRefIncomeEl.textContent = `$${refIncomeVal.toFixed(2)}`;
+
+      const homeTeamCommEl = document.getElementById('home-stat-team-comm');
+      if (homeTeamCommEl) homeTeamCommEl.textContent = `$${teamCommVal.toFixed(2)}`;
+
+      // 2. Assets View Stats
       const totalRoiEl = document.getElementById('stat-total-roi-income');
       if (totalRoiEl) {
         totalRoiEl.textContent = `${(w.totalRoiIncome || 0).toFixed(2)} USDT`;
@@ -1960,6 +1975,9 @@ async function loadAssetsData() {
       if (profitMarginEl) profitMarginEl.textContent = w.profitMargin || '4.00%';
     }
 
+    // Load active packages on home page
+    await loadHomeActivePackages();
+
     // Apply Dynamic Announcement Ticker & Pop Image from Server Rules
     if (data.rules) {
       if (data.rules.announcementTicker) {
@@ -1976,6 +1994,88 @@ async function loadAssetsData() {
     console.error('Error loading assets data:', err);
   }
 }
+
+async function loadHomeActivePackages() {
+  const container = document.getElementById('home-active-packages-container');
+  if (!container || !token) return;
+
+  try {
+    const res = await fetch(`${API_BASE}/investments/my`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const data = await res.json();
+    if (data.success && data.investments) {
+      const activeInvestments = data.investments.filter(i => i.status === 'active');
+      if (activeInvestments.length > 0) {
+        container.innerHTML = activeInvestments.map(inv => {
+          const planName = inv.plan_name || `VIP Plan`;
+          const amount = (inv.amount || 0).toFixed(2);
+          const dailyRoi = (inv.daily_roi || 0).toFixed(2);
+          const totalEarned = (inv.total_earned || 0).toFixed(2);
+          const maxRoi = (inv.max_roi || 0).toFixed(2);
+          const progressPercent = maxRoi > 0 ? Math.min(100, Math.round((totalEarned / maxRoi) * 100)) : 0;
+          const createdDate = new Date(inv.created_at).toLocaleDateString();
+
+          return `
+            <div class="theme-card p-3 rounded-2xl border border-amber-500/30 bg-gradient-to-r from-amber-500/10 via-slate-900 to-slate-900 shadow-md">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2.5">
+                  <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-black font-black text-xs shadow-sm shadow-amber-500/20">
+                    VIP
+                  </div>
+                  <div>
+                    <div class="font-extrabold text-xs text-white flex items-center gap-1.5">
+                      <span>${planName}</span>
+                      <span class="px-1.5 py-0.2 rounded text-[9px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">Active</span>
+                    </div>
+                    <div class="text-[10px] text-slate-400 font-mono mt-0.5">Staked: $${amount} USDT &bull; Started: ${createdDate}</div>
+                  </div>
+                </div>
+                <div class="text-right">
+                  <div class="font-black text-xs text-emerald-400 font-mono">+$${dailyRoi}/day</div>
+                  <div class="text-[9.5px] text-amber-400 font-bold font-mono">Earned: $${totalEarned}</div>
+                </div>
+              </div>
+              <div class="mt-2.5 pt-2 border-t border-slate-800/80 flex items-center justify-between text-[10px] text-slate-400 font-mono">
+                <span>Cycle Progress: ${progressPercent}%</span>
+                <span>Max Return: $${maxRoi} USDT</span>
+              </div>
+              <div class="w-full bg-slate-800 rounded-full h-1.5 mt-1 overflow-hidden">
+                <div class="bg-gradient-to-r from-amber-400 to-emerald-400 h-1.5 rounded-full" style="width: ${progressPercent}%"></div>
+              </div>
+            </div>
+          `;
+        }).join('');
+      } else {
+        container.innerHTML = `
+          <div class="theme-card p-3 rounded-2xl flex items-center justify-between border border-slate-200 dark:border-slate-800/80 bg-slate-50/50 dark:bg-[#0c101a]/70">
+            <div class="flex items-center gap-3">
+              <div class="w-9 h-9 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400 font-black text-xs">
+                VIP
+              </div>
+              <div>
+                <div class="font-bold text-xs text-slate-800 dark:text-white flex items-center gap-1.5">
+                  <span>No Active Package</span>
+                  <span class="px-1.5 py-0.2 rounded text-[9px] font-bold bg-slate-500/20 text-slate-400">Idle</span>
+                </div>
+                <div class="text-[10px] text-slate-500 font-mono mt-0.5">Start investing to earn daily 4% ROI</div>
+              </div>
+            </div>
+            <div class="text-right">
+              <div class="font-black text-xs text-emerald-500 font-mono">$0.00 / day</div>
+              <button onclick="openInvestPackages()" class="mt-1 px-2.5 py-0.5 rounded-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-extrabold text-[10px] shadow-sm transition active:scale-95 cursor-pointer">
+                Stake
+              </button>
+            </div>
+          </div>
+        `;
+      }
+    }
+  } catch (err) {
+    console.warn('Failed to load active packages:', err);
+  }
+}
+window.loadHomeActivePackages = loadHomeActivePackages;
 
 function loadWithdrawalModalData() {
   if (!userWallets) return;
@@ -2351,6 +2451,8 @@ async function inspectAdminUser(userId) {
       } else {
         invContainer.innerHTML = `<div class="text-center py-2 text-slate-500">No investment plans active</div>`;
       }
+    }
+
     const impBtn = document.getElementById('aud-impersonate-btn');
     if (impBtn) {
       if (u.role === 'admin') {
