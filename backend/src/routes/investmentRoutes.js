@@ -33,7 +33,7 @@ router.post('/purchase', authenticateToken, async (req, res) => {
 router.get('/my', authenticateToken, async (req, res) => {
   try {
     const investments = await db.all(`
-      SELECT i.*, p.name as plan_name, p.color as plan_color
+      SELECT i.*, p.name as plan_name, p.color as plan_color, p.total_roi as max_roi, p.duration_days as plan_duration_days
       FROM investments i
       JOIN plans p ON i.plan_id = p.id
       WHERE i.user_id = ?

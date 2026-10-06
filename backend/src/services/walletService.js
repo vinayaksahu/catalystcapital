@@ -178,14 +178,16 @@ class WalletService {
       available = user.roi_balance;
     } else if (walletSource === 'commission_balance') {
       available = user.commission_balance;
+    } else if (walletSource === 'wallet_balance') {
+      available = user.wallet_balance;
     } else if (walletSource === 'all') {
-      available = user.roi_balance + user.commission_balance;
+      available = (user.roi_balance || 0) + (user.commission_balance || 0) + (user.wallet_balance || 0);
     } else {
       throw new Error('Invalid withdrawal source wallet');
     }
 
     if (available < amount) {
-      throw new Error(`Insufficient earnings balance ($${available.toFixed(2)} available in selected source)`);
+      throw new Error(`Insufficient balance ($${available.toFixed(2)} available in selected source)`);
     }
 
     // Deduct from appropriate wallet(s)
@@ -193,12 +195,25 @@ class WalletService {
       await db.run('UPDATE users SET roi_balance = roi_balance - ? WHERE id = ?', [amount, userId]);
     } else if (walletSource === 'commission_balance') {
       await db.run('UPDATE users SET commission_balance = commission_balance - ? WHERE id = ?', [amount, userId]);
+    } else if (walletSource === 'wallet_balance') {
+      await db.run('UPDATE users SET wallet_balance = wallet_balance - ? WHERE id = ?', [amount, userId]);
     } else {
-      if (user.roi_balance >= amount) {
-        await db.run('UPDATE users SET roi_balance = roi_balance - ? WHERE id = ?', [amount, userId]);
-      } else {
-        const remainder = amount - user.roi_balance;
-        await db.run('UPDATE users SET roi_balance = 0, commission_balance = commission_balance - ? WHERE id = ?', [remainder, userId]);
+      // Deduct from roi_balance first, then commission_balance, then wallet_balance
+      let rem = amount;
+      if (user.roi_balance > 0) {
+        const takeRoi = Math.min(user.roi_balance, rem);
+        await db.run('UPDATE users SET roi_balance = roi_balance - ? WHERE id = ?', [takeRoi, userId]);
+        rem -= takeRoi;
+      }
+      if (rem > 0 && user.commission_balance > 0) {
+        const takeComm = Math.min(user.commission_balance, rem);
+        await db.run('UPDATE users SET commission_balance = commission_balance - ? WHERE id = ?', [takeComm, userId]);
+        rem -= takeComm;
+      }
+      if (rem > 0 && user.wallet_balance > 0) {
+        const takeWal = Math.min(user.wallet_balance, rem);
+        await db.run('UPDATE users SET wallet_balance = wallet_balance - ? WHERE id = ?', [takeWal, userId]);
+        rem -= takeWal;
       }
     }
 

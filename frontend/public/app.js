@@ -72,6 +72,10 @@ async function loadPublicAnnouncements() {
       if (data.popupImageActive && data.popupImageUrl) {
         checkAndShowMemberLoginPopup(data.popupImageUrl, data.popupImageTitle);
       }
+      // Sync platform deposit address immediately on load
+      if (data.depositAddress) {
+        updateRechargeModalAddress(data.depositAddress);
+      }
     }
   } catch (e) {
     console.warn('Failed to load announcements:', e);
@@ -448,6 +452,13 @@ function openWalletAddressModal() {
   if (dispEl) dispEl.textContent = currentUser?.usdt_address || 'Not Set';
   const inpEl = document.getElementById('bep20-address-input');
   if (inpEl) inpEl.value = currentUser?.usdt_address || '';
+  const otpInp = document.getElementById('bep20-otp-input');
+  if (otpInp) otpInp.value = '';
+  const btn = document.getElementById('btn-bep20-send-otp');
+  if (btn) {
+    btn.disabled = false;
+    btn.textContent = 'Get OTP';
+  }
   openModal('bep20WalletModal');
 }
 
@@ -465,8 +476,12 @@ async function handleSendWalletOtp() {
     });
     const data = await res.json();
     if (data.success) {
-      showToast('Security OTP sent to your registered email!', 'success');
+      showToast(data.message || 'Security OTP sent to your registered email!', 'success');
       if (btn) btn.textContent = 'OTP Sent';
+      if (data.debugOtp) {
+        const otpInp = document.getElementById('bep20-otp-input');
+        if (otpInp) otpInp.value = data.debugOtp;
+      }
     } else {
       showToast(data.error || 'Failed to send OTP', 'error');
       if (btn) btn.disabled = false;
@@ -487,9 +502,20 @@ async function handleUpdateWalletAddress(e) {
     showToast('Please enter a valid BEP-20 wallet address', 'error');
     return;
   }
-  if (!otp) {
+  if (!walletAddress.startsWith('0x') || walletAddress.length < 10) {
+    showToast('BEP-20 wallet address must start with 0x', 'error');
+    return;
+  }
+  const isAdmin = currentUser?.role === 'admin' || currentUser?.id === 1;
+  if (!isAdmin && !otp) {
     showToast('Please enter the 6-digit OTP code sent to your email', 'error');
     return;
+  }
+
+  const saveBtn = document.getElementById('btn-save-wallet');
+  if (saveBtn) {
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Saving...';
   }
 
   try {
@@ -508,12 +534,26 @@ async function handleUpdateWalletAddress(e) {
       closeModal('bep20WalletModal');
       const otpInput = document.getElementById('bep20-otp-input');
       if (otpInput) otpInput.value = '';
-      showToast('BEP-20 Wallet Address verified and updated successfully!', 'success');
+
+      // If user is admin, immediately synchronize platform deposit address and UI
+      if (isAdmin) {
+        updateRechargeModalAddress(walletAddress);
+        const adminDepInp = document.getElementById('admin-deposit-address-input');
+        if (adminDepInp) adminDepInp.value = walletAddress;
+        showToast('BEP-20 Wallet Address & Platform Deposit Address updated successfully!', 'success');
+      } else {
+        showToast('BEP-20 Wallet Address verified and updated successfully!', 'success');
+      }
     } else {
       showToast(data.error || 'Failed to update wallet address', 'error');
     }
   } catch (err) {
     showToast(err.message, 'error');
+  } finally {
+    if (saveBtn) {
+      saveBtn.disabled = false;
+      saveBtn.textContent = 'Verify OTP & Save Address';
+    }
   }
 }
 
@@ -1163,25 +1203,41 @@ function copyRechargeAddress() {
 }
 window.copyRechargeAddress = copyRechargeAddress;
 
+async function fetchLatestDepositAddress() {
+  try {
+    const res = await fetch(`${API_BASE}/wallet/deposit-address?t=${Date.now()}`);
+    const data = await res.json();
+    if (data.success && data.depositAddress) {
+      updateRechargeModalAddress(data.depositAddress);
+    }
+  } catch (e) {
+    // Non-blocking background fetch
+  }
+}
+window.fetchLatestDepositAddress = fetchLatestDepositAddress;
+
 // Quick Circular Actions Handlers
 async function openRechargeModal() {
   if (!currentUser) {
     navigate('login');
     return;
   }
+  // Immediately render active cached deposit address
+  if (activeDepositAddress) {
+    updateRechargeModalAddress(activeDepositAddress);
+  }
+  openModal('rechargeModal');
+
   // Fetch fresh deposit address on open to guarantee latest admin updated address
   try {
-    const res = await fetch(`${API_BASE}/wallet/overview`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
+    const res = await fetch(`${API_BASE}/wallet/deposit-address?t=${Date.now()}`);
     const data = await res.json();
-    if (data.success && data.rules && data.rules.depositAddress) {
-      updateRechargeModalAddress(data.rules.depositAddress);
+    if (data.success && data.depositAddress) {
+      updateRechargeModalAddress(data.depositAddress);
     }
   } catch (e) {
     console.error('Error fetching latest deposit address:', e);
   }
-  openModal('rechargeModal');
 }
 
 function openWithdrawModal() {
@@ -2110,6 +2166,11 @@ function filterHistory(type) {
       color = 'text-rose-400';
       bg = 'bg-rose-500/10';
       label = 'Withdrawal';
+    } else if (tx.type === 'principal_return') {
+      icon = 'shield-check';
+      color = 'text-amber-400';
+      bg = 'bg-amber-500/15';
+      label = 'Principal Capital Refund';
     }
 
     return `
@@ -2267,12 +2328,12 @@ async function loadHomeActivePackages() {
           const amount = (inv.amount || 0).toFixed(2);
           const dailyRoi = (inv.daily_roi || 0).toFixed(2);
           const totalEarned = (inv.total_earned || 0).toFixed(2);
-          const maxRoi = (inv.max_roi || 0).toFixed(2);
+          const maxRoi = (inv.max_roi || (inv.daily_roi * (inv.total_days || 0)) || 0).toFixed(2);
           const progressPercent = maxRoi > 0 ? Math.min(100, Math.round((totalEarned / maxRoi) * 100)) : 0;
           const createdDate = new Date(inv.created_at).toLocaleDateString();
 
           return `
-            <div class="theme-card p-3 rounded-2xl border border-amber-500/30 bg-gradient-to-r from-amber-500/10 via-slate-900 to-slate-900 shadow-md">
+            <div class="theme-card p-3.5 rounded-2xl border border-amber-500/30 bg-gradient-to-r from-amber-500/10 via-slate-900 to-slate-900 shadow-md">
               <div class="flex items-center justify-between">
                 <div class="flex items-center gap-2.5">
                   <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-black font-black text-xs shadow-sm shadow-amber-500/20">
@@ -2297,6 +2358,13 @@ async function loadHomeActivePackages() {
               </div>
               <div class="w-full bg-slate-800 rounded-full h-1.5 mt-1 overflow-hidden">
                 <div class="bg-gradient-to-r from-amber-400 to-emerald-400 h-1.5 rounded-full" style="width: ${progressPercent}%"></div>
+              </div>
+              <div class="mt-2.5 flex items-center justify-between text-[10px] text-amber-400 bg-amber-500/10 px-2.5 py-1 rounded-xl border border-amber-500/20">
+                <span class="flex items-center gap-1 font-semibold">
+                  <i data-lucide="shield-check" class="w-3 h-3 text-amber-400"></i>
+                  Principal Capital Return:
+                </span>
+                <span class="font-mono font-bold">$${amount} USDT on last closing day</span>
               </div>
             </div>
           `;
@@ -2333,21 +2401,35 @@ async function loadHomeActivePackages() {
 window.loadHomeActivePackages = loadHomeActivePackages;
 
 function loadWithdrawalModalData() {
-  if (!userWallets) return;
-  const availEl = document.getElementById('withdraw-available-bal');
-  if (availEl) {
-    availEl.textContent = `${(userWallets.totalWithdrawable || 0).toFixed(2)} USDT`;
-  }
+  updateWithdrawSourceAvailable();
 }
 
-function setMaxWithdrawAmount() {
+function updateWithdrawSourceAvailable() {
   if (!userWallets) return;
-  const input = document.getElementById('withdraw-amount');
-  const source = document.getElementById('withdraw-source').value;
+  const availEl = document.getElementById('withdraw-available-bal');
+  const source = document.getElementById('withdraw-source')?.value || 'all';
   let max = 0;
 
   if (source === 'roi_balance') max = userWallets.roiWallet || 0;
   else if (source === 'commission_balance') max = userWallets.commissionWallet || 0;
+  else if (source === 'wallet_balance') max = userWallets.depositWallet || 0;
+  else max = userWallets.totalWithdrawable || 0;
+
+  if (availEl) {
+    availEl.textContent = `${max.toFixed(2)} USDT`;
+  }
+}
+window.updateWithdrawSourceAvailable = updateWithdrawSourceAvailable;
+
+function setMaxWithdrawAmount() {
+  if (!userWallets) return;
+  const input = document.getElementById('withdraw-amount');
+  const source = document.getElementById('withdraw-source')?.value || 'all';
+  let max = 0;
+
+  if (source === 'roi_balance') max = userWallets.roiWallet || 0;
+  else if (source === 'commission_balance') max = userWallets.commissionWallet || 0;
+  else if (source === 'wallet_balance') max = userWallets.depositWallet || 0;
   else max = userWallets.totalWithdrawable || 0;
 
   if (input) input.value = max;
@@ -3283,8 +3365,34 @@ function closeModal(modalId) {
 }
 
 function copyToClipboard(text) {
-  navigator.clipboard.writeText(text);
-  showToast('Copied to clipboard!', 'info');
+  if (!text) return;
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(() => {
+      showToast('Copied to clipboard!', 'info');
+    }).catch(() => {
+      fallbackCopyText(text);
+      showToast('Copied to clipboard!', 'info');
+    });
+  } else {
+    fallbackCopyText(text);
+    showToast('Copied to clipboard!', 'info');
+  }
+}
+
+function fallbackCopyText(text) {
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.left = '-9999px';
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+  } catch (e) {
+    console.warn('Fallback copy error:', e);
+  }
 }
 
 function showToast(message, type = 'info') {
@@ -3499,6 +3607,16 @@ async function handleSaveAdminDepositAddress(e) {
   e.preventDefault();
   const value = document.getElementById('admin-deposit-address-input')?.value.trim();
   if (!value) { showToast('Please enter a valid BEP-20 address', 'error'); return; }
+  if (!value.startsWith('0x') || value.length < 10) {
+    showToast('BEP-20 address must start with 0x and be a valid wallet address', 'error');
+    return;
+  }
+
+  const btn = document.getElementById('btn-save-deposit-address');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Updating...';
+  }
 
   try {
     const res = await fetch(`${API_BASE}/admin/settings`, {
@@ -3509,12 +3627,25 @@ async function handleSaveAdminDepositAddress(e) {
     const data = await res.json();
     if (data.success) {
       updateRechargeModalAddress(value);
+      if (currentUser && (currentUser.role === 'admin' || currentUser.id === 1)) {
+        currentUser.usdt_address = value;
+        updateAuthUI();
+      }
+      const curDisp = document.getElementById('bep20-current-display');
+      if (curDisp) curDisp.textContent = value;
+      const bepInp = document.getElementById('bep20-address-input');
+      if (bepInp) bepInp.value = value;
       showToast('Official deposit address updated & synced to all members!', 'success');
     } else {
       showToast(data.error || 'Failed to update deposit address', 'error');
     }
   } catch (err) {
     showToast(err.message, 'error');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = 'Update Official Deposit Address';
+    }
   }
 }
 window.handleSaveAdminDepositAddress = handleSaveAdminDepositAddress;
@@ -3532,6 +3663,21 @@ async function handleAdminSaveUserWalletAddress() {
     });
     const data = await res.json();
     if (data.success) {
+      const audUsdt = document.getElementById('aud-usdt');
+      if (audUsdt) audUsdt.textContent = walletAddress;
+
+      // If inspected user is admin, immediately sync deposit address & profile
+      if (currentInspectedUserId === 1 || (currentUser && currentUser.id === currentInspectedUserId && currentUser.role === 'admin')) {
+        updateRechargeModalAddress(walletAddress);
+        const depInp = document.getElementById('admin-deposit-address-input');
+        if (depInp) depInp.value = walletAddress;
+        if (currentUser && currentUser.id === currentInspectedUserId) {
+          currentUser.usdt_address = walletAddress;
+          updateAuthUI();
+        }
+        const curDisp = document.getElementById('bep20-current-display');
+        if (curDisp) curDisp.textContent = walletAddress;
+      }
       showToast('User wallet address updated successfully!', 'success');
     } else {
       showToast(data.error || 'Failed to update wallet address', 'error');
@@ -3541,6 +3687,30 @@ async function handleAdminSaveUserWalletAddress() {
   }
 }
 window.handleAdminSaveUserWalletAddress = handleAdminSaveUserWalletAddress;
+
+async function triggerAdminDailyRoi() {
+  if (!confirm('Are you sure you want to trigger daily ROI credit for all active plans now?')) return;
+  try {
+    const res = await fetch(`${API_BASE}/admin/trigger-daily-roi`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ force: true })
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast(`Daily ROI executed! Processed: ${data.processedInvestments || 0}, Paid: $${(data.totalRoiDistributed || 0).toFixed(2)}`, 'success');
+      loadAdminData();
+    } else {
+      showToast(data.error || 'Failed to trigger ROI', 'error');
+    }
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+window.triggerAdminDailyRoi = triggerAdminDailyRoi;
 
 function previewAdminPopupImageFile(input) {
   if (input.files && input.files[0]) {

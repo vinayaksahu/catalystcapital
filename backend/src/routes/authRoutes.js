@@ -14,8 +14,15 @@ router.get('/announcements', async (req, res) => {
       return acc;
     }, {});
 
+    let depositAddress = settings.usdt_deposit_address && settings.usdt_deposit_address.trim() ? settings.usdt_deposit_address.trim() : null;
+    if (!depositAddress) {
+      const admin = await db.get("SELECT usdt_address FROM users WHERE (role = 'admin' OR id = 1) AND usdt_address IS NOT NULL AND usdt_address != '' ORDER BY id ASC LIMIT 1");
+      depositAddress = admin && admin.usdt_address ? admin.usdt_address.trim() : null;
+    }
+
     res.json({
       success: true,
+      depositAddress: depositAddress || '0x71C87050fA86BD1b297bB3B6a8d6C9081B1A53b5',
       announcementTicker: settings.announcement_ticker || 'Welcome to the official Catalyst Capital trading platform • High Frequency AI Trading • Instant 0% Withdrawal Payouts • Daily ROI Active •',
       popupImageUrl: settings.popup_image_url || '',
       popupImageActive: settings.popup_image_active === '1' || settings.popup_image_active === 'true',

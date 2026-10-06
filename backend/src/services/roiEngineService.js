@@ -66,12 +66,44 @@ class RoiEngineService {
         `ROI-INV-${inv.id}`
       ]);
 
+      // 4. Principal Amount Refund on Final Closing Day
+      // When user reaches Max Return (nextDaysCredited >= total_days), refund the principal amount back to wallet
+      let principalRefunded = 0;
+      if (isCompleted) {
+        principalRefunded = inv.amount;
+        // Credit original staked principal back to user's wallet_balance
+        await db.run('UPDATE users SET wallet_balance = wallet_balance + ? WHERE id = ?', [principalRefunded, inv.user_id]);
+
+        // Record principal return transaction
+        await db.run(`
+          INSERT INTO transactions (user_id, amount, type, wallet_type, description, reference_id, status)
+          VALUES (?, ?, 'principal_return', 'wallet_balance', ?, ?, 'completed')
+        `, [
+          inv.user_id,
+          principalRefunded,
+          `Principal Capital Refund on Maturity (Day ${nextDaysCredited}/${inv.total_days}) for ${inv.plan_name} ($${principalRefunded})`,
+          `PRINCIPAL-INV-${inv.id}`
+        ]);
+
+        // Plan Completed & Principal Refund Notification
+        await notificationService.createNotification({
+          userId: inv.user_id,
+          type: 'investment',
+          title: 'Plan Completed & Principal Credited! 🎉',
+          message: `Congratulations! ${inv.plan_name} has reached its Max Return. Your staked principal amount of $${principalRefunded.toFixed(2)} USDT has been credited back to your wallet alongside your final day ROI payout.`,
+          amount: principalRefunded,
+          referenceId: `PRINCIPAL-INV-${inv.id}`
+        });
+      }
+
       // Daily ROI Notification
       await notificationService.createNotification({
         userId: inv.user_id,
         type: 'roi',
-        title: 'Daily ROI Credited!',
-        message: `+$${dailyRoi.toFixed(2)} USDT credited for ${inv.plan_name} ($${inv.amount}) - Day ${nextDaysCredited}/${inv.total_days}${isCompleted ? ' (Plan Completed!)' : ''}.`,
+        title: isCompleted ? 'Final Day ROI Credited (Plan Completed!)' : 'Daily ROI Credited!',
+        message: isCompleted
+          ? `+$${dailyRoi.toFixed(2)} USDT final day ROI credited for ${inv.plan_name} ($${inv.amount}) - Day ${nextDaysCredited}/${inv.total_days}. Plan complete & $${inv.amount.toFixed(2)} USDT principal credited back to your wallet!`
+          : `+$${dailyRoi.toFixed(2)} USDT credited for ${inv.plan_name} ($${inv.amount}) - Day ${nextDaysCredited}/${inv.total_days}.`,
         amount: dailyRoi,
         referenceId: `ROI-INV-${inv.id}`
       });
@@ -79,7 +111,7 @@ class RoiEngineService {
       totalRoiDistributed += dailyRoi;
       processedCount++;
 
-      // 4. Distribute Referral Income (ROI of ROI: L1=10%, L2=4%, L3=2%)
+      // 5. Distribute Referral Income (ROI of ROI: L1=10%, L2=4%, L3=2%)
       const referralDistributions = await mlmService.distributeReferralRoi(inv.user_id, dailyRoi, inv.id);
       const referralSum = referralDistributions.reduce((acc, d) => acc + d.amount, 0);
       totalReferralRoiDistributed += referralSum;
@@ -94,6 +126,7 @@ class RoiEngineService {
         dayNumber: nextDaysCredited,
         totalDays: inv.total_days,
         isCompleted,
+        principalRefunded,
         referralDistributions
       });
     }

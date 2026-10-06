@@ -1717,11 +1717,11 @@
 
       <div class="theme-card-subtle p-3 text-center my-3">
         <div class="w-32 h-32 mx-auto bg-white p-2 rounded-xl flex items-center justify-center mb-2 shadow-sm">
-          <img id="recharge-qr-img" src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=0x71C87050fA86BD1b297bB3B6a8d6C9081B1A53b5" alt="USDT BEP20 QR Code" class="w-full h-full object-contain">
+          <img id="recharge-qr-img" src="" alt="USDT BEP20 QR Code" class="w-full h-full object-contain">
         </div>
         <span class="font-cf-subtitle text-[10px] uppercase tracking-wider block mb-1">Official BEP20 Address (USDT - BSC)</span>
         <div class="flex items-center justify-between bg-slate-200 dark:bg-slate-900 px-2.5 py-1.5 rounded-lg text-[11px] font-mono text-cyan-600 dark:text-cyan-300">
-          <span class="truncate mr-1" id="recharge-address-display">0x71C87050fA86BD1b297bB3B6a8d6C9081B1A53b5</span>
+          <span class="truncate mr-1" id="recharge-address-display">Loading address...</span>
           <button type="button" onclick="copyRechargeAddress()" class="font-sans text-[10px] font-bold bg-white dark:bg-slate-800 px-2 py-0.5 rounded shadow-sm hover:text-cyan-400 cursor-pointer">Copy</button>
         </div>
       </div>
@@ -1786,10 +1786,11 @@
       <form onsubmit="handleWithdrawSubmit(event)" class="space-y-3 text-xs">
         <div>
           <label class="block font-cf-title text-xs mb-1">Source Wallet</label>
-          <select id="withdraw-source" class="w-full bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-900 dark:text-white focus:outline-none">
-            <option value="all">Combined (ROI + Commission Wallet)</option>
+          <select id="withdraw-source" onchange="updateWithdrawSourceAvailable()" class="w-full bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-900 dark:text-white focus:outline-none">
+            <option value="all">Combined (ROI + Commission + Principal Wallet)</option>
             <option value="roi_balance">Daily ROI Wallet</option>
             <option value="commission_balance">Commission Wallet</option>
+            <option value="wallet_balance">Deposit / Principal Wallet</option>
           </select>
         </div>
         <div>
@@ -1870,26 +1871,26 @@
       </div>
 
       <div class="space-y-2 text-xs">
-        <a href="https://t.me" target="_blank" class="p-3 rounded-xl theme-card-subtle flex items-center justify-between hover:border-cyan-500 transition">
+        <a href="https://t.me/Ctytspt" target="_blank" class="p-3 rounded-xl theme-card-subtle flex items-center justify-between hover:border-cyan-500 transition">
           <div class="flex items-center gap-2.5">
             <i data-lucide="send" class="w-5 h-5 text-cyan-500"></i>
             <div>
               <div class="font-cf-title text-xs">Telegram 24/7 Channel</div>
-              <div class="font-cf-subtitle text-[10px]">@CatalystCapitalOfficial</div>
+              <div class="font-cf-subtitle text-[10px]">@Ctytspt</div>
             </div>
           </div>
           <span class="text-cyan-500 font-bold">&rarr;</span>
         </a>
 
-        <a href="https://wa.me" target="_blank" class="p-3 rounded-xl theme-card-subtle flex items-center justify-between hover:border-emerald-500 transition">
+        <a href="mailto:support@catalystcapital.fit" class="p-3 rounded-xl theme-card-subtle flex items-center justify-between hover:border-amber-500 transition">
           <div class="flex items-center gap-2.5">
-            <i data-lucide="message-circle" class="w-5 h-5 text-emerald-500"></i>
+            <i data-lucide="mail" class="w-5 h-5 text-amber-500"></i>
             <div>
-              <div class="font-cf-title text-xs">VIP WhatsApp Manager</div>
-              <div class="font-cf-subtitle text-[10px]">+91 98111 22233</div>
+              <div class="font-cf-title text-xs">Official Support Desk</div>
+              <div class="font-cf-subtitle text-[10px]">support@catalystcapital.fit</div>
             </div>
           </div>
-          <span class="text-emerald-500 font-bold">&rarr;</span>
+          <span class="text-amber-500 font-bold">&rarr;</span>
         </a>
       </div>
     </div>

@@ -79,7 +79,7 @@ const db = {
     const cloned = { ...row };
     const numericKeys = [
       'wallet_balance', 'roi_balance', 'commission_balance', 'price',
-      'daily_roi', 'total_roi', 'amount', 'total_earned', 'fee', 'net_amount',
+      'daily_roi', 'total_roi', 'max_roi', 'amount', 'total_earned', 'fee', 'net_amount',
       'active_investment', 'active_invested', 'total_commission_from_user', 'vol', 'total'
     ];
     for (const key of numericKeys) {

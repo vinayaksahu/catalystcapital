@@ -126,7 +126,7 @@ router.get('/overview', authenticateToken, async (req, res) => {
         depositWallet: user.wallet_balance || 0,
         roiWallet: user.roi_balance || 0,
         commissionWallet: user.commission_balance || 0,
-        totalWithdrawable: (user.roi_balance || 0) + (user.commission_balance || 0),
+        totalWithdrawable: (user.roi_balance || 0) + (user.commission_balance || 0) + (user.wallet_balance || 0),
         totalEarned,
         pendingWithdrawn: pendingWithdrawnRes ? (parseFloat(pendingWithdrawnRes.total) || 0) : 0,
         savedUsdtAddress: user.usdt_address
