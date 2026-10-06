@@ -108,6 +108,8 @@ async function initDatabase() {
         role VARCHAR(50) DEFAULT 'user',
         referral_code VARCHAR(50) UNIQUE NOT NULL,
         sponsor_id INTEGER REFERENCES users(id),
+        team_admin_id INTEGER REFERENCES users(id),
+        team_name VARCHAR(100),
         wallet_balance NUMERIC(18, 4) DEFAULT 0.0,
         roi_balance NUMERIC(18, 4) DEFAULT 0.0,
         commission_balance NUMERIC(18, 4) DEFAULT 0.0,
@@ -234,6 +236,8 @@ async function initDatabase() {
         role TEXT DEFAULT 'user',
         referral_code TEXT UNIQUE NOT NULL,
         sponsor_id INTEGER REFERENCES users(id),
+        team_admin_id INTEGER REFERENCES users(id),
+        team_name TEXT,
         wallet_balance REAL DEFAULT 0.0,
         roi_balance REAL DEFAULT 0.0,
         commission_balance REAL DEFAULT 0.0,
@@ -412,6 +416,64 @@ async function initDatabase() {
     if (setting && setting.value && setting.value.startsWith('0x')) {
       await db.run("UPDATE users SET usdt_address = ? WHERE (role = 'admin' OR id = 1) AND (usdt_address IS NULL OR usdt_address = '')", [setting.value.trim()]);
     }
+  }
+
+  // Multi-Admin & Team Architecture Migrations
+  try {
+    if (isPostgres) {
+      await db.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS team_admin_id INTEGER REFERENCES users(id)');
+      await db.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS team_name VARCHAR(100)');
+    } else {
+      try { await db.run('ALTER TABLE users ADD COLUMN team_admin_id INTEGER REFERENCES users(id)'); } catch(e){}
+      try { await db.run('ALTER TABLE users ADD COLUMN team_name TEXT'); } catch(e){}
+    }
+  } catch (e) {
+    console.warn('Migration note for team columns:', e.message);
+  }
+
+  // Ensure Super Root Admin and Default Team Admins exist
+  try {
+    const bcrypt = require('bcryptjs');
+
+    // 1. Super Root Admin
+    const superAdmin = await db.get("SELECT id FROM users WHERE username = 'superrootadmin' OR role = 'superadmin'");
+    if (!superAdmin) {
+      const superHash = await bcrypt.hash('SuperRoot@2026', 10);
+      await db.run(`
+        INSERT INTO users (username, email, password_hash, full_name, phone, role, referral_code, wallet_balance, status)
+        VALUES ('superrootadmin', 'superrootadmin@catalystcapital.fit', ?, 'Super Root Administrator', '+10000000000', 'superadmin', 'ROOTADMIN', 0, 'active')
+      `, [superHash]);
+    }
+
+    // 2. Default Team Admins
+    const defaultTeamAdmins = [
+      { username: 'DF_TEAM_A', email: 'df_team_a@catalystcapital.fit', fullName: 'Team A Admin', teamName: 'Team A', ref: 'DF_TEAM_A', pass: 'Password@123' },
+      { username: 'DF_TEAM_B', email: 'df_team_b@catalystcapital.fit', fullName: 'Team B Admin', teamName: 'Team B', ref: 'DF_TEAM_B', pass: 'Password@123' },
+      { username: 'DF_TEAM_C', email: 'df_team_c@catalystcapital.fit', fullName: 'Team C Admin', teamName: 'Team C', ref: 'DF_TEAM_C', pass: 'Password@123' }
+    ];
+
+    for (const adm of defaultTeamAdmins) {
+      const existing = await db.get("SELECT id FROM users WHERE username = ?", [adm.username]);
+      if (!existing) {
+        const hash = await bcrypt.hash(adm.pass, 10);
+        const res = await db.run(`
+          INSERT INTO users (username, email, password_hash, full_name, phone, role, referral_code, team_name, wallet_balance, status)
+          VALUES (?, ?, ?, ?, '+10000000000', 'admin', ?, ?, 1000, 'active')
+        `, [adm.username, adm.email, hash, adm.fullName, adm.ref, adm.teamName]);
+        const newId = res.lastInsertRowid;
+        await db.run("UPDATE users SET team_admin_id = ? WHERE id = ?", [newId, newId]);
+      } else {
+        await db.run("UPDATE users SET role = 'admin', team_admin_id = id, team_name = ? WHERE id = ?", [adm.teamName, existing.id]);
+      }
+    }
+
+    // Backfill any orphaned users without team_admin_id to Team A
+    const teamA = await db.get("SELECT id FROM users WHERE username = 'DF_TEAM_A'");
+    if (teamA) {
+      await db.run("UPDATE users SET team_admin_id = ? WHERE role = 'user' AND (team_admin_id IS NULL OR team_admin_id = 0)", [teamA.id]);
+    }
+  } catch (err) {
+    console.warn('Auto-seed multi-admin note:', err.message);
   }
 }
 

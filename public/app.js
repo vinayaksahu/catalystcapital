@@ -37,7 +37,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     const ref = urlParams.get('ref');
     const action = urlParams.get('action');
 
-    if (path === '/adminlogin') {
+    if (path === '/superrootadminlogin' || path === '/superadminlogin') {
+      navigate('superrootadminlogin');
+    } else if (path === '/adminlogin') {
       navigate('adminlogin');
     } else if (ref || action === 'register' || path === '/register') {
       navigate('register');
@@ -53,7 +55,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   setInterval(() => {
     if (token && currentUser) {
       loadNotificationBadge();
-      if (activeViewName === 'admin' && currentUser.role === 'admin') {
+      if (activeViewName === 'admin' && (currentUser.role === 'admin' || currentUser.role === 'superadmin')) {
         loadAdminData();
       }
     }
@@ -140,7 +142,9 @@ function setupEventListeners() {
     if (regSponsor) regSponsor.value = ref;
   }
 
-  if (path === '/adminlogin') {
+  if (path === '/superrootadminlogin' || path === '/superadminlogin') {
+    navigate('superrootadminlogin');
+  } else if (path === '/adminlogin') {
     navigate('adminlogin');
   } else if (ref || action === 'register' || hash === '#register' || path === '/register') {
     navigate('register');
@@ -162,7 +166,9 @@ function setupEventListeners() {
       const currAction = currentParams.get('action');
       const currView = currentParams.get('view');
 
-      if (currPath === '/adminlogin') {
+      if (currPath === '/superrootadminlogin' || currPath === '/superadminlogin') {
+        navigate('superrootadminlogin', false);
+      } else if (currPath === '/adminlogin') {
         navigate('adminlogin', false);
       } else if (currPath === '/register' || currRef || currAction === 'register') {
         navigate('register', false);
@@ -621,8 +627,10 @@ function updateAuthUI() {
 
     const cfStatus = document.getElementById('cf-prof-status');
     if (cfStatus) {
-      if (currentUser.role === 'admin') {
-        cfStatus.textContent = 'Active (Admin)';
+      if (currentUser.role === 'superadmin') {
+        cfStatus.textContent = 'Active (Super Root Admin)';
+      } else if (currentUser.role === 'admin') {
+        cfStatus.textContent = 'Active (Team Admin)';
       } else if (currentUser.status === 'active') {
         cfStatus.textContent = 'Active';
       } else {
@@ -632,7 +640,7 @@ function updateAuthUI() {
 
     const cfAdminLink = document.getElementById('cf-prof-admin-link');
     if (cfAdminLink) {
-      if (currentUser.role === 'admin') cfAdminLink.classList.remove('hidden');
+      if (currentUser.role === 'admin' || currentUser.role === 'superadmin') cfAdminLink.classList.remove('hidden');
       else cfAdminLink.classList.add('hidden');
     }
 
@@ -651,7 +659,7 @@ function updateAuthUI() {
     // Admin button in profile modal
     const profAdminBtn = document.getElementById('prof-admin-panel-btn');
     if (profAdminBtn) {
-      if (currentUser.role === 'admin') profAdminBtn.classList.remove('hidden');
+      if (currentUser.role === 'admin' || currentUser.role === 'superadmin') profAdminBtn.classList.remove('hidden');
       else profAdminBtn.classList.add('hidden');
     }
 
@@ -673,7 +681,7 @@ function updateAuthUI() {
     // Permanently ensure Profile Avatar Pill in Header is visible across all member and admin views
     const profilePill = document.getElementById('profile-pill-wrapper');
     if (profilePill) {
-      if (activeViewName !== 'login' && activeViewName !== 'adminlogin' && activeViewName !== 'register') {
+      if (activeViewName !== 'login' && activeViewName !== 'adminlogin' && activeViewName !== 'superrootadminlogin' && activeViewName !== 'register') {
         profilePill.classList.remove('hidden');
         profilePill.style.removeProperty('display');
       } else {
@@ -691,7 +699,7 @@ function updateAuthUI() {
   // Ensure Admin Portal button in header is strictly hidden for non-admins or logged out users
   const portalBtn = document.getElementById('portal-switch-btn');
   if (portalBtn) {
-    if (currentUser && currentUser.role === 'admin' && activeViewName !== 'login' && activeViewName !== 'adminlogin' && activeViewName !== 'register') {
+    if (currentUser && (currentUser.role === 'admin' || currentUser.role === 'superadmin') && activeViewName !== 'login' && activeViewName !== 'adminlogin' && activeViewName !== 'superrootadminlogin' && activeViewName !== 'register') {
       portalBtn.classList.remove('hidden');
       portalBtn.style.removeProperty('display');
     } else {
@@ -703,7 +711,7 @@ function updateAuthUI() {
 
 // Logo click handler: Stays in Admin Portal if admin is in admin portal, else navigates to home
 function handleAppLogoClick() {
-  if (currentUser && currentUser.role === 'admin') {
+  if (currentUser && (currentUser.role === 'admin' || currentUser.role === 'superadmin')) {
     if (activeViewName === 'admin') {
       // Already in Admin portal -> reload or scroll to top of admin portal
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -752,8 +760,9 @@ async function handleLogin(e) {
   const password = passwordInput ? passwordInput.value : '';
 
   const currentPath = window.location.pathname.toLowerCase().replace(/\/+$/, '');
+  const isSuperPortal = (activeViewName === 'superrootadminlogin' || activeViewName === 'superadminlogin' || currentPath === '/superrootadminlogin' || currentPath === '/superadminlogin');
   const isAdminPortal = (activeViewName === 'adminlogin' || currentPath === '/adminlogin');
-  const portalType = isAdminPortal ? 'admin' : 'member';
+  const portalType = isSuperPortal ? 'superadmin' : (isAdminPortal ? 'admin' : 'member');
 
   try {
     const res = await fetch(`${API_BASE}/auth/login`, {
@@ -777,7 +786,7 @@ async function handleLogin(e) {
     showToast(`Welcome ${currentUser.full_name || currentUser.username}!`, 'success');
     await refreshCurrentViewData();
 
-    if (currentUser.role === 'admin') {
+    if (currentUser.role === 'admin' || currentUser.role === 'superadmin') {
       navigate('admin');
     } else {
       navigate('home');
@@ -897,21 +906,24 @@ function toggleAdminPortal() {
 }
 
 function navigate(viewName, updateHistory = true) {
-  // If user is not logged in, force navigation to login, adminlogin, or register
-  if (!token && !currentUser && viewName !== 'login' && viewName !== 'register' && viewName !== 'adminlogin') {
+  // If user is not logged in, force navigation to login, adminlogin, superrootadminlogin, or register
+  if (!token && !currentUser && viewName !== 'login' && viewName !== 'register' && viewName !== 'adminlogin' && viewName !== 'superrootadminlogin' && viewName !== 'superadminlogin') {
     viewName = 'login';
   }
 
-  // Handle adminlogin as a specialized mode of the login view
+  // Handle specialized admin login modes
+  const isSuperAdminLoginMode = (viewName === 'superrootadminlogin' || viewName === 'superadminlogin');
   const isAdminLoginMode = (viewName === 'adminlogin');
-  const targetViewKey = isAdminLoginMode ? 'login' : viewName;
+  const targetViewKey = (isSuperAdminLoginMode || isAdminLoginMode) ? 'login' : viewName;
   activeViewName = viewName;
 
   // Update browser URL in address bar if requested
   if (updateHistory) {
     try {
       const urlParams = new URLSearchParams(window.location.search);
-      if (viewName === 'adminlogin') {
+      if (viewName === 'superrootadminlogin' || viewName === 'superadminlogin') {
+        window.history.pushState({ view: 'superrootadminlogin' }, '', '/superrootadminlogin');
+      } else if (viewName === 'adminlogin') {
         window.history.pushState({ view: 'adminlogin' }, '', '/adminlogin');
       } else if (viewName === 'login') {
         window.history.pushState({ view: 'login' }, '', '/login');
@@ -946,15 +958,28 @@ function navigate(viewName, updateHistory = true) {
   // Toggle admin active class on body for responsive container adaptation
   document.body.classList.toggle('admin-view-active', viewName === 'admin');
 
-  // Configure Login Page presentation based on adminlogin vs regular login
+  // Configure Login Page presentation based on superrootadminlogin vs adminlogin vs regular login
   const adminBadge = document.getElementById('login-admin-badge');
   const loginTitle = document.getElementById('login-page-title');
   const loginSubtitle = document.getElementById('login-page-subtitle');
   const regSwitch = document.getElementById('login-register-switch-container');
-  if (isAdminLoginMode) {
-    if (adminBadge) adminBadge.classList.remove('hidden');
-    if (loginTitle) loginTitle.textContent = 'Admin Portal Login';
-    if (loginSubtitle) loginSubtitle.textContent = 'Authorized administrators and staff credentials only';
+  if (isSuperAdminLoginMode) {
+    if (adminBadge) {
+      adminBadge.classList.remove('hidden');
+      adminBadge.className = 'mb-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-purple-500/20 border border-purple-500/40 text-purple-300';
+      adminBadge.innerHTML = '<i data-lucide="shield-alert" class="w-3.5 h-3.5 text-purple-400"></i><span>Super Root Administrator</span>';
+    }
+    if (loginTitle) loginTitle.textContent = 'Super Root Admin Portal';
+    if (loginSubtitle) loginSubtitle.textContent = 'Global Platform Architecture & Multi-Team Governance';
+    if (regSwitch) regSwitch.classList.add('hidden');
+  } else if (isAdminLoginMode) {
+    if (adminBadge) {
+      adminBadge.classList.remove('hidden');
+      adminBadge.className = 'mb-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-500/15 border border-amber-500/30 text-amber-400';
+      adminBadge.innerHTML = '<i data-lucide="shield-check" class="w-3.5 h-3.5 text-amber-400"></i><span>Team Administrator Portal</span>';
+    }
+    if (loginTitle) loginTitle.textContent = 'Team Admin Portal';
+    if (loginSubtitle) loginSubtitle.textContent = 'Isolated Management Portal for Your Dedicated Team';
     if (regSwitch) regSwitch.classList.add('hidden');
   } else {
     if (adminBadge) adminBadge.classList.add('hidden');
@@ -969,7 +994,7 @@ function navigate(viewName, updateHistory = true) {
   const portalBtn = document.getElementById('portal-switch-btn');
 
   // Hide bottom menu on auth pages AND when Admin Portal is active
-  if (viewName === 'login' || viewName === 'adminlogin' || viewName === 'register' || viewName === 'admin') {
+  if (viewName === 'login' || viewName === 'adminlogin' || viewName === 'superrootadminlogin' || viewName === 'register' || viewName === 'admin') {
     if (bottomNav) {
       bottomNav.classList.add('hidden');
       bottomNav.style.setProperty('display', 'none', 'important');
@@ -987,7 +1012,7 @@ function navigate(viewName, updateHistory = true) {
   }
 
   // Header pill & portal button visibility
-  if (viewName === 'login' || viewName === 'adminlogin' || viewName === 'register') {
+  if (viewName === 'login' || viewName === 'adminlogin' || viewName === 'superrootadminlogin' || viewName === 'register') {
     if (profilePill) profilePill.classList.add('hidden');
     if (portalBtn) {
       portalBtn.classList.add('hidden');
@@ -997,7 +1022,7 @@ function navigate(viewName, updateHistory = true) {
     if (currentUser) {
       if (profilePill) profilePill.classList.remove('hidden');
       if (portalBtn) {
-        if (currentUser.role === 'admin') {
+        if (currentUser.role === 'admin' || currentUser.role === 'superadmin') {
           portalBtn.classList.remove('hidden');
           portalBtn.style.removeProperty('display');
         } else {
@@ -1019,7 +1044,7 @@ function navigate(viewName, updateHistory = true) {
   const switchText = document.getElementById('portal-switch-text');
   const switchIcon = document.getElementById('portal-switch-icon');
   if (switchBtn && switchText) {
-    const isActuallyAdmin = currentUser && currentUser.role === 'admin' && viewName !== 'login' && viewName !== 'register';
+    const isActuallyAdmin = currentUser && (currentUser.role === 'admin' || currentUser.role === 'superadmin') && viewName !== 'login' && viewName !== 'register' && viewName !== 'adminlogin' && viewName !== 'superrootadminlogin';
     if (viewName === 'admin') {
       switchText.textContent = 'User Portal';
       switchBtn.className = `px-2.5 py-1 rounded-full text-[11px] font-bold flex items-center gap-1.5 shadow-sm transition bg-cyan-500/15 border border-cyan-500/40 text-cyan-400 hover:bg-cyan-500/25 active:scale-95 ${!isActuallyAdmin ? 'hidden' : ''}`.trim();
@@ -2768,12 +2793,117 @@ let adminCachedUsers = [];
 let currentInspectedUserId = null;
 let originalAdminToken = localStorage.getItem('catalyst_admin_orig_token') || null;
 
+let adminCurrentScope = {
+  isSuperAdmin: false,
+  teamAdmins: [],
+  selectedTeamId: 'all'
+};
+
+function getAdminScopeQuery() {
+  if (adminCurrentScope.isSuperAdmin && adminCurrentScope.selectedTeamId && adminCurrentScope.selectedTeamId !== 'all') {
+    return `?teamAdminId=${encodeURIComponent(adminCurrentScope.selectedTeamId)}`;
+  }
+  return '';
+}
+
+function handleSuperAdminTeamChange() {
+  const select = document.getElementById('superadmin-team-select');
+  if (select) {
+    adminCurrentScope.selectedTeamId = select.value;
+  }
+  loadAdminData();
+}
+window.handleSuperAdminTeamChange = handleSuperAdminTeamChange;
+
+function filterSuperAdminToTeam(teamId) {
+  const select = document.getElementById('superadmin-team-select');
+  if (select) {
+    select.value = String(teamId);
+    adminCurrentScope.selectedTeamId = String(teamId);
+    handleSuperAdminTeamChange();
+    switchAdminTab('users');
+  }
+}
+window.filterSuperAdminToTeam = filterSuperAdminToTeam;
+
+function copyTeamAdminInviteLink(refCode) {
+  const code = refCode || (currentUser?.referral_code || currentUser?.username);
+  const url = `${window.location.origin}/?ref=${encodeURIComponent(code)}`;
+  copyToClipboard(url);
+  showToast(`Team invite link copied: ${url}`, 'success');
+}
+window.copyTeamAdminInviteLink = copyTeamAdminInviteLink;
+
 async function loadAdminData() {
-  if (!token || !currentUser || currentUser.role !== 'admin') return;
+  if (!token || !currentUser || (currentUser.role !== 'admin' && currentUser.role !== 'superadmin')) return;
 
   try {
+    // 0. Discover Admin Scope (Super Root Admin vs Team Admin)
+    const meRes = await fetch(`${API_BASE}/admin/me`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const meData = await meRes.json();
+    if (meData.success) {
+      adminCurrentScope.isSuperAdmin = !!meData.isSuperAdmin;
+      adminCurrentScope.teamAdmins = meData.teamAdmins || [];
+
+      // Update Top Status Badges
+      const roleBadge = document.getElementById('admin-portal-role-badge');
+      const userTag = document.getElementById('admin-portal-user-tag');
+      const scopeWrapper = document.getElementById('superadmin-scope-wrapper');
+      const teamSelect = document.getElementById('superadmin-team-select');
+      const teamTabBtn = document.getElementById('admin-tab-btn-teamadmins');
+      const inviteBanner = document.getElementById('team-admin-invite-banner');
+
+      if (adminCurrentScope.isSuperAdmin) {
+        if (roleBadge) {
+          roleBadge.textContent = 'SUPER ROOT ADMIN';
+          roleBadge.className = 'text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/40 uppercase tracking-wider flex items-center gap-1';
+        }
+        if (userTag) {
+          userTag.textContent = 'Global Platform Architecture & Multi-Team Governance';
+        }
+        if (scopeWrapper) scopeWrapper.classList.remove('hidden');
+        if (teamTabBtn) teamTabBtn.classList.remove('hidden');
+        if (inviteBanner) inviteBanner.classList.add('hidden');
+
+        // Populate team select if needed
+        if (teamSelect && (!teamSelect.children || teamSelect.children.length <= 1)) {
+          const currentVal = adminCurrentScope.selectedTeamId || 'all';
+          teamSelect.innerHTML = `
+            <option value="all">Global (All Teams Platform-Wide)</option>
+            ${adminCurrentScope.teamAdmins.map(ta => `
+              <option value="${ta.id}">${ta.team_name || ta.username} (@${ta.username})</option>
+            `).join('')}
+          `;
+          teamSelect.value = currentVal;
+        }
+      } else {
+        if (roleBadge) {
+          roleBadge.textContent = 'TEAM ADMIN';
+          roleBadge.className = 'text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 uppercase tracking-wider flex items-center gap-1';
+        }
+        if (userTag) {
+          const tName = meData.user.team_name || meData.user.username;
+          userTag.textContent = `${tName} — Isolated Team Network`;
+        }
+        if (scopeWrapper) scopeWrapper.classList.add('hidden');
+        if (teamTabBtn) teamTabBtn.classList.add('hidden');
+        if (inviteBanner) {
+          inviteBanner.classList.remove('hidden');
+          const tNameEl = document.getElementById('team-admin-banner-team-name');
+          if (tNameEl) tNameEl.textContent = meData.user.team_name || meData.user.username;
+          const linkInput = document.getElementById('team-admin-banner-link-input');
+          const myRef = meData.user.referral_code || meData.user.username;
+          if (linkInput) linkInput.value = `${window.location.origin}/?ref=${encodeURIComponent(myRef)}`;
+        }
+      }
+    }
+
+    const scopeQuery = getAdminScopeQuery();
+
     // 1. Load Platform Stats (Total Business, Deposits, Withdrawals, Users, ROI)
-    const statsRes = await fetch(`${API_BASE}/admin/stats`, {
+    const statsRes = await fetch(`${API_BASE}/admin/stats${scopeQuery}`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
     const statsData = await statsRes.json();
@@ -2863,7 +2993,7 @@ async function loadAdminData() {
     }
 
     // 2. Load Members List
-    const usersRes = await fetch(`${API_BASE}/admin/users`, {
+    const usersRes = await fetch(`${API_BASE}/admin/users${scopeQuery}`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
     const usersData = await usersRes.json();
@@ -2885,13 +3015,18 @@ async function loadAdminData() {
     // 6. Load Announcements & Pop Image Settings
     await loadAdminSettings();
 
+    // 7. Load Team Admins (if Super Root Admin)
+    if (adminCurrentScope.isSuperAdmin) {
+      await loadTeamAdminsList();
+    }
+
   } catch (err) {
     console.error('Error loading admin data:', err);
   }
 }
 
 function switchAdminTab(tabName) {
-  const tabs = ['users', 'withdrawals', 'deposits', 'tickets', 'announcements', 'settings'];
+  const tabs = ['users', 'withdrawals', 'deposits', 'tickets', 'announcements', 'settings', 'teamadmins'];
   tabs.forEach(t => {
     const btn = document.getElementById(`admin-tab-btn-${t}`);
     const content = document.getElementById(`admin-tab-content-${t}`);
@@ -2910,6 +3045,7 @@ function switchAdminTab(tabName) {
     }
   });
   if (tabName === 'settings') loadAdminPlatformSettings();
+  if (tabName === 'teamadmins') loadTeamAdminsList();
   if (window.lucide) lucide.createIcons();
 }
 window.switchAdminTab = switchAdminTab;
@@ -3149,7 +3285,8 @@ window.handleAdminAdjustBalance = handleAdminAdjustBalance;
 // ==================== ADMIN DEPOSITS & WITHDRAWALS ====================
 
 async function loadAdminWithdrawals() {
-  const withRes = await fetch(`${API_BASE}/admin/withdrawals`, {
+  const scopeQuery = getAdminScopeQuery();
+  const withRes = await fetch(`${API_BASE}/admin/withdrawals${scopeQuery}`, {
     headers: { 'Authorization': `Bearer ${token}` }
   });
   const withData = await withRes.json();
@@ -3290,7 +3427,8 @@ async function rejectWithdrawal(id) {
 window.rejectWithdrawal = rejectWithdrawal;
 
 async function loadAdminDeposits() {
-  const depRes = await fetch(`${API_BASE}/admin/deposits`, {
+  const scopeQuery = getAdminScopeQuery();
+  const depRes = await fetch(`${API_BASE}/admin/deposits${scopeQuery}`, {
     headers: { 'Authorization': `Bearer ${token}` }
   });
   const depData = await depRes.json();
@@ -4454,3 +4592,262 @@ function loadAdminPlatformSettings() {
     }
   }).catch(err => console.error('Failed to load platform settings:', err));
 }
+
+// ==================== SUPER ROOT ADMIN: TEAM ADMINS MANAGEMENT ====================
+
+async function loadTeamAdminsList() {
+  const container = document.getElementById('team-admins-list');
+  if (!container) return;
+
+  try {
+    const res = await fetch(`${API_BASE}/admin/team-admins`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const data = await res.json();
+    if (!data.success || !data.teamAdmins) {
+      container.innerHTML = `<div class="text-center py-8 text-slate-500 bg-slate-900/50 rounded-2xl border border-slate-800">Failed to load team administrators</div>`;
+      return;
+    }
+
+    const teamAdmins = data.teamAdmins;
+    const badgeEl = document.getElementById('admin-badge-teamadmins');
+    if (badgeEl) {
+      badgeEl.textContent = teamAdmins.length;
+      badgeEl.classList.remove('hidden');
+    }
+
+    if (teamAdmins.length === 0) {
+      container.innerHTML = `<div class="text-center py-8 text-slate-500 bg-slate-900/50 rounded-2xl border border-slate-800">No team administrators configured yet. Click "Add New Team Admin" above.</div>`;
+      return;
+    }
+
+    container.innerHTML = teamAdmins.map(ta => {
+      const inviteUrl = `${window.location.origin}/?ref=${encodeURIComponent(ta.referral_code || ta.username)}`;
+      const isSelected = String(adminCurrentScope.selectedTeamId) === String(ta.id);
+      return `
+        <div class="p-4 rounded-2xl bg-slate-900/90 border ${isSelected ? 'border-purple-500/80 shadow-purple-500/10' : 'border-slate-800'} hover:border-slate-700 transition space-y-3.5 shadow-md">
+          <div class="flex items-start justify-between gap-3">
+            <div class="flex items-center gap-3 min-w-0">
+              <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-purple-600 to-indigo-600 text-white font-extrabold text-sm flex items-center justify-center shrink-0 shadow-md shadow-purple-500/20">
+                ${(ta.team_name || ta.username || 'T')[0].toUpperCase()}
+              </div>
+              <div class="min-w-0">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <h4 class="font-extrabold text-white text-sm truncate">${ta.team_name || 'Unnamed Team'}</h4>
+                  <span class="text-slate-400 font-mono text-xs">(@${ta.username})</span>
+                </div>
+                <div class="text-[11px] text-slate-400 font-mono flex items-center gap-2 mt-0.5 flex-wrap">
+                  <span>Ref: <strong class="text-amber-400">${ta.referral_code || ta.username}</strong></span>
+                  <span class="text-slate-600">&bull;</span>
+                  <span>Email: <span class="text-slate-300">${ta.email || 'None'}</span></span>
+                </div>
+              </div>
+            </div>
+            <div class="flex flex-col items-end gap-1.5 shrink-0">
+              <span class="text-[9px] uppercase px-2 py-0.5 rounded-full font-bold font-mono ${ta.status === 'active' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'} flex items-center gap-1">
+                <span class="w-1.5 h-1.5 rounded-full ${ta.status === 'active' ? 'bg-emerald-400' : 'bg-rose-400'}"></span>
+                ${ta.status}
+              </span>
+              <span class="text-[9px] text-slate-500 font-mono">Admin ID #${ta.id}</span>
+            </div>
+          </div>
+
+          <!-- Team Metric Chips -->
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 text-xs">
+            <div class="p-2.5 rounded-xl bg-slate-950/60 border border-slate-800/80">
+              <span class="text-[10px] text-slate-500 font-semibold block uppercase tracking-wider">Team Members</span>
+              <span class="text-sm font-extrabold text-white font-mono mt-0.5 block">${ta.team_member_count || 0}</span>
+            </div>
+            <div class="p-2.5 rounded-xl bg-slate-950/60 border border-slate-800/80">
+              <span class="text-[10px] text-slate-500 font-semibold block uppercase tracking-wider">Deposits Volume</span>
+              <span class="text-sm font-extrabold text-emerald-400 font-mono mt-0.5 block">$${parseFloat(ta.team_deposit_volume || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+            </div>
+            <div class="p-2.5 rounded-xl bg-slate-950/60 border border-slate-800/80">
+              <span class="text-[10px] text-slate-500 font-semibold block uppercase tracking-wider">Active Investments</span>
+              <span class="text-sm font-extrabold text-amber-400 font-mono mt-0.5 block">$${parseFloat(ta.team_active_investments || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+            </div>
+            <div class="p-2.5 rounded-xl bg-slate-950/60 border border-slate-800/80">
+              <span class="text-[10px] text-slate-500 font-semibold block uppercase tracking-wider">Withdrawals</span>
+              <span class="text-sm font-extrabold text-rose-400 font-mono mt-0.5 block">$${parseFloat(ta.team_withdrawal_volume || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+            </div>
+          </div>
+
+          <!-- Team Invite Link Row -->
+          <div class="p-2.5 rounded-xl bg-purple-950/20 border border-purple-500/20 flex items-center justify-between gap-2">
+            <div class="min-w-0 flex items-center gap-2">
+              <i data-lucide="link" class="w-3.5 h-3.5 text-purple-400 shrink-0"></i>
+              <span class="font-mono text-[11px] text-purple-200 truncate select-all">${inviteUrl}</span>
+            </div>
+            <button type="button" onclick="copyTeamAdminInviteLink('${ta.referral_code || ta.username}')" class="px-2.5 py-1 rounded-lg bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 font-bold text-[10px] shrink-0 transition active:scale-95 cursor-pointer">
+              Copy Link
+            </button>
+          </div>
+
+          <!-- Actions Row -->
+          <div class="flex items-center gap-2 pt-1 border-t border-slate-800/80 flex-wrap">
+            <button type="button" onclick="filterSuperAdminToTeam(${ta.id})" class="flex-1 min-w-[120px] py-2 px-3 rounded-xl ${isSelected ? 'bg-purple-500 text-white' : 'bg-purple-500/20 text-purple-300 border border-purple-500/30 hover:bg-purple-500/30'} font-bold text-xs transition flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer">
+              <i data-lucide="filter" class="w-3.5 h-3.5"></i>
+              <span>${isSelected ? 'Viewing Scope ✓' : 'Filter Scope'}</span>
+            </button>
+            <button type="button" onclick="openEditTeamAdminModal(${ta.id}, '${ta.username}', '${ta.team_name || ''}', '${ta.status}')" class="py-2 px-3.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs transition flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer border border-slate-700">
+              <i data-lucide="settings" class="w-3.5 h-3.5"></i>
+              <span>Configure</span>
+            </button>
+            <button type="button" onclick="impersonateTeamAdmin(${ta.id})" class="py-2 px-3.5 rounded-xl bg-amber-500/20 border border-amber-500/30 hover:bg-amber-500/30 text-amber-300 font-bold text-xs transition flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer">
+              <i data-lucide="log-in" class="w-3.5 h-3.5"></i>
+              <span>Impersonate</span>
+            </button>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    if (window.lucide) lucide.createIcons();
+  } catch (err) {
+    console.error('Error loading team admins:', err);
+    container.innerHTML = `<div class="text-center py-8 text-slate-500 bg-slate-900/50 rounded-2xl border border-slate-800">Error loading team admins: ${err.message}</div>`;
+  }
+}
+window.loadTeamAdminsList = loadTeamAdminsList;
+
+function openCreateTeamAdminModal() {
+  const form = document.getElementById('create-team-admin-form');
+  if (form) form.reset();
+  openModal('createTeamAdminModal');
+}
+window.openCreateTeamAdminModal = openCreateTeamAdminModal;
+
+async function handleCreateTeamAdminSubmit(e) {
+  e.preventDefault();
+  const username = document.getElementById('cta-username')?.value.trim();
+  const team_name = document.getElementById('cta-team-name')?.value.trim();
+  const email = document.getElementById('cta-email')?.value.trim();
+  const referral_code = document.getElementById('cta-refcode')?.value.trim();
+  const password = document.getElementById('cta-password')?.value;
+  const btn = document.getElementById('btn-create-team-admin-submit');
+
+  if (!username || !team_name || !email || !password) {
+    showToast('Please fill all required fields', 'error');
+    return;
+  }
+
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Creating Team Admin...';
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}/admin/team-admins`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ username, team_name, email, referral_code, password })
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast(`Team Admin @${username} created successfully!`, 'success');
+      closeModal('createTeamAdminModal');
+      await loadAdminData();
+      await loadTeamAdminsList();
+    } else {
+      showToast(data.error || 'Failed to create team admin', 'error');
+    }
+  } catch (err) {
+    showToast(err.message, 'error');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = 'Create Team Admin Account';
+    }
+  }
+}
+window.handleCreateTeamAdminSubmit = handleCreateTeamAdminSubmit;
+
+function openEditTeamAdminModal(id, username, teamName, status) {
+  document.getElementById('eta-admin-id').value = id;
+  document.getElementById('eta-target-username').textContent = `Configuring @${username}`;
+  document.getElementById('eta-team-name').value = teamName || '';
+  document.getElementById('eta-status').value = status || 'active';
+  document.getElementById('eta-password').value = '';
+  openModal('editTeamAdminModal');
+}
+window.openEditTeamAdminModal = openEditTeamAdminModal;
+
+async function handleEditTeamAdminSubmit(e) {
+  e.preventDefault();
+  const id = document.getElementById('eta-admin-id')?.value;
+  const team_name = document.getElementById('eta-team-name')?.value.trim();
+  const status = document.getElementById('eta-status')?.value;
+  const password = document.getElementById('eta-password')?.value;
+  const btn = document.getElementById('btn-edit-team-admin-submit');
+
+  if (!id) return;
+
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Updating...';
+  }
+
+  try {
+    const payload = { team_name, status };
+    if (password && password.trim().length >= 6) {
+      payload.password = password.trim();
+    }
+
+    const res = await fetch(`${API_BASE}/admin/team-admins/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast('Team Admin updated successfully!', 'success');
+      closeModal('editTeamAdminModal');
+      await loadAdminData();
+      await loadTeamAdminsList();
+    } else {
+      showToast(data.error || 'Failed to update team admin', 'error');
+    }
+  } catch (err) {
+    showToast(err.message, 'error');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = 'Update Team Admin';
+    }
+  }
+}
+window.handleEditTeamAdminSubmit = handleEditTeamAdminSubmit;
+
+async function impersonateTeamAdmin(id) {
+  if (!confirm('Switch session and enter this Team Admin portal? You will operate as this team admin.')) return;
+  try {
+    const res = await fetch(`${API_BASE}/admin/team-admins/${id}/impersonate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    const data = await res.json();
+    if (data.success) {
+      token = data.token;
+      currentUser = data.user;
+      localStorage.setItem('catalyst_token', token);
+      showToast(`Switched into ${currentUser.team_name || currentUser.username} Admin Portal!`, 'success');
+      updateAuthUI();
+      navigate('admin');
+      await loadAdminData();
+    } else {
+      showToast(data.error || 'Failed to impersonate team admin', 'error');
+    }
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+window.impersonateTeamAdmin = impersonateTeamAdmin;

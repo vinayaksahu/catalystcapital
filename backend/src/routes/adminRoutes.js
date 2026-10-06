@@ -1,36 +1,240 @@
 const express = require('express');
 const router = express.Router();
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 const { db } = require('../db/database');
 const roiEngineService = require('../services/roiEngineService');
 const walletService = require('../services/walletService');
 const notificationService = require('../services/notificationService');
-const { authenticateToken, requireAdmin } = require('../middleware/authMiddleware');
+const { authenticateToken, requireAdmin, requireSuperAdmin, JWT_SECRET } = require('../middleware/authMiddleware');
 
 router.use(authenticateToken);
 router.use(requireAdmin);
 
+/**
+ * Helper to determine team scope
+ * Superadmin can view all teams or filter by ?teamAdminId=
+ * Team Admin is strictly locked to their own team (req.user.id)
+ */
+function getAdminScope(req) {
+  if (req.user.role === 'superadmin') {
+    const filterId = req.query.teamAdminId ? parseInt(req.query.teamAdminId, 10) : null;
+    return {
+      isSuperAdmin: true,
+      teamAdminId: filterId && !isNaN(filterId) ? filterId : null
+    };
+  }
+  return {
+    isSuperAdmin: false,
+    teamAdminId: req.user.id
+  };
+}
 
+/**
+ * Verify user belongs to the caller's team (security isolation)
+ */
+async function assertUserInTeam(userId, req) {
+  const target = await db.get('SELECT * FROM users WHERE id = ?', [userId]);
+  if (!target) {
+    const err = new Error('Target user not found');
+    err.status = 404;
+    throw err;
+  }
+  if (req.user.role !== 'superadmin') {
+    if (target.team_admin_id !== req.user.id && target.sponsor_id !== req.user.id) {
+      const err = new Error('Unauthorized: User does not belong to your team');
+      err.status = 403;
+      throw err;
+    }
+  }
+  return target;
+}
 
-// Users management list
-router.get('/users', async (req, res) => {
+// -------------------------------------------------------------
+// Admin / Superadmin Identity & Scope Profile
+// -------------------------------------------------------------
+router.get('/me', async (req, res) => {
   try {
-    const users = await db.all(`
-      SELECT u.id, u.username, u.email, u.full_name, u.phone, u.role, u.referral_code, u.sponsor_id,
-             u.wallet_balance, u.roi_balance, u.commission_balance, u.usdt_address, u.status, u.created_at,
-             s.username as sponsor_username,
-             COALESCE((SELECT SUM(amount) FROM investments WHERE user_id = u.id AND status = 'active'), 0) as active_invested
-      FROM users u
-      LEFT JOIN users s ON u.sponsor_id = s.id
-      ORDER BY u.created_at DESC
-    `);
+    const adminUser = await db.get(`
+      SELECT id, username, email, full_name, role, referral_code, team_admin_id, team_name, wallet_balance, created_at
+      FROM users WHERE id = ?
+    `, [req.user.id]);
 
-    res.json({ success: true, users });
+    const isSuper = adminUser.role === 'superadmin';
+    const teamAdmins = isSuper ? await db.all(`
+      SELECT id, username, full_name, team_name, referral_code, status
+      FROM users WHERE role = 'admin' ORDER BY id ASC
+    `) : [];
+
+    res.json({
+      success: true,
+      admin: adminUser,
+      isSuperAdmin: isSuper,
+      teamName: adminUser.team_name || (isSuper ? 'Super Root Administration' : adminUser.username),
+      referralCode: adminUser.referral_code,
+      teamAdmins
+    });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// Adjust balance manually
+// -------------------------------------------------------------
+// Super Root Admin: Team Admins Management
+// -------------------------------------------------------------
+router.get('/team-admins', requireSuperAdmin, async (req, res) => {
+  try {
+    const teamAdmins = await db.all(`
+      SELECT a.id, a.username, a.email, a.full_name, a.team_name, a.referral_code, a.status, a.created_at, a.wallet_balance,
+             (SELECT COUNT(*) FROM users WHERE (team_admin_id = a.id OR sponsor_id = a.id) AND role = 'user') as total_members,
+             COALESCE((SELECT COUNT(DISTINCT user_id) FROM investments WHERE user_id IN (SELECT id FROM users WHERE team_admin_id = a.id OR sponsor_id = a.id) AND status = 'active'), 0) as active_investors,
+             COALESCE((SELECT SUM(amount) FROM investments WHERE user_id IN (SELECT id FROM users WHERE team_admin_id = a.id OR sponsor_id = a.id)), 0) as total_investments,
+             COALESCE((SELECT SUM(amount) FROM deposits WHERE user_id IN (SELECT id FROM users WHERE team_admin_id = a.id OR sponsor_id = a.id) AND status = 'completed'), 0) as total_deposits,
+             COALESCE((SELECT SUM(amount) FROM withdrawals WHERE user_id IN (SELECT id FROM users WHERE team_admin_id = a.id OR sponsor_id = a.id) AND status = 'approved'), 0) as total_withdrawals
+      FROM users a
+      WHERE a.role = 'admin'
+      ORDER BY a.id ASC
+    `);
+
+    res.json({ success: true, teamAdmins });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+router.post('/team-admins', requireSuperAdmin, async (req, res) => {
+  try {
+    const { username, email, password, fullName, teamName, referralCode, initialBalance = 0 } = req.body;
+    if (!username || !email || !password || !fullName || !teamName) {
+      return res.status(400).json({ success: false, error: 'Username, email, password, full name, and team name are required' });
+    }
+
+    const cleanUsername = username.trim();
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanRef = (referralCode || cleanUsername).trim().toUpperCase();
+
+    const existing = await db.get(
+      'SELECT id FROM users WHERE lower(username) = ? OR lower(email) = ? OR upper(referral_code) = ?',
+      [cleanUsername.toLowerCase(), cleanEmail, cleanRef]
+    );
+
+    if (existing) {
+      return res.status(400).json({ success: false, error: 'Username, email or referral code already in use' });
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10);
+    const numBalance = Math.max(0, parseFloat(initialBalance) || 0);
+
+    const insert = await db.run(`
+      INSERT INTO users (username, email, password_hash, full_name, phone, role, referral_code, team_name, wallet_balance, status)
+      VALUES (?, ?, ?, ?, '+10000000000', 'admin', ?, ?, ?, 'active')
+    `, [cleanUsername, cleanEmail, passwordHash, fullName.trim(), cleanRef, teamName.trim(), numBalance]);
+
+    const newId = insert.lastInsertRowid;
+    await db.run('UPDATE users SET team_admin_id = ? WHERE id = ?', [newId, newId]);
+
+    res.json({
+      success: true,
+      message: `Team Admin @${cleanUsername} (${teamName}) created successfully`,
+      admin: {
+        id: newId,
+        username: cleanUsername,
+        team_name: teamName.trim(),
+        referral_code: cleanRef,
+        email: cleanEmail
+      }
+    });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+router.put('/team-admins/:id', requireSuperAdmin, async (req, res) => {
+  try {
+    const adminId = parseInt(req.params.id, 10);
+    const target = await db.get("SELECT * FROM users WHERE id = ? AND role = 'admin'", [adminId]);
+    if (!target) return res.status(404).json({ success: false, error: 'Team Admin not found' });
+
+    const { fullName, teamName, status, password } = req.body;
+
+    if (fullName) {
+      await db.run('UPDATE users SET full_name = ? WHERE id = ?', [fullName.trim(), adminId]);
+    }
+    if (teamName) {
+      await db.run('UPDATE users SET team_name = ? WHERE id = ?', [teamName.trim(), adminId]);
+    }
+    if (status && ['active', 'suspended'].includes(status)) {
+      await db.run('UPDATE users SET status = ? WHERE id = ?', [status, adminId]);
+    }
+    if (password && password.trim().length >= 6) {
+      const passwordHash = await bcrypt.hash(password.trim(), 10);
+      await db.run('UPDATE users SET password_hash = ? WHERE id = ?', [passwordHash, adminId]);
+    }
+
+    res.json({ success: true, message: `Team Admin @${target.username} updated successfully` });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+// Impersonate Team Admin (for Super Root Admin)
+router.post('/team-admins/:id/impersonate', requireSuperAdmin, async (req, res) => {
+  try {
+    const adminId = parseInt(req.params.id, 10);
+    const targetAdmin = await db.get("SELECT * FROM users WHERE id = ? AND role = 'admin'", [adminId]);
+    if (!targetAdmin) return res.status(404).json({ success: false, error: 'Team Admin not found' });
+
+    const impersonationToken = jwt.sign(
+      { id: targetAdmin.id, username: targetAdmin.username, role: targetAdmin.role, impersonatedBy: req.user.username },
+      JWT_SECRET,
+      { expiresIn: '3h' }
+    );
+
+    const { password_hash, ...safeAdmin } = targetAdmin;
+    res.json({
+      success: true,
+      token: impersonationToken,
+      admin: safeAdmin
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// -------------------------------------------------------------
+// Scoped Users Management
+// -------------------------------------------------------------
+router.get('/users', async (req, res) => {
+  try {
+    const scope = getAdminScope(req);
+    let query = `
+      SELECT u.id, u.username, u.email, u.full_name, u.phone, u.role, u.referral_code, u.sponsor_id,
+             u.team_admin_id, u.team_name,
+             u.wallet_balance, u.roi_balance, u.commission_balance, u.usdt_address, u.status, u.created_at,
+             s.username as sponsor_username,
+             tm.username as team_admin_username,
+             tm.team_name as team_admin_team_name,
+             COALESCE((SELECT SUM(amount) FROM investments WHERE user_id = u.id AND status = 'active'), 0) as active_invested
+      FROM users u
+      LEFT JOIN users s ON u.sponsor_id = s.id
+      LEFT JOIN users tm ON u.team_admin_id = tm.id
+      WHERE u.role = 'user'
+    `;
+    const params = [];
+    if (scope.teamAdminId) {
+      query += ` AND (u.team_admin_id = ? OR u.sponsor_id = ?)`;
+      params.push(scope.teamAdminId, scope.teamAdminId);
+    }
+    query += ` ORDER BY u.created_at DESC`;
+
+    const users = await db.all(query, params);
+    res.json({ success: true, users, scopedTeamAdminId: scope.teamAdminId, isSuperAdmin: scope.isSuperAdmin });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Adjust balance manually (Scoped to team)
 router.post('/adjust-balance', async (req, res) => {
   try {
     const { userId, amount, walletType = 'wallet_balance', action = 'credit', reason = 'Admin adjustment' } = req.body;
@@ -54,10 +258,8 @@ router.post('/adjust-balance', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Invalid action. Must be credit or debit.' });
     }
 
-    const targetUser = await db.get(`SELECT id, ${walletType} FROM users WHERE id = ?`, [parsedUserId]);
-    if (!targetUser) {
-      return res.status(404).json({ success: false, error: 'Target user not found' });
-    }
+    // Security verify: caller has authority over user
+    const targetUser = await assertUserInTeam(parsedUserId, req);
 
     const currentBalance = parseFloat(targetUser[walletType]) || 0;
     if (action === 'debit' && currentBalance < numAmount) {
@@ -69,7 +271,10 @@ router.post('/adjust-balance', async (req, res) => {
 
     const delta = action === 'debit' ? -numAmount : numAmount;
 
-    await db.run(`UPDATE users SET ${walletType} = ${walletType} + ? WHERE id = ? AND (${action === 'debit' ? `${walletType} >= ${numAmount}` : '1=1'})`, [delta, parsedUserId]);
+    await db.run(
+      `UPDATE users SET ${walletType} = ${walletType} + ? WHERE id = ? AND (${action === 'debit' ? `${walletType} >= ${numAmount}` : '1=1'})`,
+      [delta, parsedUserId]
+    );
 
     await db.run(`
       INSERT INTO transactions (user_id, amount, type, wallet_type, description, status)
@@ -86,66 +291,78 @@ router.post('/adjust-balance', async (req, res) => {
 
     res.json({ success: true, message: `Successfully adjusted balance by ${delta}` });
   } catch (err) {
-    res.status(400).json({ success: false, error: err.message });
+    res.status(err.status || 400).json({ success: false, error: err.message });
   }
 });
 
-// Withdrawals list
+// -------------------------------------------------------------
+// Scoped Withdrawals List & Actions
+// -------------------------------------------------------------
 router.get('/withdrawals', async (req, res) => {
   try {
-    const withdrawals = await db.all(`
-      SELECT w.*, u.username, u.full_name, u.email
+    const scope = getAdminScope(req);
+    let query = `
+      SELECT w.*, u.username, u.full_name, u.email, u.team_admin_id, tm.team_name, tm.username as team_admin_username
       FROM withdrawals w
       JOIN users u ON w.user_id = u.id
-      ORDER BY w.created_at DESC
-    `);
+      LEFT JOIN users tm ON u.team_admin_id = tm.id
+    `;
+    const params = [];
+    if (scope.teamAdminId) {
+      query += ` WHERE (u.team_admin_id = ? OR u.sponsor_id = ?)`;
+      params.push(scope.teamAdminId, scope.teamAdminId);
+    }
+    query += ` ORDER BY w.created_at DESC`;
 
+    const withdrawals = await db.all(query, params);
     res.json({ success: true, withdrawals });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// Approve withdrawal
 router.post('/withdrawals/:id/approve', async (req, res) => {
   try {
+    const w = await db.get('SELECT * FROM withdrawals WHERE id = ?', [req.params.id]);
+    if (!w) return res.status(404).json({ success: false, error: 'Withdrawal not found' });
+    await assertUserInTeam(w.user_id, req);
+
     const { txHash, adminNote } = req.body;
     const result = await walletService.approveWithdrawal(Number(req.params.id), txHash, adminNote);
     res.json(result);
   } catch (err) {
-    res.status(400).json({ success: false, error: err.message });
+    res.status(err.status || 400).json({ success: false, error: err.message });
   }
 });
 
-// Reject withdrawal
 router.post('/withdrawals/:id/reject', async (req, res) => {
   try {
+    const w = await db.get('SELECT * FROM withdrawals WHERE id = ?', [req.params.id]);
+    if (!w) return res.status(404).json({ success: false, error: 'Withdrawal not found' });
+    await assertUserInTeam(w.user_id, req);
+
     const { reason } = req.body;
     const result = await walletService.rejectWithdrawal(Number(req.params.id), reason);
     res.json(result);
   } catch (err) {
-    res.status(400).json({ success: false, error: err.message });
+    res.status(err.status || 400).json({ success: false, error: err.message });
   }
 });
 
-// Trigger daily ROI cycle manually
+// -------------------------------------------------------------
+// Daily ROI Engine Trigger & Schedule
+// -------------------------------------------------------------
 router.post('/trigger-daily-roi', async (req, res) => {
   try {
     const { force = false } = req.body;
 
-    // Check if manual execution before closing time is restricted
     if (!force) {
       const setting = await db.get("SELECT value FROM system_settings WHERE key = 'roi_closing_time'");
       const closingTime = setting?.value || '00:00';
       const [closeHour, closeMin] = closingTime.split(':').map(Number);
 
       const now = new Date();
-      // Compare current hour and minute with closing time
-      const currentHour = now.getHours();
-      const currentMin = now.getMinutes();
-
-      // Only allow if current time has reached or passed closing time on this day
-      const currentMinutesOfDay = currentHour * 60 + currentMin;
+      const currentMinutesOfDay = now.getHours() * 60 + now.getMinutes();
       const closingMinutesOfDay = closeHour * 60 + closeMin;
 
       if (currentMinutesOfDay < closingMinutesOfDay) {
@@ -166,7 +383,6 @@ router.post('/trigger-daily-roi', async (req, res) => {
   }
 });
 
-// Forecast pending daily ROI
 router.get('/pending-roi-summary', async (req, res) => {
   try {
     const forecast = await roiEngineService.getPendingRoiSummary();
@@ -176,31 +392,75 @@ router.get('/pending-roi-summary', async (req, res) => {
   }
 });
 
-// Enhanced Platform Stats (Total Business, Deposits, Withdrawals, Users, ROI)
+// -------------------------------------------------------------
+// Scoped Platform / Team Stats
+// -------------------------------------------------------------
 router.get('/stats', async (req, res) => {
   try {
-    const totalUsersRow = await db.get("SELECT COUNT(*) as c FROM users WHERE role = 'user'");
+    const scope = getAdminScope(req);
+    let userFilter = "role = 'user'";
+    let userFilterParams = [];
+    let userSubquery = "";
+
+    if (scope.teamAdminId) {
+      userFilter = "(team_admin_id = ? OR sponsor_id = ?) AND role = 'user'";
+      userFilterParams = [scope.teamAdminId, scope.teamAdminId];
+      userSubquery = "WHERE user_id IN (SELECT id FROM users WHERE (team_admin_id = ? OR sponsor_id = ?) AND role = 'user')";
+    }
+
+    const totalUsersRow = await db.get(`SELECT COUNT(*) as c FROM users WHERE ${userFilter}`, userFilterParams);
     const totalUsers = totalUsersRow ? parseInt(totalUsersRow.c, 10) : 0;
 
-    const totalInvestments = await db.get('SELECT COUNT(*) as c, COALESCE(SUM(amount), 0) as vol FROM investments');
-    const activeInvestments = await db.get("SELECT COUNT(*) as c, COALESCE(SUM(amount), 0) as vol FROM investments WHERE status = 'active'");
+    const teamParams = scope.teamAdminId ? [scope.teamAdminId, scope.teamAdminId] : [];
 
-    // Total Business = all completed deposits + all active & completed investments volume
-    const totalDepositsCompleted = await db.get("SELECT COUNT(*) as c, COALESCE(SUM(amount), 0) as vol FROM deposits WHERE status = 'completed'");
-    const pendingDeposits = await db.get("SELECT COUNT(*) as c, COALESCE(SUM(amount), 0) as vol FROM deposits WHERE status = 'pending'");
+    const totalInvestments = await db.get(
+      `SELECT COUNT(*) as c, COALESCE(SUM(amount), 0) as vol FROM investments ${userSubquery}`,
+      teamParams
+    );
+    const activeInvestments = await db.get(
+      `SELECT COUNT(*) as c, COALESCE(SUM(amount), 0) as vol FROM investments ${userSubquery ? `${userSubquery} AND status = 'active'` : "WHERE status = 'active'"}`,
+      teamParams
+    );
 
-    const roiPaidRow = await db.get("SELECT COALESCE(SUM(amount), 0) as total FROM transactions WHERE type = 'daily_roi' AND status = 'completed'");
-    const referralRoiPaidRow = await db.get("SELECT COALESCE(SUM(amount), 0) as total FROM transactions WHERE type = 'referral_roi' AND status = 'completed'");
-    const teamCommissionPaidRow = await db.get("SELECT COALESCE(SUM(amount), 0) as total FROM transactions WHERE type = 'team_commission' AND status = 'completed'");
+    const totalDepositsCompleted = await db.get(
+      `SELECT COUNT(*) as c, COALESCE(SUM(amount), 0) as vol FROM deposits ${userSubquery ? `${userSubquery} AND status = 'completed'` : "WHERE status = 'completed'"}`,
+      teamParams
+    );
+    const pendingDeposits = await db.get(
+      `SELECT COUNT(*) as c, COALESCE(SUM(amount), 0) as vol FROM deposits ${userSubquery ? `${userSubquery} AND status = 'pending'` : "WHERE status = 'pending'"}`,
+      teamParams
+    );
+
+    const roiPaidRow = await db.get(
+      `SELECT COALESCE(SUM(amount), 0) as total FROM transactions ${userSubquery ? `${userSubquery} AND type = 'daily_roi' AND status = 'completed'` : "WHERE type = 'daily_roi' AND status = 'completed'"}`,
+      teamParams
+    );
+    const referralRoiPaidRow = await db.get(
+      `SELECT COALESCE(SUM(amount), 0) as total FROM transactions ${userSubquery ? `${userSubquery} AND type = 'referral_roi' AND status = 'completed'` : "WHERE type = 'referral_roi' AND status = 'completed'"}`,
+      teamParams
+    );
+    const teamCommissionPaidRow = await db.get(
+      `SELECT COALESCE(SUM(amount), 0) as total FROM transactions ${userSubquery ? `${userSubquery} AND type = 'team_commission' AND status = 'completed'` : "WHERE type = 'team_commission' AND status = 'completed'"}`,
+      teamParams
+    );
 
     const roiPaid = roiPaidRow ? roiPaidRow.total : 0;
     const referralRoiPaid = referralRoiPaidRow ? referralRoiPaidRow.total : 0;
     const teamCommissionPaid = teamCommissionPaidRow ? teamCommissionPaidRow.total : 0;
 
-    const pendingWithdrawals = await db.get("SELECT COUNT(*) as c, COALESCE(SUM(amount), 0) as vol FROM withdrawals WHERE status = 'pending'");
-    const approvedWithdrawals = await db.get("SELECT COUNT(*) as c, COALESCE(SUM(amount), 0) as vol FROM withdrawals WHERE status = 'approved'");
+    const pendingWithdrawals = await db.get(
+      `SELECT COUNT(*) as c, COALESCE(SUM(amount), 0) as vol FROM withdrawals ${userSubquery ? `${userSubquery} AND status = 'pending'` : "WHERE status = 'pending'"}`,
+      teamParams
+    );
+    const approvedWithdrawals = await db.get(
+      `SELECT COUNT(*) as c, COALESCE(SUM(amount), 0) as vol FROM withdrawals ${userSubquery ? `${userSubquery} AND status = 'approved'` : "WHERE status = 'approved'"}`,
+      teamParams
+    );
 
-    const openTicketsRow = await db.get("SELECT COUNT(*) as c FROM support_tickets WHERE status = 'open'");
+    const openTicketsRow = await db.get(
+      `SELECT COUNT(*) as c FROM support_tickets ${userSubquery ? `${userSubquery} AND status = 'open'` : "WHERE status = 'open'"}`,
+      teamParams
+    );
 
     // Fetch ROI Closing Time & Last Execution
     const roiClosingTimeRow = await db.get("SELECT value FROM system_settings WHERE key = 'roi_closing_time'");
@@ -215,6 +475,8 @@ router.get('/stats', async (req, res) => {
 
     res.json({
       success: true,
+      isSuperAdmin: scope.isSuperAdmin,
+      scopedTeamAdminId: scope.teamAdminId,
       stats: {
         totalUsers,
         totalBusiness,
@@ -246,20 +508,14 @@ router.get('/stats', async (req, res) => {
   }
 });
 
-// Impersonate any user: generates a JWT for that user so admin can view/act as their portal
+// Impersonate any user
 router.post('/impersonate/:id', async (req, res) => {
   try {
-    const targetUser = await db.get('SELECT * FROM users WHERE id = ?', [req.params.id]);
-    if (!targetUser) {
-      return res.status(404).json({ success: false, error: 'User not found' });
-    }
+    const targetUser = await assertUserInTeam(req.params.id, req);
 
-    if (targetUser.role === 'admin') {
+    if (targetUser.role === 'admin' || targetUser.role === 'superadmin') {
       return res.status(400).json({ success: false, error: 'Cannot open portal for administrator account' });
     }
-
-    const { JWT_SECRET } = require('../middleware/authMiddleware');
-    const jwt = require('jsonwebtoken');
 
     const impersonationToken = jwt.sign(
       { id: targetUser.id, username: targetUser.username, role: targetUser.role, impersonatedBy: req.user.username },
@@ -267,24 +523,14 @@ router.post('/impersonate/:id', async (req, res) => {
       { expiresIn: '2h' }
     );
 
+    const { password_hash, ...safeUser } = targetUser;
     res.json({
       success: true,
       token: impersonationToken,
-      user: {
-        id: targetUser.id,
-        username: targetUser.username,
-        email: targetUser.email,
-        full_name: targetUser.full_name,
-        role: targetUser.role,
-        referral_code: targetUser.referral_code,
-        wallet_balance: targetUser.wallet_balance,
-        roi_balance: targetUser.roi_balance,
-        commission_balance: targetUser.commission_balance,
-        status: targetUser.status
-      }
+      user: safeUser
     });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    res.status(err.status || 500).json({ success: false, error: err.message });
   }
 });
 
@@ -299,6 +545,7 @@ router.get('/users/:id/details', async (req, res) => {
     `, [req.params.id]);
 
     if (!user) return res.status(404).json({ success: false, error: 'User not found' });
+    await assertUserInTeam(user.id, req);
 
     const investments = await db.all(`
       SELECT i.*, p.name as plan_name
@@ -321,13 +568,14 @@ router.get('/users/:id/details', async (req, res) => {
       directReferrals
     });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    res.status(err.status || 500).json({ success: false, error: err.message });
   }
 });
 
 // Manage User Status (active, suspended)
 router.post('/users/:id/status', async (req, res) => {
   try {
+    await assertUserInTeam(req.params.id, req);
     const { status } = req.body;
     if (!['active', 'suspended', 'inactive'].includes(status)) {
       return res.status(400).json({ success: false, error: 'Invalid status' });
@@ -335,13 +583,14 @@ router.post('/users/:id/status', async (req, res) => {
     await db.run('UPDATE users SET status = ? WHERE id = ?', [status, req.params.id]);
     res.json({ success: true, message: `User status changed to ${status}` });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    res.status(err.status || 500).json({ success: false, error: err.message });
   }
 });
 
 // Admin Update User BEP-20 Wallet Address
 router.post('/users/:id/wallet-address', async (req, res) => {
   try {
+    await assertUserInTeam(req.params.id, req);
     const { walletAddress } = req.body;
     if (!walletAddress || !walletAddress.trim()) {
       return res.status(400).json({ success: false, error: 'Valid BEP-20 wallet address is required' });
@@ -349,23 +598,6 @@ router.post('/users/:id/wallet-address', async (req, res) => {
     const cleanAddr = walletAddress.trim();
     await db.run('UPDATE users SET usdt_address = ? WHERE id = ?', [cleanAddr, req.params.id]);
 
-    // If updated user is admin or ID 1, synchronize system_settings usdt_deposit_address
-    const targetUser = await db.get('SELECT id, role FROM users WHERE id = ?', [req.params.id]);
-    if (targetUser && (targetUser.role === 'admin' || Number(targetUser.id) === 1)) {
-      if (db.isPostgres) {
-        await db.run(
-          'INSERT INTO system_settings (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value',
-          ['usdt_deposit_address', cleanAddr]
-        );
-      } else {
-        await db.run(
-          'INSERT INTO system_settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = ?',
-          ['usdt_deposit_address', cleanAddr, cleanAddr]
-        );
-      }
-    }
-
-    // Send notification to member
     await notificationService.createNotification({
       userId: req.params.id,
       type: 'adjustment',
@@ -376,36 +608,47 @@ router.post('/users/:id/wallet-address', async (req, res) => {
 
     res.json({ success: true, message: 'User wallet address updated successfully', usdt_address: cleanAddr });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    res.status(err.status || 500).json({ success: false, error: err.message });
   }
 });
 
-// Deposits List
+// -------------------------------------------------------------
+// Scoped Deposits List & Approval / Rejection
+// -------------------------------------------------------------
 router.get('/deposits', async (req, res) => {
   try {
-    const deposits = await db.all(`
-      SELECT d.*, u.username, u.full_name, u.email
+    const scope = getAdminScope(req);
+    let query = `
+      SELECT d.*, u.username, u.full_name, u.email, u.team_admin_id, tm.team_name, tm.username as team_admin_username
       FROM deposits d
       JOIN users u ON d.user_id = u.id
-      ORDER BY d.created_at DESC
-    `);
+      LEFT JOIN users tm ON u.team_admin_id = tm.id
+    `;
+    const params = [];
+    if (scope.teamAdminId) {
+      query += ` WHERE (u.team_admin_id = ? OR u.sponsor_id = ?)`;
+      params.push(scope.teamAdminId, scope.teamAdminId);
+    }
+    query += ` ORDER BY d.created_at DESC`;
+
+    const deposits = await db.all(query, params);
     res.json({ success: true, deposits });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// Approve Manual Deposit (Credits user wallet_balance if pending)
 router.post('/deposits/:id/approve', async (req, res) => {
   try {
     const deposit = await db.get('SELECT * FROM deposits WHERE id = ?', [req.params.id]);
     if (!deposit) return res.status(404).json({ success: false, error: 'Deposit record not found' });
     if (deposit.status === 'completed') return res.status(400).json({ success: false, error: 'Deposit already completed' });
 
+    await assertUserInTeam(deposit.user_id, req);
+
     await db.run("UPDATE deposits SET status = 'completed' WHERE id = ?", [req.params.id]);
     await db.run('UPDATE users SET wallet_balance = wallet_balance + ? WHERE id = ?', [deposit.amount, deposit.user_id]);
 
-    // Update existing pending transaction or insert completed one
     const existingTx = deposit.tx_hash ? await db.get("SELECT id FROM transactions WHERE reference_id = ? AND user_id = ?", [deposit.tx_hash, deposit.user_id]) : null;
     if (existingTx) {
       await db.run("UPDATE transactions SET status = 'completed', description = ? WHERE id = ?", [`Deposit Approved by Admin ($${deposit.amount})`, existingTx.id]);
@@ -416,7 +659,6 @@ router.post('/deposits/:id/approve', async (req, res) => {
       `, [deposit.user_id, deposit.amount, `Deposit Approved by Admin ($${deposit.amount})`, deposit.tx_hash || `DEP-${deposit.id}`]);
     }
 
-    // Deposit Approved Notification
     await notificationService.createNotification({
       userId: deposit.user_id,
       type: 'deposit',
@@ -428,11 +670,10 @@ router.post('/deposits/:id/approve', async (req, res) => {
 
     res.json({ success: true, message: `Deposit #${deposit.id} approved and credited` });
   } catch (err) {
-    res.status(400).json({ success: false, error: err.message });
+    res.status(err.status || 400).json({ success: false, error: err.message });
   }
 });
 
-// Reject Manual Deposit
 router.post('/deposits/:id/reject', async (req, res) => {
   try {
     const { reason = 'Invalid transaction hash / Rejected by Admin' } = req.body;
@@ -440,12 +681,13 @@ router.post('/deposits/:id/reject', async (req, res) => {
     if (!deposit) return res.status(404).json({ success: false, error: 'Deposit record not found' });
     if (deposit.status === 'completed') return res.status(400).json({ success: false, error: 'Completed deposits cannot be rejected' });
 
+    await assertUserInTeam(deposit.user_id, req);
+
     await db.run("UPDATE deposits SET status = 'rejected' WHERE id = ?", [req.params.id]);
     if (deposit.tx_hash) {
       await db.run("UPDATE transactions SET status = 'failed', description = ? WHERE reference_id = ? AND user_id = ?", [`Deposit Rejected by Admin (${reason})`, deposit.tx_hash, deposit.user_id]);
     }
 
-    // Deposit Rejected Notification
     await notificationService.createNotification({
       userId: deposit.user_id,
       type: 'deposit',
@@ -457,11 +699,10 @@ router.post('/deposits/:id/reject', async (req, res) => {
 
     res.json({ success: true, message: `Deposit #${deposit.id} rejected (${reason})` });
   } catch (err) {
-    res.status(400).json({ success: false, error: err.message });
+    res.status(err.status || 400).json({ success: false, error: err.message });
   }
 });
 
-// Manual Deposit Injection (Admin directly adds deposit for any user)
 router.post('/deposits/manual-create', async (req, res) => {
   try {
     const { userId, amount, network = 'USDT-BEP20', txHash } = req.body;
@@ -469,6 +710,8 @@ router.post('/deposits/manual-create', async (req, res) => {
     if (!userId || numAmount <= 0) {
       return res.status(400).json({ success: false, error: 'Valid userId and amount required' });
     }
+
+    await assertUserInTeam(userId, req);
 
     const cleanHash = txHash || 'ADMIN-DEP-' + Math.random().toString(36).substring(2, 10).toUpperCase();
 
@@ -484,7 +727,6 @@ router.post('/deposits/manual-create', async (req, res) => {
       VALUES (?, ?, 'deposit', 'wallet_balance', ?, ?, 'completed')
     `, [userId, numAmount, `Manual Deposit Credited by Admin via ${network}`, cleanHash]);
 
-    // Manual Deposit Notification
     await notificationService.createNotification({
       userId,
       type: 'deposit',
@@ -496,19 +738,30 @@ router.post('/deposits/manual-create', async (req, res) => {
 
     res.json({ success: true, message: `Credited $${numAmount} USDT deposit to user #${userId}`, depositId: insert.lastInsertRowid });
   } catch (err) {
-    res.status(400).json({ success: false, error: err.message });
+    res.status(err.status || 400).json({ success: false, error: err.message });
   }
 });
 
-// Support Tickets: Admin List & Reply
+// -------------------------------------------------------------
+// Support Tickets
+// -------------------------------------------------------------
 router.get('/tickets', async (req, res) => {
   try {
-    const tickets = await db.all(`
-      SELECT t.*, u.username, u.full_name, u.email
+    const scope = getAdminScope(req);
+    let query = `
+      SELECT t.*, u.username, u.full_name, u.email, u.team_admin_id, tm.team_name
       FROM support_tickets t
       JOIN users u ON t.user_id = u.id
-      ORDER BY t.created_at DESC
-    `);
+      LEFT JOIN users tm ON u.team_admin_id = tm.id
+    `;
+    const params = [];
+    if (scope.teamAdminId) {
+      query += ` WHERE (u.team_admin_id = ? OR u.sponsor_id = ?)`;
+      params.push(scope.teamAdminId, scope.teamAdminId);
+    }
+    query += ` ORDER BY t.created_at DESC`;
+
+    const tickets = await db.all(query, params);
     res.json({ success: true, tickets });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -520,6 +773,10 @@ router.post('/tickets/:id/reply', async (req, res) => {
     const { reply, status = 'resolved' } = req.body;
     if (!reply) return res.status(400).json({ success: false, error: 'Reply text required' });
 
+    const ticket = await db.get('SELECT * FROM support_tickets WHERE id = ?', [req.params.id]);
+    if (!ticket) return res.status(404).json({ success: false, error: 'Ticket not found' });
+    await assertUserInTeam(ticket.user_id, req);
+
     const nowExpr = db.isPostgres ? 'CURRENT_TIMESTAMP' : "datetime('now')";
     await db.run(`
       UPDATE support_tickets
@@ -529,11 +786,13 @@ router.post('/tickets/:id/reply', async (req, res) => {
 
     res.json({ success: true, message: 'Reply sent and ticket updated' });
   } catch (err) {
-    res.status(400).json({ success: false, error: err.message });
+    res.status(err.status || 400).json({ success: false, error: err.message });
   }
 });
 
-// System Settings
+// -------------------------------------------------------------
+// System Settings (Super Root Admin or Admin with sync)
+// -------------------------------------------------------------
 router.get('/settings', async (req, res) => {
   try {
     const settings = await db.all('SELECT key, value FROM system_settings');
@@ -547,7 +806,6 @@ router.post('/settings', async (req, res) => {
   try {
     const { key, value, settings } = req.body;
 
-    // Support batch saving multiple settings in one single fast transaction
     if (settings && typeof settings === 'object') {
       for (const [k, v] of Object.entries(settings)) {
         if (db.isPostgres) {

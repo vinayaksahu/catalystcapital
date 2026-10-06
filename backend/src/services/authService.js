@@ -69,20 +69,52 @@ class AuthService {
       throw new Error('Email already registered');
     }
 
-    // Validate Sponsor Code
+    // Validate Sponsor Code & Assign Team Admin
     let sponsorId = null;
+    let teamAdminId = null;
     if (sponsorCode && sponsorCode.trim()) {
-      const sponsor = await db.get('SELECT id FROM users WHERE upper(referral_code) = ?', [sponsorCode.trim().toUpperCase()]);
+      const sponsor = await db.get('SELECT id, role, team_admin_id FROM users WHERE upper(referral_code) = ?', [sponsorCode.trim().toUpperCase()]);
       if (sponsor) {
         sponsorId = sponsor.id;
+        if (sponsor.role === 'admin') {
+          teamAdminId = sponsor.id;
+        } else if (sponsor.team_admin_id) {
+          teamAdminId = sponsor.team_admin_id;
+        }
       } else {
         throw new Error('Invalid Sponsor / Referral code');
       }
     } else {
-      const admin = await db.get("SELECT id FROM users WHERE role = 'admin' LIMIT 1");
-      if (admin) {
-        sponsorId = admin.id;
+      const defaultAdmin = await db.get("SELECT id FROM users WHERE username = 'DF_TEAM_A' OR role = 'admin' ORDER BY id ASC LIMIT 1");
+      if (defaultAdmin) {
+        sponsorId = defaultAdmin.id;
+        teamAdminId = defaultAdmin.id;
       }
+    }
+
+    // Fallback: trace up sponsor chain to find root Team Admin
+    if (!teamAdminId && sponsorId) {
+      let curr = await db.get('SELECT id, role, sponsor_id, team_admin_id FROM users WHERE id = ?', [sponsorId]);
+      let depth = 0;
+      while (curr && depth < 20) {
+        depth++;
+        if (curr.role === 'admin') {
+          teamAdminId = curr.id;
+          break;
+        }
+        if (curr.team_admin_id) {
+          teamAdminId = curr.team_admin_id;
+          break;
+        }
+        if (!curr.sponsor_id) break;
+        curr = await db.get('SELECT id, role, sponsor_id, team_admin_id FROM users WHERE id = ?', [curr.sponsor_id]);
+      }
+    }
+
+    // Default to first admin if still null
+    if (!teamAdminId) {
+      const fallbackAdm = await db.get("SELECT id FROM users WHERE role = 'admin' ORDER BY id ASC LIMIT 1");
+      if (fallbackAdm) teamAdminId = fallbackAdm.id;
     }
 
     // Hash password
@@ -99,11 +131,11 @@ class AuthService {
 
     // Insert user
     const insert = await db.run(`
-      INSERT INTO users (username, email, password_hash, full_name, phone, role, referral_code, sponsor_id, wallet_balance, roi_balance, commission_balance, status)
-      VALUES (?, ?, ?, ?, ?, 'user', ?, ?, 0.0, 0.0, 0.0, 'active')
-    `, [cleanUsername, cleanEmail, passwordHash, fullName.trim(), phone ? phone.trim() : null, userIdCode, sponsorId]);
+      INSERT INTO users (username, email, password_hash, full_name, phone, role, referral_code, sponsor_id, team_admin_id, wallet_balance, roi_balance, commission_balance, status)
+      VALUES (?, ?, ?, ?, ?, 'user', ?, ?, ?, 0.0, 0.0, 0.0, 'active')
+    `, [cleanUsername, cleanEmail, passwordHash, fullName.trim(), phone ? phone.trim() : null, userIdCode, sponsorId, teamAdminId]);
 
-    const newUser = await db.get('SELECT id, username, email, full_name, phone, role, referral_code, sponsor_id, wallet_balance, roi_balance, commission_balance FROM users WHERE id = ?', [insert.lastInsertRowid]);
+    const newUser = await db.get('SELECT id, username, email, full_name, phone, role, referral_code, sponsor_id, team_admin_id, wallet_balance, roi_balance, commission_balance FROM users WHERE id = ?', [insert.lastInsertRowid]);
 
     // Send Welcome Credentials Email with Member USERID and Password
     try {
@@ -214,14 +246,25 @@ class AuthService {
     failedLoginAttemptsMap.delete(lockKey);
 
     // Role vs Portal restriction:
-    // If admin tries to login from Member portal:
-    if (user.role === 'admin' && portalType !== 'admin') {
-      throw new Error('Admin credentials cannot be used here. Please use the Admin Portal login page (/adminlogin).');
+    // 1. Super Root Admin:
+    if (portalType === 'superadmin' && user.role !== 'superadmin') {
+      throw new Error('Access denied. Only Super Root Administrator can login through this portal (/superrootadminlogin).');
+    }
+    if (user.role === 'superadmin' && portalType !== 'superadmin') {
+      throw new Error('Super Root Admin credentials must be used at /superrootadminlogin.');
     }
 
-    // If regular user tries to login from Admin portal:
+    // 2. Team Admin:
     if (portalType === 'admin' && user.role !== 'admin') {
-      throw new Error('Access denied. Only authorized administrators can login through this portal.');
+      throw new Error('Access denied. Only authorized team administrators can login through this portal (/adminlogin).');
+    }
+    if (user.role === 'admin' && portalType !== 'admin') {
+      throw new Error('Team Admin credentials cannot be used here. Please use the Admin Portal login page (/adminlogin).');
+    }
+
+    // 3. Member Portal:
+    if (portalType === 'member' && user.role !== 'user' && user.role !== 'member') {
+      throw new Error('Staff/Admin accounts cannot access member portal. Please use your designated admin portal.');
     }
 
     const token = jwt.sign(

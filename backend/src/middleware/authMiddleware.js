@@ -14,7 +14,7 @@ async function authenticateToken(req, res, next) {
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
     const user = await db.get(`
-      SELECT id, username, email, full_name, role, referral_code, sponsor_id,
+      SELECT id, username, email, full_name, role, referral_code, sponsor_id, team_admin_id, team_name,
              wallet_balance, roi_balance, commission_balance, usdt_address, status
       FROM users WHERE id = ?
     `, [decoded.id]);
@@ -35,10 +35,17 @@ async function authenticateToken(req, res, next) {
 }
 
 function requireAdmin(req, res, next) {
-  if (!req.user || req.user.role !== 'admin') {
+  if (!req.user || (req.user.role !== 'admin' && req.user.role !== 'superadmin')) {
     return res.status(403).json({ error: 'Admin access required' });
   }
   next();
 }
 
-module.exports = { authenticateToken, requireAdmin, JWT_SECRET };
+function requireSuperAdmin(req, res, next) {
+  if (!req.user || req.user.role !== 'superadmin') {
+    return res.status(403).json({ error: 'Super Root Admin access required' });
+  }
+  next();
+}
+
+module.exports = { authenticateToken, requireAdmin, requireSuperAdmin, JWT_SECRET };
