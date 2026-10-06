@@ -1184,13 +1184,18 @@
             <i data-lucide="zap" class="w-4.5 h-4.5"></i>
           </div>
           <div class="min-w-0">
-            <div class="text-xs font-bold text-white">Daily ROI Cycle Execution</div>
-            <div class="text-[10px] text-slate-400 truncate">Trigger 24hr ROI & Multi-Tier referral payouts instantly</div>
+            <div class="flex items-center gap-2">
+              <span class="text-xs font-bold text-white">Daily ROI Cycle Execution</span>
+              <span id="admin-roi-badge" class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700">Auto-Scheduled</span>
+            </div>
+            <div class="text-[10px] text-slate-400 truncate" id="admin-roi-cycle-subtitle">
+              Runs automatically daily at <span id="admin-roi-closing-time-text" class="text-amber-400 font-semibold font-mono">--:--</span>
+            </div>
           </div>
         </div>
         <div class="flex items-center gap-2 w-full sm:w-auto shrink-0">
-          <button onclick="triggerAdminDailyRoi()" class="flex-1 sm:flex-initial px-4 py-2 rounded-xl font-extrabold bg-amber-500 hover:bg-amber-400 text-black transition text-xs shadow-md shadow-amber-500/20 flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 whitespace-nowrap">
-            <i data-lucide="play" class="w-3.5 h-3.5"></i> <span>Run ROI Cycle</span>
+          <button id="admin-btn-run-roi" onclick="triggerAdminDailyRoi()" class="flex-1 sm:flex-initial px-4 py-2 rounded-xl font-extrabold bg-slate-800 text-slate-500 cursor-not-allowed transition text-xs flex items-center justify-center gap-1.5 whitespace-nowrap" disabled>
+            <i data-lucide="lock" class="w-3.5 h-3.5"></i> <span id="admin-btn-run-roi-text">Auto Scheduled</span>
           </button>
           <button onclick="openManualDepositModal()" class="flex-1 sm:flex-initial px-4 py-2 rounded-xl font-extrabold bg-emerald-500 hover:bg-emerald-400 text-black transition text-xs shadow-md shadow-emerald-500/20 flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 whitespace-nowrap">
             <i data-lucide="plus-circle" class="w-3.5 h-3.5"></i> <span>Credit Deposit</span>

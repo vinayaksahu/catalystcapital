@@ -131,7 +131,31 @@ router.post('/withdrawals/:id/reject', async (req, res) => {
 // Trigger daily ROI cycle manually
 router.post('/trigger-daily-roi', async (req, res) => {
   try {
-    const { force = true } = req.body;
+    const { force = false } = req.body;
+
+    // Check if manual execution before closing time is restricted
+    if (!force) {
+      const setting = await db.get("SELECT value FROM system_settings WHERE key = 'roi_closing_time'");
+      const closingTime = setting?.value || '00:00';
+      const [closeHour, closeMin] = closingTime.split(':').map(Number);
+
+      const now = new Date();
+      // Compare current hour and minute with closing time
+      const currentHour = now.getHours();
+      const currentMin = now.getMinutes();
+
+      // Only allow if current time has reached or passed closing time on this day
+      const currentMinutesOfDay = currentHour * 60 + currentMin;
+      const closingMinutesOfDay = closeHour * 60 + closeMin;
+
+      if (currentMinutesOfDay < closingMinutesOfDay) {
+        return res.status(400).json({
+          success: false,
+          error: `Daily ROI cycle is locked until automatic closing time (${closingTime}). Please wait for scheduled execution.`
+        });
+      }
+    }
+
     const result = await roiEngineService.processDailyRoi(force);
     res.json(result);
   } catch (err) {
@@ -175,6 +199,10 @@ router.get('/stats', async (req, res) => {
 
     const openTicketsRow = await db.get("SELECT COUNT(*) as c FROM support_tickets WHERE status = 'open'");
 
+    // Fetch ROI Closing Time & Last Execution
+    const roiClosingTimeRow = await db.get("SELECT value FROM system_settings WHERE key = 'roi_closing_time'");
+    const lastRoiTx = await db.get("SELECT created_at FROM transactions WHERE type = 'daily_roi' ORDER BY id DESC LIMIT 1");
+
     const totalInvestmentVol = totalInvestments ? totalInvestments.vol : 0;
     const totalDepositVol = totalDepositsCompleted ? totalDepositsCompleted.vol : 0;
     const totalBusiness = Math.max(totalInvestmentVol, totalDepositVol);
@@ -200,7 +228,9 @@ router.get('/stats', async (req, res) => {
         pendingWithdrawalsVolume: pendingWithdrawals ? pendingWithdrawals.vol : 0,
         approvedWithdrawalsCount: approvedWithdrawals ? parseInt(approvedWithdrawals.c, 10) : 0,
         approvedWithdrawalsVolume: approvedWithdrawals ? approvedWithdrawals.vol : 0,
-        openTicketsCount: openTicketsRow ? parseInt(openTicketsRow.c, 10) : 0
+        openTicketsCount: openTicketsRow ? parseInt(openTicketsRow.c, 10) : 0,
+        roiClosingTime: roiClosingTimeRow ? roiClosingTimeRow.value : '00:00',
+        lastRoiExecution: lastRoiTx ? lastRoiTx.created_at : null
       }
     });
   } catch (err) {
