@@ -506,6 +506,17 @@ async function initDatabase() {
     if (mainAdmin) {
       await db.run("UPDATE users SET team_admin_id = ? WHERE role IN ('user', 'member') AND (team_admin_id IS NULL OR team_admin_id = 0)", [mainAdmin.id]);
     }
+
+    // Clean up any historical cross-team notifications mistakenly delivered to parallel sub-admins
+    await db.run(`
+      DELETE FROM notifications 
+      WHERE user_id IN (SELECT id FROM users WHERE role = 'admin' AND id != 1)
+        AND (
+          (reference_id IN ('DEP-14', 'DEP-15')) OR
+          (message LIKE '%@vinayaksahu293%') OR
+          (reference_id = 'CC41961' AND user_id IN (16, 18))
+        )
+    `);
   } catch (err) {
     console.warn('Auto-seed multi-admin note:', err.message);
   }

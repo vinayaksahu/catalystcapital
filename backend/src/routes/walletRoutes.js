@@ -116,10 +116,21 @@ router.get('/overview', authenticateToken, async (req, res) => {
 
     const totalAssets = (user.wallet_balance || 0) + (user.roi_balance || 0) + (user.commission_balance || 0) + tradingAssets;
 
-    let depositAddress = settings.usdt_deposit_address && settings.usdt_deposit_address.trim() ? settings.usdt_deposit_address.trim() : null;
+    let depositAddress = null;
+    if (user.team_admin_id && Number(user.team_admin_id) > 1) {
+      const teamAdmin = await db.get("SELECT usdt_address FROM users WHERE id = ?", [user.team_admin_id]);
+      if (teamAdmin && teamAdmin.usdt_address && teamAdmin.usdt_address.trim().startsWith('0x')) {
+        depositAddress = teamAdmin.usdt_address.trim();
+      }
+    }
     if (!depositAddress) {
-      const admin = await db.get("SELECT usdt_address FROM users WHERE (role = 'admin' OR id = 1) AND usdt_address IS NOT NULL AND usdt_address != '' ORDER BY id ASC LIMIT 1");
-      depositAddress = admin && admin.usdt_address ? admin.usdt_address.trim() : null;
+      const mainAdmin = await db.get("SELECT usdt_address FROM users WHERE id = 1");
+      if (mainAdmin && mainAdmin.usdt_address && mainAdmin.usdt_address.trim().startsWith('0x')) {
+        depositAddress = mainAdmin.usdt_address.trim();
+      }
+    }
+    if (!depositAddress && settings.usdt_deposit_address && settings.usdt_deposit_address.trim().startsWith('0x')) {
+      depositAddress = settings.usdt_deposit_address.trim();
     }
 
     res.json({

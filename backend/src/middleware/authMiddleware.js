@@ -50,7 +50,7 @@ function requireAdmin(req, res, next) {
 
 function requireSuperAdmin(req, res, next) {
   if (!req.user || req.user.role !== 'superadmin' || req.user.isImpersonation) {
-    return res.status(403).json({ error: 'Super Root Admin access required' });
+    return res.status(403).json({ error: 'Unauthorized access' });
   }
   next();
 }

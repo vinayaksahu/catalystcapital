@@ -1023,7 +1023,11 @@ router.post('/settings', async (req, res) => {
           );
         }
         if (k === 'usdt_deposit_address' && String(v).trim().startsWith('0x')) {
-          await db.run("UPDATE users SET usdt_address = ? WHERE role = 'admin' OR id = 1", [String(v).trim()]);
+          const cleanAddr = String(v).trim();
+          await db.run("UPDATE users SET usdt_address = ? WHERE id = ?", [cleanAddr, req.user.id]);
+          if (req.user.role === 'superadmin' || req.user.id === 1) {
+            await db.run("UPDATE users SET usdt_address = ? WHERE id = 1", [cleanAddr]);
+          }
         }
       }
       return res.json({ success: true, message: 'Settings updated successfully' });
@@ -1044,7 +1048,11 @@ router.post('/settings', async (req, res) => {
     }
 
     if (key === 'usdt_deposit_address' && String(value).trim().startsWith('0x')) {
-      await db.run("UPDATE users SET usdt_address = ? WHERE role = 'admin' OR id = 1", [String(value).trim()]);
+      const cleanAddr = String(value).trim();
+      await db.run("UPDATE users SET usdt_address = ? WHERE id = ?", [cleanAddr, req.user.id]);
+      if (req.user.role === 'superadmin' || req.user.id === 1) {
+        await db.run("UPDATE users SET usdt_address = ? WHERE id = 1", [cleanAddr]);
+      }
     }
 
     res.json({ success: true, message: 'Setting updated' });
