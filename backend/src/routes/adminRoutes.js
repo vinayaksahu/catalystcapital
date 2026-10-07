@@ -1059,9 +1059,49 @@ router.post('/settings', async (req, res) => {
       }
     }
 
+    const emailService = require('../services/emailService');
+    emailService.initTransporter().catch(() => {});
+
     res.json({ success: true, message: 'Setting updated' });
   } catch (err) {
     res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+// Test SMTP Email Service Dispatch
+router.post('/settings/test-email', async (req, res) => {
+  try {
+    const { to } = req.body;
+    if (!to || !to.includes('@')) {
+      return res.status(400).json({ success: false, error: 'Valid recipient email address is required' });
+    }
+    const emailService = require('../services/emailService');
+    await emailService.initTransporter();
+    const result = await emailService.sendEmail({
+      to: to.trim().toLowerCase(),
+      subject: '[Catalyst Capital] SMTP Test Verification Email',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 520px; margin: 0 auto; padding: 24px; border: 1px solid #1e293b; border-radius: 16px; background-color: #0b0f19; color: #f8fafc;">
+          <div style="text-align: center; margin-bottom: 20px;">
+            <h2 style="color: #f59e0b; margin: 0; font-size: 22px; font-weight: 800;">CATALYST CAPITAL</h2>
+            <p style="color: #10b981; font-size: 13px; font-weight: bold; margin-top: 4px;">✅ SMTP Email Service Live & Active</p>
+          </div>
+          <div style="background-color: #111827; border: 1px solid #1f2937; border-radius: 12px; padding: 20px; text-align: center;">
+            <p style="font-size: 14px; color: #cbd5e1; margin-bottom: 12px;">This is a test verification email from your Catalyst Capital administration panel.</p>
+            <p style="font-size: 12px; color: #94a3b8;">Your SMTP credentials are functional and ready to dispatch real security OTP codes for Member Registrations, Password Resets, and BEP-20 Wallet Address changes.</p>
+          </div>
+          <div style="margin-top: 24px; text-align: center; font-size: 11px; color: #64748b;">
+            &copy; ${new Date().getFullYear()} Catalyst Capital. High Frequency AI Trading.
+          </div>
+        </div>
+      `
+    });
+    if (!result.success) {
+      return res.status(400).json({ success: false, error: result.error || 'Failed to send test email' });
+    }
+    res.json({ success: true, message: `Test email successfully dispatched to ${to}`, messageId: result.messageId });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 

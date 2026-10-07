@@ -60,6 +60,9 @@ router.post('/send-otp', otpLimiter, async (req, res) => {
     }
 
     const result = await emailService.createAndSendOtp(cleanEmail, purpose);
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
     res.json(result);
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -74,6 +77,9 @@ router.post('/wallet-address/send-otp', authenticateToken, otpLimiter, async (re
       return res.status(400).json({ success: false, error: 'User does not have a registered email' });
     }
     const result = await emailService.createAndSendOtp(userEmail, 'wallet_update');
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
     res.json(result);
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -123,6 +129,9 @@ router.post('/email/send-change-otp', authenticateToken, otpLimiter, async (req,
       return res.status(400).json({ success: false, error: 'User does not have a registered email address' });
     }
     const result = await emailService.createAndSendOtp(userEmail, 'email_change');
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
     res.json(result);
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });

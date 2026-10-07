@@ -495,12 +495,8 @@ async function handleSendWalletOtp() {
     });
     const data = await res.json();
     if (data.success) {
-      showToast(data.message || 'Security OTP sent to your registered email!', 'success');
+      showToast(data.message || 'Security OTP sent to your registered email! Please check inbox and spam.', 'success');
       if (btn) btn.textContent = 'OTP Sent';
-      if (data.debugOtp) {
-        const otpInp = document.getElementById('bep20-otp-input');
-        if (otpInp) otpInp.value = data.debugOtp;
-      }
     } else {
       showToast(data.error || 'Failed to send OTP', 'error');
       if (btn) btn.disabled = false;
@@ -4613,9 +4609,91 @@ function loadAdminPlatformSettings() {
         ];
       }
       renderCommissionLevelRow(document.getElementById('team-roi-levels-container'), teamRoiLevelsData, 'roi');
+
+      // SMTP Email configuration
+      const smtpHostInp = document.getElementById('admin-smtp-host');
+      const smtpPortInp = document.getElementById('admin-smtp-port');
+      const smtpUserInp = document.getElementById('admin-smtp-user');
+      const smtpPassInp = document.getElementById('admin-smtp-pass');
+      const smtpFromInp = document.getElementById('admin-smtp-from');
+
+      if (smtpHostInp && settingsMap.smtp_host) smtpHostInp.value = settingsMap.smtp_host;
+      if (smtpPortInp && settingsMap.smtp_port) smtpPortInp.value = settingsMap.smtp_port;
+      if (smtpUserInp && settingsMap.smtp_user) smtpUserInp.value = settingsMap.smtp_user;
+      if (smtpPassInp && settingsMap.smtp_pass) smtpPassInp.value = settingsMap.smtp_pass;
+      if (smtpFromInp && settingsMap.smtp_from) smtpFromInp.value = settingsMap.smtp_from;
     }
   }).catch(err => console.error('Failed to load platform settings:', err));
 }
+
+async function handleSaveSmtpSettings() {
+  const host = document.getElementById('admin-smtp-host')?.value.trim();
+  const port = document.getElementById('admin-smtp-port')?.value.trim();
+  const user = document.getElementById('admin-smtp-user')?.value.trim();
+  const pass = document.getElementById('admin-smtp-pass')?.value.trim();
+  const from = document.getElementById('admin-smtp-from')?.value.trim();
+
+  if (!user || !pass) {
+    showToast('Please enter both SMTP Email and Password / App Password', 'error');
+    return;
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}/admin/settings`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        settings: {
+          smtp_host: host || 'smtp.gmail.com',
+          smtp_port: port || '587',
+          smtp_user: user,
+          smtp_pass: pass,
+          smtp_from: from || user
+        }
+      })
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast('SMTP Email configuration saved & live active!', 'success');
+    } else {
+      showToast(data.error || 'Failed to save SMTP settings', 'error');
+    }
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+window.handleSaveSmtpSettings = handleSaveSmtpSettings;
+
+async function handleSendTestSmtpEmail() {
+  const testEmail = prompt('Enter recipient email address to send test email:');
+  if (!testEmail || !testEmail.includes('@')) {
+    if (testEmail) showToast('Invalid email address entered', 'error');
+    return;
+  }
+  showToast('Dispatching test verification email...', 'info');
+  try {
+    const res = await fetch(`${API_BASE}/admin/settings/test-email`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ to: testEmail })
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast(`Test email successfully delivered to ${testEmail}!`, 'success');
+    } else {
+      showToast(data.error || 'Test email failed to send. Check SMTP credentials.', 'error');
+    }
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+window.handleSendTestSmtpEmail = handleSendTestSmtpEmail;
 
 // ==================== SUPER ROOT ADMIN: TEAM ADMINS MANAGEMENT ====================
 

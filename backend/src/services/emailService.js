@@ -7,22 +7,57 @@ class EmailService {
     this.initTransporter();
   }
 
-  initTransporter() {
-    const user = process.env.SMTP_USER || process.env.GMAIL_USER;
-    const pass = process.env.SMTP_PASS || process.env.GMAIL_APP_PASS;
+  async initTransporter() {
+    let user = process.env.SMTP_USER || process.env.GMAIL_USER;
+    let pass = process.env.SMTP_PASS || process.env.GMAIL_APP_PASS;
+    let host = process.env.SMTP_HOST;
+    let port = process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT, 10) : undefined;
+    let secure = process.env.SMTP_SECURE === 'true' || port === 465;
+    let from = process.env.SMTP_FROM;
+
+    // Check system_settings in database to allow configuration directly from platform settings
+    try {
+      const rows = await db.all("SELECT key, value FROM system_settings WHERE key LIKE 'smtp_%'");
+      if (rows && rows.length > 0) {
+        const s = {};
+        rows.forEach(r => s[r.key] = r.value);
+        if (s['smtp_user']) user = s['smtp_user'];
+        if (s['smtp_pass']) pass = s['smtp_pass'];
+        if (s['smtp_host']) host = s['smtp_host'];
+        if (s['smtp_port']) port = parseInt(s['smtp_port'], 10);
+        if (s['smtp_secure'] !== undefined) secure = s['smtp_secure'] === '1' || s['smtp_secure'] === 'true';
+        if (s['smtp_from']) from = s['smtp_from'];
+      }
+    } catch (e) {
+      // ignore
+    }
 
     if (user && pass) {
-      this.transporter = nodemailer.createTransport({
-        service: 'gmail',
-        auth: {
-          user: user,
-          pass: pass
-        }
-      });
-      console.log(`📧 Gmail SMTP Service configured with: ${user}`);
+      user = String(user).trim();
+      pass = String(pass).trim();
+      if (host && host.trim()) {
+        host = String(host).trim();
+        this.transporter = nodemailer.createTransport({
+          host,
+          port: port || 587,
+          secure: secure !== undefined ? secure : (port === 465),
+          auth: { user, pass },
+          tls: { rejectUnauthorized: false }
+        });
+        console.log(`📧 Custom SMTP Service configured with: ${host}:${port || 587} (${user})`);
+      } else {
+        this.transporter = nodemailer.createTransport({
+          service: 'gmail',
+          auth: { user, pass }
+        });
+        console.log(`📧 Gmail SMTP Service configured with: ${user}`);
+      }
+      this.fromAddress = from || user;
     } else {
-      console.log('⚠️ Gmail SMTP credentials not found in env (SMTP_USER / SMTP_PASS). Emails will log to console in development mode.');
+      this.transporter = null;
+      console.log('⚠️ SMTP credentials not found in env or database settings.');
     }
+    return this.transporter;
   }
 
   generateOtp() {
@@ -31,36 +66,33 @@ class EmailService {
 
   async sendEmail({ to, subject, html, text }) {
     if (!this.transporter) {
-      this.initTransporter();
+      await this.initTransporter();
     }
 
-    const fromAddress = process.env.SMTP_USER || process.env.GMAIL_USER || '"Catalyst Capital" <noreply@catalystcapital.fit>';
+    if (!this.transporter) {
+      console.error(`[Email Error] SMTP is not configured. Cannot send email to ${to}.`);
+      return { 
+        success: false, 
+        error: 'SMTP email delivery service is not configured. Please configure SMTP credentials in Platform Settings or environment variables.' 
+      };
+    }
 
-    if (this.transporter) {
-      try {
-        const info = await this.transporter.sendMail({
-          from: fromAddress,
-          to,
-          subject,
-          text: text || html.replace(/<[^>]+>/g, ''),
-          html
-        });
-        console.log(`[Email Sent] To: ${to} | Subject: ${subject} | MessageId: ${info.messageId}`);
-        return { success: true, messageId: info.messageId };
-      } catch (err) {
-        console.error(`[Email Error] Failed to send to ${to}:`, err.message);
-        // Fallback log
-        console.log(`[Dev Fallback Mail] To: ${to}\nSubject: ${subject}\nBody: ${text || html}`);
-        return { success: false, error: err.message, devLogged: true };
-      }
-    } else {
-      console.log(`========================================`);
-      console.log(`[DEV EMAIL SIMULATION]`);
-      console.log(`TO: ${to}`);
-      console.log(`SUBJECT: ${subject}`);
-      console.log(`CONTENT:\n${text || html}`);
-      console.log(`========================================`);
-      return { success: true, simulated: true };
+    const cleanTo = String(to).trim().toLowerCase();
+    const fromAddress = this.fromAddress || process.env.SMTP_FROM || process.env.SMTP_USER || process.env.GMAIL_USER || '"Catalyst Capital" <noreply@catalystcapital.fit>';
+
+    try {
+      const info = await this.transporter.sendMail({
+        from: fromAddress,
+        to: cleanTo,
+        subject,
+        text: text || html.replace(/<[^>]+>/g, ''),
+        html
+      });
+      console.log(`[Email Sent] To: ${cleanTo} | Subject: ${subject} | MessageId: ${info.messageId}`);
+      return { success: true, messageId: info.messageId };
+    } catch (err) {
+      console.error(`[Email Error] Failed to send to ${cleanTo}:`, err.message);
+      return { success: false, error: `Email delivery failed: ${err.message}` };
     }
   }
 
@@ -70,15 +102,6 @@ class EmailService {
 
     // Expiry: 10 minutes from now
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
-
-    // Invalidate old OTPs for this email and purpose
-    await db.run('DELETE FROM email_otps WHERE email = ? AND purpose = ?', [cleanEmail, purpose]);
-
-    // Save OTP
-    await db.run(`
-      INSERT INTO email_otps (email, otp, purpose, expires_at)
-      VALUES (?, ?, ?, ?)
-    `, [cleanEmail, otp, purpose, expiresAt]);
 
     const purposeTitles = {
       registration: 'Registration Verification Code',
@@ -114,12 +137,23 @@ class EmailService {
       html
     });
 
-    const isSimulated = !this.transporter || sendResult.simulated || sendResult.devLogged;
+    if (!sendResult.success) {
+      return {
+        success: false,
+        error: sendResult.error || 'Failed to send OTP to your email. Please verify SMTP email settings.'
+      };
+    }
+
+    // Only record OTP once email was successfully dispatched
+    await db.run('DELETE FROM email_otps WHERE email = ? AND purpose = ?', [cleanEmail, purpose]);
+    await db.run(`
+      INSERT INTO email_otps (email, otp, purpose, expires_at)
+      VALUES (?, ?, ?, ?)
+    `, [cleanEmail, otp, purpose, expiresAt]);
 
     return { 
       success: true, 
-      message: isSimulated ? `OTP sent! (Dev Mode: ${otp})` : 'OTP sent to your email successfully',
-      debugOtp: isSimulated ? otp : undefined
+      message: `Security OTP sent to your registered email (${cleanEmail}). Please check inbox and spam.`
     };
   }
 
