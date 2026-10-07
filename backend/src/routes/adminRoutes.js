@@ -389,6 +389,8 @@ router.post('/team-admins/:id/impersonate', requireSuperAdmin, async (req, res) 
 
     const { password_hash, ...safeAdmin } = targetAdmin;
     safeAdmin.role = 'admin';
+    safeAdmin.isImpersonation = true;
+    safeAdmin.impersonatedBy = req.user.username;
     res.json({
       success: true,
       token: impersonationToken,
@@ -727,6 +729,8 @@ router.post('/impersonate/:id', async (req, res) => {
     );
 
     const { password_hash, ...safeUser } = targetUser;
+    safeUser.isImpersonation = true;
+    safeUser.impersonatedBy = req.user.username;
     res.json({
       success: true,
       token: impersonationToken,

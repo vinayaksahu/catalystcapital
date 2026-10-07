@@ -714,16 +714,23 @@ function updateAuthUI() {
   // Super Root Impersonation Sticky Bar Handling
   const srOrigToken = localStorage.getItem('catalyst_superadmin_orig_token');
   const srBanner = document.getElementById('super-root-impersonation-bar');
+  const isGenuinelyImpersonatingFromSuper = !!(currentUser && currentUser.isImpersonation && srOrigToken && srOrigToken !== token);
   if (srBanner) {
-    if (srOrigToken && currentUser) {
+    if (isGenuinelyImpersonatingFromSuper) {
       srBanner.classList.remove('hidden');
+      srBanner.style.removeProperty('display');
       document.body.classList.add('has-sr-impersonation-bar');
       const uEl = document.getElementById('sr-impersonated-user');
       const rEl = document.getElementById('sr-impersonated-role-badge');
       if (uEl) uEl.textContent = `@${currentUser.username}${currentUser.team_name ? ' (' + currentUser.team_name + ')' : ''}`;
       if (rEl) rEl.textContent = `(Role: ${currentUser.role})`;
     } else {
+      // If not in a genuine active impersonation session, purge stale token from storage
+      if (srOrigToken && (!currentUser || !currentUser.isImpersonation || srOrigToken === token)) {
+        localStorage.removeItem('catalyst_superadmin_orig_token');
+      }
       srBanner.classList.add('hidden');
+      srBanner.style.setProperty('display', 'none', 'important');
       document.body.classList.remove('has-sr-impersonation-bar');
     }
   }
@@ -759,6 +766,9 @@ async function quickLogin(username) {
       token = data.token;
       currentUser = data.user;
       localStorage.setItem('catalyst_token', token);
+      localStorage.removeItem('catalyst_superadmin_orig_token');
+      localStorage.removeItem('catalyst_admin_orig_token');
+      originalAdminToken = null;
       const dropdown = document.getElementById('demo-dropdown');
       if (dropdown) dropdown.classList.add('hidden');
       updateAuthUI();
@@ -798,6 +808,9 @@ async function handleLogin(e) {
     token = data.token;
     currentUser = data.user;
     localStorage.setItem('catalyst_token', token);
+    localStorage.removeItem('catalyst_superadmin_orig_token');
+    localStorage.removeItem('catalyst_admin_orig_token');
+    originalAdminToken = null;
 
     // Reset login popup session flag on fresh login so member sees latest active popup
     hasShownLoginPopupThisSession = false;
@@ -881,6 +894,9 @@ async function handleRegister(e) {
     token = data.token;
     currentUser = data.user;
     localStorage.setItem('catalyst_token', token);
+    localStorage.removeItem('catalyst_superadmin_orig_token');
+    localStorage.removeItem('catalyst_admin_orig_token');
+    originalAdminToken = null;
 
     updateAuthUI();
     showToast(`Account created! Welcome ${currentUser.full_name}. Your User ID: ${data.memberUserId || currentUser.referral_code}`, 'success');
@@ -895,6 +911,9 @@ function logout() {
   token = null;
   currentUser = null;
   localStorage.removeItem('catalyst_token');
+  localStorage.removeItem('catalyst_superadmin_orig_token');
+  localStorage.removeItem('catalyst_admin_orig_token');
+  originalAdminToken = null;
   updateAuthUI();
   showToast('Logged out successfully', 'info');
   navigate('login');
@@ -2878,7 +2897,7 @@ async function loadAdminData() {
       const scopeWrapper = document.getElementById('superadmin-scope-wrapper');
       const teamTabBtn = document.getElementById('admin-tab-btn-teamadmins');
 
-      const isImpersonatingFromSuper = !!localStorage.getItem('catalyst_superadmin_orig_token');
+      const isImpersonatingFromSuper = !!(currentUser && currentUser.isImpersonation && localStorage.getItem('catalyst_superadmin_orig_token'));
       const isSuperRootMode = (adminCurrentScope.isSuperAdmin || currentUser.role === 'superadmin') && !isImpersonatingFromSuper;
 
       if (isSuperRootMode) {
@@ -4974,20 +4993,26 @@ window.enterPortalAsMember = enterPortalAsMember;
 // 3. Exit Super Root Impersonation (Return to Super Root Master Commander)
 async function exitSuperRootImpersonation() {
   const origSuperToken = localStorage.getItem('catalyst_superadmin_orig_token');
-  if (!origSuperToken) return;
-
-  token = origSuperToken;
-  localStorage.setItem('catalyst_token', token);
   localStorage.removeItem('catalyst_superadmin_orig_token');
 
   const banner = document.getElementById('super-root-impersonation-bar');
-  if (banner) banner.classList.add('hidden');
+  if (banner) {
+    banner.classList.add('hidden');
+    banner.style.setProperty('display', 'none', 'important');
+  }
   document.body.classList.remove('has-sr-impersonation-bar');
 
-  await fetchUserProfile();
-  showToast('Returned to Super Root Master Commander!', 'success');
-  navigate('admin');
-  await loadAdminData();
+  if (origSuperToken && origSuperToken !== token) {
+    token = origSuperToken;
+    localStorage.setItem('catalyst_token', token);
+    await fetchUserProfile();
+    showToast('Returned to Super Root Master Commander!', 'success');
+    navigate('admin');
+    await loadAdminData();
+  } else {
+    await fetchUserProfile();
+    showToast('Exited impersonation mode', 'info');
+  }
 }
 window.exitSuperRootImpersonation = exitSuperRootImpersonation;
 
