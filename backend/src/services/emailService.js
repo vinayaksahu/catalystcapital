@@ -33,8 +33,9 @@ class EmailService {
     }
 
     if (user && pass) {
-      user = String(user).trim();
-      pass = String(pass).trim();
+      user = String(user).trim().toLowerCase();
+      // Automatically strip all spaces from password (e.g. Google App Passwords copied with 4-letter groups)
+      pass = String(pass).replace(/\s+/g, '').trim();
       if (host && host.trim()) {
         host = String(host).trim();
         this.transporter = nodemailer.createTransport({

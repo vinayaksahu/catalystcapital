@@ -4629,8 +4629,9 @@ function loadAdminPlatformSettings() {
 async function handleSaveSmtpSettings() {
   const host = document.getElementById('admin-smtp-host')?.value.trim();
   const port = document.getElementById('admin-smtp-port')?.value.trim();
-  const user = document.getElementById('admin-smtp-user')?.value.trim();
-  const pass = document.getElementById('admin-smtp-pass')?.value.trim();
+  const user = document.getElementById('admin-smtp-user')?.value.trim().toLowerCase();
+  const rawPass = document.getElementById('admin-smtp-pass')?.value || '';
+  const pass = rawPass.replace(/\s+/g, '').trim();
   const from = document.getElementById('admin-smtp-from')?.value.trim();
 
   if (!user || !pass) {
