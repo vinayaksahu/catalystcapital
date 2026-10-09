@@ -1034,6 +1034,9 @@ router.post('/settings', async (req, res) => {
           }
         }
       }
+      const emailService = require('../services/emailService');
+      emailService.transporter = null;
+      await emailService.initTransporter().catch(() => {});
       return res.json({ success: true, message: 'Settings updated successfully' });
     }
 

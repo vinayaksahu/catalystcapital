@@ -92,6 +92,28 @@ class EmailService {
       console.log(`[Email Sent] To: ${cleanTo} | Subject: ${subject} | MessageId: ${info.messageId}`);
       return { success: true, messageId: info.messageId };
     } catch (err) {
+      // If auth failure, reload fresh credentials from database and retry once
+      if (err.code === 'EAUTH' || (err.message && err.message.includes('535'))) {
+        console.warn(`[Email Auth Failure] Reloading SMTP credentials from database to retry...`);
+        this.transporter = null;
+        await this.initTransporter();
+        if (this.transporter) {
+          try {
+            const retryInfo = await this.transporter.sendMail({
+              from: this.fromAddress || fromAddress,
+              to: cleanTo,
+              subject,
+              text: text || html.replace(/<[^>]+>/g, ''),
+              html
+            });
+            console.log(`[Email Sent on Retry] To: ${cleanTo} | MessageId: ${retryInfo.messageId}`);
+            return { success: true, messageId: retryInfo.messageId };
+          } catch (retryErr) {
+            console.error(`[Email Error] Failed after retry to ${cleanTo}:`, retryErr.message);
+            return { success: false, error: `Email delivery failed: ${retryErr.message}` };
+          }
+        }
+      }
       console.error(`[Email Error] Failed to send to ${cleanTo}:`, err.message);
       return { success: false, error: `Email delivery failed: ${err.message}` };
     }
