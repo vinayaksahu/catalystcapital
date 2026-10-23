@@ -21,6 +21,9 @@ const compression = require('compression');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Trust reverse proxies (Vercel, Cloudflare, Nginx, AWS, etc.) so client IP is accurately extracted
+app.set('trust proxy', true);
+
 // Performance: Gzip/Deflate compression for JSON APIs and static responses
 app.use(compression({
   threshold: 1024 // Only compress responses larger than 1KB
