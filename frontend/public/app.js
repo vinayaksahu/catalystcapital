@@ -2464,6 +2464,26 @@ async function loadAssetsData() {
       const refIncomeVal = (w.totalTeamRoiIncome || 0);
       const teamCommVal = (w.totalTeamCommission || 0);
 
+      // 0. Update Today's ROI Highlight Card (Home Dashboard)
+      const todayRoiVal = (w.todayRoi !== undefined) ? w.todayRoi : (w.todayIncome || 0);
+      const homeTodayRoiEl = document.getElementById('home-stat-today-roi');
+      if (homeTodayRoiEl) {
+        homeTodayRoiEl.textContent = `+$${todayRoiVal.toFixed(2)} USDT`;
+      }
+      const homeTodayRoiSubEl = document.getElementById('home-stat-today-roi-sub');
+      const homeTodayRoiBadge = document.getElementById('home-stat-today-roi-badge');
+      if (homeTodayRoiSubEl && homeTodayRoiBadge) {
+        if (todayRoiVal > 0) {
+          homeTodayRoiBadge.className = 'px-2 py-0.5 rounded-full text-[9.5px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1';
+          homeTodayRoiBadge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Credited Today';
+          homeTodayRoiSubEl.textContent = 'Daily 4.0% return credited to your wallet';
+        } else {
+          homeTodayRoiBadge.className = 'px-2 py-0.5 rounded-full text-[9.5px] font-bold bg-slate-800 text-slate-400 border border-slate-700 flex items-center gap-1';
+          homeTodayRoiBadge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-slate-500"></span> Pending Closing';
+          homeTodayRoiSubEl.textContent = 'Will be credited at daily closing time';
+        }
+      }
+
       // 1. Update 3 Home Income Cards directly above BTC/ETH/ETC
       const homeTotalIncomeEl = document.getElementById('home-stat-total-income');
       if (homeTotalIncomeEl) homeTotalIncomeEl.textContent = `$${totalEarnedVal.toFixed(2)}`;
@@ -2537,6 +2557,7 @@ async function loadAssetsData() {
         }
       }
     }
+    if (window.lucide) lucide.createIcons();
   } catch (err) {
     console.error('Error loading assets data:', err);
   }

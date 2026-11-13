@@ -274,6 +274,33 @@
 
 
 
+      <!-- TODAY'S ROI HIGHLIGHT CARD (Option A) -->
+      <section class="px-3 my-2">
+        <div onclick="filterHistory('daily_roi'); navigate('history');" class="bg-gradient-to-r from-emerald-500/15 via-slate-900 to-slate-900 border border-emerald-500/40 rounded-2xl p-3 sm:p-3.5 flex items-center justify-between shadow-lg cursor-pointer hover:border-emerald-400 active:scale-[0.99] transition group">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-slate-950 font-black shadow-md shadow-emerald-500/20 shrink-0 group-hover:scale-105 transition">
+              <i data-lucide="trending-up" class="w-5 h-5 text-slate-950"></i>
+            </div>
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="font-extrabold text-xs sm:text-sm text-white tracking-tight">Today's Daily ROI</span>
+                <span id="home-stat-today-roi-badge" class="px-2 py-0.5 rounded-full text-[9.5px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
+                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Today
+                </span>
+              </div>
+              <div class="text-[10.5px] text-slate-400 font-mono mt-0.5" id="home-stat-today-roi-sub">Daily 4.0% automated return</div>
+            </div>
+          </div>
+          <div class="text-right">
+            <div id="home-stat-today-roi" class="font-black text-base sm:text-lg text-emerald-400 font-mono tracking-tight">+$0.00 USDT</div>
+            <div class="text-[10px] text-slate-400 flex items-center justify-end gap-1 mt-0.5 font-medium">
+              <span>View History</span>
+              <i data-lucide="chevron-right" class="w-3.5 h-3.5 text-slate-400"></i>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <!-- 3 INCOME CARDS (Total Income, Referral Income, Team Commission) -->
       <section class="px-3 my-2.5 grid grid-cols-3 gap-2">
         <!-- 1. Total Income Card (Coral/Pink gradient) -->
@@ -1049,7 +1076,10 @@
         <!-- 1. Total ROI income -->
         <div class="stat-box-card p-3.5 flex items-center justify-between">
           <div>
-            <div class="font-cf-subtitle text-[11px] leading-tight">Total ROI income</div>
+            <div class="flex items-center gap-2">
+              <span class="font-cf-subtitle text-[11px] leading-tight">Total ROI income</span>
+              <span class="text-[9.5px] px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-400 font-mono font-semibold">Today: +<span id="stat-today-income">0.00 USDT</span></span>
+            </div>
             <div id="stat-total-roi-income" class="font-cf-title text-base sm:text-lg mt-1 font-mono text-emerald-500 dark:text-emerald-400 font-extrabold">0.00 USDT</div>
             <div class="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">Self Daily 4.0% Return</div>
           </div>
@@ -3677,6 +3707,6 @@
   <div id="toast-container" class="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-2 w-11/12 max-w-sm pointer-events-none"></div>
 
   <!-- Main JavaScript App -->
-  <script src="app.js?v=7.9"></script>
+  <script src="app.js?v=8.0"></script>
 </body>
 </html>

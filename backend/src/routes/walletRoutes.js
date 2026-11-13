@@ -77,7 +77,13 @@ router.get('/overview', authenticateToken, async (req, res) => {
     const totalRecharge = totalDepositedRes ? (parseFloat(totalDepositedRes.total) || 0) : 0;
     const tradingAssets = activeInvestRes ? (parseFloat(activeInvestRes.total) || 0) : 0;
 
+    const settings = settingsRows.reduce((acc, row) => {
+      acc[row.key] = row.value;
+      return acc;
+    }, {});
+
     const todayStr = new Date().toISOString().slice(0, 10);
+    const cycleDate = settings.last_roi_cycle_date || todayStr;
     const yest = new Date(Date.now() - 86400000);
     const yestStr = yest.toISOString().slice(0, 10);
 
@@ -85,6 +91,8 @@ router.get('/overview', authenticateToken, async (req, res) => {
     let totalTeamRoiIncome = 0;
     let totalTeamCommission = 0;
     let todayIncome = 0;
+    let todayRoi = 0;
+    let todayReferralRoi = 0;
     let yesterdayIncome = 0;
     let accumulatedBonus = 0;
     let totalEarned = 0;
@@ -93,26 +101,24 @@ router.get('/overview', authenticateToken, async (req, res) => {
       const txDate = new Date(tx.created_at).toISOString().slice(0, 10);
       const amt = parseFloat(tx.amount) || 0;
       totalEarned += amt;
+      const isTodayCycle = (txDate === todayStr || txDate === cycleDate);
       if (tx.type === 'daily_roi') {
         totalRoiIncome += amt;
+        if (isTodayCycle) todayRoi += amt;
       } else if (tx.type === 'referral_roi') {
         totalTeamRoiIncome += amt;
         accumulatedBonus += amt;
+        if (isTodayCycle) todayReferralRoi += amt;
       } else if (tx.type === 'team_commission') {
         totalTeamCommission += amt;
         accumulatedBonus += amt;
       }
-      if (txDate === todayStr) {
+      if (isTodayCycle) {
         todayIncome += amt;
       } else if (txDate === yestStr) {
         yesterdayIncome += amt;
       }
     }
-
-    const settings = settingsRows.reduce((acc, row) => {
-      acc[row.key] = row.value;
-      return acc;
-    }, {});
 
     const totalAssets = (user.wallet_balance || 0) + (user.roi_balance || 0) + (user.commission_balance || 0) + tradingAssets;
 
@@ -147,6 +153,8 @@ router.get('/overview', authenticateToken, async (req, res) => {
         accumulatedBonus,
         yesterdayIncome,
         todayIncome,
+        todayRoi,
+        todayReferralRoi,
         profitMargin: '4.00%',
         depositWallet: user.wallet_balance || 0,
         roiWallet: user.roi_balance || 0,
