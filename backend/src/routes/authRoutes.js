@@ -27,7 +27,7 @@ router.get('/announcements', async (req, res) => {
       announcementTicker: settings.announcement_ticker || 'Welcome to the official Catalyst Capital trading platform • High Frequency AI Trading • Instant 0% Withdrawal Payouts • Daily ROI Active •',
       popupImageUrl: settings.popup_image_url || '',
       popupImageActive: settings.popup_image_active === '1' || settings.popup_image_active === 'true',
-      popupImageTitle: settings.popup_image_title || 'Special Platform Announcement'
+      popupImageTitle: (settings.popup_image_title && !settings.popup_image_title.startsWith('eyJ')) ? settings.popup_image_title : 'Special Platform Announcement'
     });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });

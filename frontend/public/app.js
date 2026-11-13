@@ -2855,6 +2855,7 @@ async function handleWithdrawSubmit(e) {
 
 let adminCachedUsers = [];
 let currentInspectedUserId = null;
+let currentInspectedUser = null;
 let originalAdminToken = localStorage.getItem('catalyst_admin_orig_token') || null;
 
 let adminCurrentScope = {
@@ -3122,8 +3123,17 @@ function renderAdminUsersList(users) {
         </div>
         <div class="flex flex-col items-end gap-1 shrink-0">
           <span class="text-[9px] uppercase px-2 py-0.5 rounded font-mono font-bold ${u.role === 'admin' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'bg-slate-800 text-cyan-400 border border-slate-700'}">${u.role}</span>
-          <span class="text-[9px] uppercase px-1.5 py-0.5 rounded font-bold ${u.status === 'active' ? 'text-emerald-400' : 'text-rose-400'} flex items-center gap-1">
-            <span class="w-1.5 h-1.5 rounded-full ${u.status === 'active' ? 'bg-emerald-400' : 'bg-rose-400'}"></span>
+          <span class="text-[9px] uppercase px-1.5 py-0.5 rounded font-bold ${
+            u.status === 'active' ? 'text-emerald-400 bg-emerald-500/10 border border-emerald-500/30' :
+            u.status === 'blocked' ? 'text-amber-400 bg-amber-500/10 border border-amber-500/30' :
+            u.status === 'deleted' ? 'text-rose-400 bg-rose-500/10 border border-rose-500/30 line-through' :
+            'text-rose-400 bg-rose-500/10 border border-rose-500/30'
+          } flex items-center gap-1">
+            <span class="w-1.5 h-1.5 rounded-full ${
+              u.status === 'active' ? 'bg-emerald-400' :
+              u.status === 'blocked' ? 'bg-amber-400' :
+              'bg-rose-400'
+            }"></span>
             ${u.status}
           </span>
         </div>
@@ -3196,11 +3206,59 @@ async function inspectAdminUser(userId) {
     const audUsdtInput = document.getElementById('aud-usdt-input');
     if (audUsdtInput) audUsdtInput.value = u.usdt_address || '';
 
+    currentInspectedUser = u;
+
     const stEl = document.getElementById('aud-status');
     if (stEl) {
-      stEl.textContent = u.status.toUpperCase();
-      stEl.className = `font-bold uppercase text-[11px] ${u.status === 'active' ? 'text-emerald-400' : 'text-rose-400'}`;
+      stEl.textContent = (u.status || 'ACTIVE').toUpperCase();
+      if (u.status === 'active') {
+        stEl.className = 'font-bold uppercase text-[11px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/30';
+      } else if (u.status === 'blocked') {
+        stEl.className = 'font-bold uppercase text-[11px] text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/30';
+      } else if (u.status === 'deleted') {
+        stEl.className = 'font-bold uppercase text-[11px] text-rose-400 bg-rose-500/10 px-2 py-0.5 rounded border border-rose-500/30 line-through';
+      } else {
+        stEl.className = 'font-bold uppercase text-[11px] text-slate-400 bg-slate-500/10 px-2 py-0.5 rounded border border-slate-500/30';
+      }
     }
+
+    // Configure Block / Unblock button
+    const blockBtn = document.getElementById('aud-btn-block');
+    const blockText = document.getElementById('aud-btn-block-text');
+    const blockIcon = document.getElementById('aud-icon-block');
+    if (blockBtn && blockText) {
+      if (u.status === 'deleted') {
+        blockBtn.style.display = 'none';
+      } else if (u.status === 'blocked') {
+        blockBtn.style.display = 'flex';
+        blockText.textContent = 'Unblock User';
+        blockBtn.className = 'py-2.5 px-2 rounded-xl font-bold text-xs transition flex items-center justify-center gap-1.5 cursor-pointer bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/30';
+        if (blockIcon) blockIcon.setAttribute('data-lucide', 'shield-check');
+      } else {
+        blockBtn.style.display = 'flex';
+        blockText.textContent = 'Block User';
+        blockBtn.className = 'py-2.5 px-2 rounded-xl font-bold text-xs transition flex items-center justify-center gap-1.5 cursor-pointer bg-amber-500/20 border border-amber-500/40 text-amber-400 hover:bg-amber-500/30';
+        if (blockIcon) blockIcon.setAttribute('data-lucide', 'shield-alert');
+      }
+    }
+
+    // Configure Delete / Restore button
+    const delBtn = document.getElementById('aud-btn-delete');
+    const delText = document.getElementById('aud-btn-delete-text');
+    const delIcon = document.getElementById('aud-icon-delete');
+    if (delBtn && delText) {
+      if (u.status === 'deleted') {
+        delText.textContent = 'Restore User';
+        delBtn.className = 'py-2.5 px-2 rounded-xl font-bold text-xs transition flex items-center justify-center gap-1.5 cursor-pointer bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/30';
+        if (delIcon) delIcon.setAttribute('data-lucide', 'rotate-ccw');
+      } else {
+        delText.textContent = 'Delete User';
+        delBtn.className = 'py-2.5 px-2 rounded-xl font-bold text-xs transition flex items-center justify-center gap-1.5 cursor-pointer bg-rose-500/20 border border-rose-500/40 text-rose-400 hover:bg-rose-500/30';
+        if (delIcon) delIcon.setAttribute('data-lucide', 'trash-2');
+      }
+    }
+
+    if (window.lucide) lucide.createIcons();
 
     // Render investments
     const invContainer = document.getElementById('aud-investments-list');
@@ -3228,6 +3286,76 @@ async function inspectAdminUser(userId) {
   }
 }
 window.inspectAdminUser = inspectAdminUser;
+
+async function handleAdminToggleBlockUser() {
+  if (!currentInspectedUserId || !currentInspectedUser) {
+    showToast('No user selected', 'error');
+    return;
+  }
+  const isCurrentlyBlocked = currentInspectedUser.status === 'blocked';
+  const newStatus = isCurrentlyBlocked ? 'active' : 'blocked';
+  const confirmMsg = isCurrentlyBlocked
+    ? `Are you sure you want to UNBLOCK @${currentInspectedUser.username}? User will be able to log in and use their account.`
+    : `Are you sure you want to BLOCK @${currentInspectedUser.username}? User will be immediately prevented from accessing their account.`;
+
+  if (!confirm(confirmMsg)) return;
+
+  try {
+    const res = await fetch(`${API_BASE}/admin/users/${currentInspectedUserId}/status`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ status: newStatus })
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || 'Failed to update user status');
+    }
+    showToast(isCurrentlyBlocked ? `User @${currentInspectedUser.username} unblocked successfully!` : `User @${currentInspectedUser.username} blocked successfully!`, 'success');
+    await inspectAdminUser(currentInspectedUserId);
+    await loadAdminData();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+window.handleAdminToggleBlockUser = handleAdminToggleBlockUser;
+
+async function handleAdminDeleteUser() {
+  if (!currentInspectedUserId || !currentInspectedUser) {
+    showToast('No user selected', 'error');
+    return;
+  }
+  const isCurrentlyDeleted = currentInspectedUser.status === 'deleted';
+  const newStatus = isCurrentlyDeleted ? 'active' : 'deleted';
+  const confirmMsg = isCurrentlyDeleted
+    ? `Are you sure you want to RESTORE user account @${currentInspectedUser.username} back to ACTIVE?`
+    : `Are you sure you want to DELETE user @${currentInspectedUser.username}?\n\n• Database records will be preserved safely.\n• When user attempts to login, it will show "Invalid User ID or Password".`;
+
+  if (!confirm(confirmMsg)) return;
+
+  try {
+    const res = await fetch(`${API_BASE}/admin/users/${currentInspectedUserId}/status`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ status: newStatus })
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || 'Failed to update user status');
+    }
+    showToast(isCurrentlyDeleted ? `User @${currentInspectedUser.username} restored to active!` : `User @${currentInspectedUser.username} deleted successfully (login disabled)!`, 'success');
+    await inspectAdminUser(currentInspectedUserId);
+    await loadAdminData();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+window.handleAdminDeleteUser = handleAdminDeleteUser;
 
 async function adminImpersonateUser(userId) {
   try {
@@ -3987,7 +4115,7 @@ async function loadAdminSettings() {
 
       // Ticker text
       const tickerInput = document.getElementById('admin-ticker-input');
-      if (tickerInput) {
+      if (tickerInput && document.activeElement !== tickerInput) {
         tickerInput.value = settingsMap.announcement_ticker || 'Welcome to the official Catalyst Capital trading platform • High Frequency AI Trading • Instant 0% Withdrawal Payouts • Daily ROI Active •';
       }
 
@@ -3999,7 +4127,13 @@ async function loadAdminSettings() {
 
       const titleInput = document.getElementById('admin-popup-title-input');
       if (titleInput) {
-        titleInput.value = settingsMap.popup_image_title || 'Special Platform Announcement';
+        const rawTitle = settingsMap.popup_image_title;
+        const safeTitle = (rawTitle && typeof rawTitle === 'string' && !rawTitle.startsWith('eyJ') && rawTitle.length < 250)
+          ? rawTitle
+          : 'Special Platform Announcement';
+        if (document.activeElement !== titleInput) {
+          titleInput.value = safeTitle;
+        }
       }
 
       const urlInput = document.getElementById('admin-popup-url-input');
@@ -4299,11 +4433,11 @@ async function clearAdminPopupImage(btnElement) {
 
   // 2. Persist deletion immediately to backend database
   try {
-    const token = localStorage.getItem('token') || localStorage.getItem('authToken');
-    if (token) {
+    const authToken = token || localStorage.getItem('catalyst_token');
+    if (authToken) {
       const res = await fetch(`${API_BASE}/admin/settings`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
         body: JSON.stringify({
           settings: {
             popup_image_url: '',
@@ -4343,7 +4477,14 @@ async function handleSavePopupImage(e) {
   // If an image exists and admin clicked save, default to active unless explicitly unchecked
   const chkActive = document.getElementById('admin-popup-active-checkbox');
   const isActive = chkActive ? (chkActive.checked ? '1' : '0') : (finalImage ? '1' : '0');
-  const title = document.getElementById('admin-popup-title-input')?.value.trim() || 'Special Platform Announcement';
+  let title = document.getElementById('admin-popup-title-input')?.value.trim() || 'Special Platform Announcement';
+
+  // Safeguard: Never permit a JWT token or corrupted string to be stored as announcement title
+  if (title.startsWith('eyJ') || title.length > 250) {
+    title = 'Special Platform Announcement';
+    const titleInput = document.getElementById('admin-popup-title-input');
+    if (titleInput) titleInput.value = title;
+  }
 
   if (isActive === '1' && !finalImage) {
     showToast('Please upload an image file or provide an Image URL first', 'error');
@@ -4404,7 +4545,7 @@ function checkAndShowMemberLoginPopup(imgUrl, title, force = false) {
   const modalImg = document.getElementById('login-popup-img');
   const modalTitle = document.getElementById('login-popup-title');
   if (modalImg) modalImg.src = imgUrl;
-  if (modalTitle && title) modalTitle.textContent = title;
+  if (modalTitle && title && !title.startsWith('eyJ')) modalTitle.textContent = title;
 
   hasShownLoginPopupThisSession = true;
   setTimeout(() => {
@@ -4416,7 +4557,10 @@ window.checkAndShowMemberLoginPopup = checkAndShowMemberLoginPopup;
 function previewMemberLoginPopupDirectly() {
   const urlVal = document.getElementById('admin-popup-url-input')?.value.trim();
   const finalImage = urlVal || currentPopupImageBase64 || (publicAnnouncementsCache && publicAnnouncementsCache.popupImageUrl);
-  const title = document.getElementById('admin-popup-title-input')?.value.trim() || 'Special Platform Announcement';
+  let title = document.getElementById('admin-popup-title-input')?.value.trim() || 'Special Platform Announcement';
+  if (title.startsWith('eyJ') || title.length > 250) {
+    title = 'Special Platform Announcement';
+  }
   if (!finalImage) {
     showToast('No pop image uploaded or configured yet!', 'info');
     return;

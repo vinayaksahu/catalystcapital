@@ -231,8 +231,12 @@ class AuthService {
       }
     };
 
-    if (!user) {
+    if (!user || user.status === 'deleted') {
       handleFailedAttempt();
+    }
+
+    if (user.status === 'blocked') {
+      throw new Error('Your account has been blocked by administrator. Please contact support.');
     }
 
     if (user.status !== 'active') {

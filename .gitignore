@@ -25,3 +25,7 @@ Thumbs.db
 page_*.png
 google login security code.jpeg
 *.jpeg
+
+# Local database backups
+backup/
+*.json.bak

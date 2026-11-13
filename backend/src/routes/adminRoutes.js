@@ -706,6 +706,14 @@ router.post('/impersonate/:id', async (req, res) => {
   try {
     const targetUser = await assertUserInTeam(req.params.id, req);
 
+    if (targetUser.status === 'deleted') {
+      return res.status(400).json({ success: false, error: 'Cannot impersonate a deleted user account' });
+    }
+
+    if (targetUser.status === 'blocked') {
+      return res.status(400).json({ success: false, error: 'Cannot impersonate a blocked user account' });
+    }
+
     if (targetUser.role === 'superadmin' && targetUser.id !== req.user.id) {
       return res.status(400).json({ success: false, error: 'Cannot impersonate another superadmin' });
     }
@@ -779,16 +787,79 @@ router.get('/users/:id/details', async (req, res) => {
   }
 });
 
-// Manage User Status (active, suspended)
+// Manage User Status (active, suspended, blocked, deleted)
 router.post('/users/:id/status', async (req, res) => {
   try {
-    await assertUserInTeam(req.params.id, req);
+    const target = await assertUserInTeam(req.params.id, req);
+    if (target.role === 'superadmin' || target.id === req.user.id) {
+      return res.status(403).json({ success: false, error: 'Cannot modify status of superadmin or your own account' });
+    }
     const { status } = req.body;
-    if (!['active', 'suspended', 'inactive'].includes(status)) {
+    if (!['active', 'suspended', 'inactive', 'blocked', 'deleted'].includes(status)) {
       return res.status(400).json({ success: false, error: 'Invalid status' });
     }
     await db.run('UPDATE users SET status = ? WHERE id = ?', [status, req.params.id]);
-    res.json({ success: true, message: `User status changed to ${status}` });
+
+    let label = status;
+    if (status === 'blocked') label = 'blocked';
+    else if (status === 'deleted') label = 'deleted';
+    else if (status === 'active') label = 'activated';
+
+    res.json({ success: true, message: `User status changed to ${label}`, status });
+  } catch (err) {
+    res.status(err.status || 500).json({ success: false, error: err.message });
+  }
+});
+
+// Shortcut: Block / Unblock User
+router.post('/users/:id/block', async (req, res) => {
+  try {
+    const target = await assertUserInTeam(req.params.id, req);
+    if (target.role === 'superadmin' || target.id === req.user.id) {
+      return res.status(403).json({ success: false, error: 'Cannot modify status of superadmin or your own account' });
+    }
+    const newStatus = target.status === 'blocked' ? 'active' : 'blocked';
+    await db.run('UPDATE users SET status = ? WHERE id = ?', [newStatus, req.params.id]);
+    res.json({
+      success: true,
+      status: newStatus,
+      message: newStatus === 'blocked' ? 'User has been blocked successfully' : 'User has been unblocked successfully'
+    });
+  } catch (err) {
+    res.status(err.status || 500).json({ success: false, error: err.message });
+  }
+});
+
+// Shortcut: Soft-Delete / Restore User
+router.post('/users/:id/delete', async (req, res) => {
+  try {
+    const target = await assertUserInTeam(req.params.id, req);
+    if (target.role === 'superadmin' || target.id === req.user.id) {
+      return res.status(403).json({ success: false, error: 'Cannot modify status of superadmin or your own account' });
+    }
+    await db.run("UPDATE users SET status = 'deleted' WHERE id = ?", [req.params.id]);
+    res.json({
+      success: true,
+      status: 'deleted',
+      message: 'User deleted successfully (Login disabled)'
+    });
+  } catch (err) {
+    res.status(err.status || 500).json({ success: false, error: err.message });
+  }
+});
+
+router.post('/users/:id/restore', async (req, res) => {
+  try {
+    const target = await assertUserInTeam(req.params.id, req);
+    if (target.role === 'superadmin' || target.id === req.user.id) {
+      return res.status(403).json({ success: false, error: 'Cannot modify status of superadmin or your own account' });
+    }
+    await db.run("UPDATE users SET status = 'active' WHERE id = ?", [req.params.id]);
+    res.json({
+      success: true,
+      status: 'active',
+      message: 'User account restored to active successfully'
+    });
   } catch (err) {
     res.status(err.status || 500).json({ success: false, error: err.message });
   }
@@ -1014,7 +1085,13 @@ router.post('/settings', async (req, res) => {
     const { key, value, settings } = req.body;
 
     if (settings && typeof settings === 'object') {
-      for (const [k, v] of Object.entries(settings)) {
+      for (let [k, v] of Object.entries(settings)) {
+        // Sanitize popup_image_title to prevent JWT tokens or accidental leaks
+        if (k === 'popup_image_title') {
+          if (typeof v !== 'string' || v.startsWith('eyJ') || v.length > 250) {
+            v = 'Special Platform Announcement';
+          }
+        }
         if (db.isPostgres) {
           await db.run(
             'INSERT INTO system_settings (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value',
@@ -1042,15 +1119,22 @@ router.post('/settings', async (req, res) => {
 
     if (!key) return res.status(400).json({ success: false, error: 'Key is required' });
 
+    let finalValue = value;
+    if (key === 'popup_image_title') {
+      if (typeof finalValue !== 'string' || finalValue.startsWith('eyJ') || finalValue.length > 250) {
+        finalValue = 'Special Platform Announcement';
+      }
+    }
+
     if (db.isPostgres) {
       await db.run(
         'INSERT INTO system_settings (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value',
-        [key, String(value)]
+        [key, String(finalValue)]
       );
     } else {
       await db.run(
         'INSERT INTO system_settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = ?',
-        [key, String(value), String(value)]
+        [key, String(finalValue), String(finalValue)]
       );
     }
 

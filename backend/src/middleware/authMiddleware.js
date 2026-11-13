@@ -19,8 +19,12 @@ async function authenticateToken(req, res, next) {
       FROM users WHERE id = ?
     `, [decoded.id]);
 
-    if (!user) {
+    if (!user || user.status === 'deleted') {
       return res.status(401).json({ error: 'User no longer exists' });
+    }
+
+    if (user.status === 'blocked') {
+      return res.status(403).json({ error: 'Your account has been blocked by administrator. Please contact support.' });
     }
 
     if (user.status !== 'active') {
