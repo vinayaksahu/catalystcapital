@@ -6,6 +6,7 @@ const path = require('node:path');
 const { initDatabase } = require('./db/database');
 const { startRoiCron } = require('./cron/roiCron');
 const { globalLimiter } = require('./middleware/rateLimiter');
+const wafMiddleware = require('./middleware/wafMiddleware');
 
 // Route imports
 const authRoutes = require('./routes/authRoutes');
@@ -43,6 +44,9 @@ app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
 // Global DDoS / Flood Rate Limiting for all API routes
 app.use('/api/', globalLimiter);
+
+// Web Application Firewall (WAF) & SQLi Defense
+app.use('/api/', wafMiddleware);
 
 // Lazy/On-demand database initialization middleware for serverless
 let dbInitialized = false;

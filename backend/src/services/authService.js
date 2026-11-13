@@ -30,6 +30,28 @@ class AuthService {
 
     const cleanEmail = email.trim().toLowerCase();
     let cleanUsername = (username || '').trim().toLowerCase();
+    const cleanFullName = (fullName || '').trim();
+
+    // Input Validation & Anti-SQLi Guard for Name & Username
+    if (!cleanFullName || cleanFullName.length < 2 || cleanFullName.length > 70) {
+      throw new Error('Full Name must be between 2 and 70 characters');
+    }
+    if (!/^[a-zA-Z0-9\s.\-_]+$/.test(cleanFullName) || /[;'"\\]|--|\/\*/.test(cleanFullName)) {
+      throw new Error('Full Name contains invalid characters');
+    }
+
+    if (cleanUsername) {
+      if (!/^[a-zA-Z0-9_]{3,30}$/.test(cleanUsername)) {
+        throw new Error('Username can only contain alphanumeric characters and underscores (3-30 characters)');
+      }
+    }
+
+    if (phone && phone.trim()) {
+      const cleanPhone = phone.trim();
+      if (!/^[+0-9\s\-()]{6,20}$/.test(cleanPhone)) {
+        throw new Error('Please enter a valid phone number');
+      }
+    }
 
     // Verify confirmation OTP if provided
     if (otp) {
@@ -284,8 +306,19 @@ class AuthService {
   }
 
   async updateProfile(userId, { fullName, phone, newEmail, otp }) {
-    if (!fullName || !fullName.trim()) {
-      throw new Error('Full Name is required');
+    const cleanFullName = (fullName || '').trim();
+    if (!cleanFullName || cleanFullName.length < 2 || cleanFullName.length > 70) {
+      throw new Error('Full Name must be between 2 and 70 characters');
+    }
+    if (!/^[a-zA-Z0-9\s.\-_]+$/.test(cleanFullName) || /[;'"\\]|--|\/\*/.test(cleanFullName)) {
+      throw new Error('Full Name contains invalid characters');
+    }
+
+    if (phone && phone.trim()) {
+      const cleanPhone = phone.trim();
+      if (!/^[+0-9\s\-()]{6,20}$/.test(cleanPhone)) {
+        throw new Error('Please enter a valid phone number');
+      }
     }
 
     const currentUser = await db.get('SELECT email FROM users WHERE id = ?', [userId]);
