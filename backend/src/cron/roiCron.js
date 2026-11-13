@@ -31,8 +31,11 @@ function scheduleCron(cronExpression) {
     } catch (err) {
       console.error('[CRON ERROR] Failed to process daily ROI:', err.message);
     }
+  }, {
+    scheduled: true,
+    timezone: 'Asia/Kolkata'
   });
-  console.log(`[CRON] Daily ROI scheduler set to: ${cronExpression}`);
+  console.log(`[CRON] Daily ROI scheduler set to: ${cronExpression} (Asia/Kolkata)`);
 }
 
 async function startRoiCron() {

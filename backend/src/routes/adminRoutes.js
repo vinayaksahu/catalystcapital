@@ -563,13 +563,15 @@ router.post('/trigger-daily-roi', async (req, res) => {
       const [closeHour, closeMin] = closingTime.split(':').map(Number);
 
       const now = new Date();
-      const currentMinutesOfDay = now.getHours() * 60 + now.getMinutes();
+      // Calculate current time in IST (UTC + 5:30)
+      const istTime = new Date(now.getTime() + (5.5 * 60 * 60 * 1000));
+      const currentMinutesOfDay = istTime.getUTCHours() * 60 + istTime.getUTCMinutes();
       const closingMinutesOfDay = closeHour * 60 + closeMin;
 
       if (currentMinutesOfDay < closingMinutesOfDay) {
         return res.status(400).json({
           success: false,
-          error: `Daily ROI cycle is locked until automatic closing time (${closingTime}). Please wait for scheduled execution.`
+          error: `Daily ROI cycle is locked until automatic closing time (${closingTime} IST). Current time is ${String(istTime.getUTCHours()).padStart(2, '0')}:${String(istTime.getUTCMinutes()).padStart(2, '0')} IST.`
         });
       }
     }

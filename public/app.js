@@ -2995,12 +2995,18 @@ async function loadAdminData() {
       // Update ROI Execution schedule display
       const roiTime = s.roiClosingTime || '00:00';
       const roiTimeEl = document.getElementById('admin-roi-closing-time-text');
+      const roiSubtitleEl = document.getElementById('admin-roi-cycle-subtitle');
       const roiBadgeEl = document.getElementById('admin-roi-badge');
       const runRoiBtn = document.getElementById('admin-btn-run-roi');
       const runRoiText = document.getElementById('admin-btn-run-roi-text');
 
       if (s.alreadyExecutedToday) {
-        if (roiTimeEl) roiTimeEl.textContent = `Completed for today (Executed at ${s.lastRoiExecution ? new Date(s.lastRoiExecution).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : roiTime})`;
+        const execTimeStr = s.lastRoiExecution ? new Date(s.lastRoiExecution).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : roiTime;
+        if (roiSubtitleEl) {
+          roiSubtitleEl.innerHTML = `Today's cycle completed (Executed at <span class="text-amber-400 font-semibold font-mono">${execTimeStr}</span>) &bull; Closing Time: <span class="text-white font-mono font-semibold">${roiTime}</span>`;
+        } else if (roiTimeEl) {
+          roiTimeEl.textContent = roiTime;
+        }
         if (roiBadgeEl) {
           roiBadgeEl.textContent = 'Completed Today ✓';
           roiBadgeEl.className = 'text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
@@ -3012,7 +3018,11 @@ async function loadAdminData() {
           if (runRoiText) runRoiText.textContent = 'Done For Today (1/Day)';
         }
       } else {
-        if (roiTimeEl) roiTimeEl.textContent = `${roiTime} Server Time`;
+        if (roiSubtitleEl) {
+          roiSubtitleEl.innerHTML = `Runs automatically daily at <span id="admin-roi-closing-time-text" class="text-amber-400 font-semibold font-mono">${roiTime}</span>`;
+        } else if (roiTimeEl) {
+          roiTimeEl.textContent = roiTime;
+        }
         if (roiBadgeEl) {
           roiBadgeEl.textContent = `Auto Scheduled @ ${roiTime}`;
           roiBadgeEl.className = 'text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20';
@@ -3021,7 +3031,7 @@ async function loadAdminData() {
           runRoiBtn.disabled = true;
           runRoiBtn.className = 'flex-1 sm:flex-initial px-4 py-2 rounded-xl font-extrabold bg-slate-800 text-slate-500 cursor-not-allowed transition text-xs flex items-center justify-center gap-1.5 whitespace-nowrap border border-slate-700/50';
           runRoiBtn.title = `ROI cycle executes automatically once daily at ${roiTime}.`;
-          if (runRoiText) runRoiText.textContent = `Locked (${roiTime})`;
+          if (runRoiText) runRoiText.textContent = `Auto Scheduled (${roiTime})`;
         }
       }
 
@@ -4643,6 +4653,8 @@ async function handleSaveRoiClosingTime(e) {
     const data = await res.json();
     if (data.success) {
       showToast(`ROI closing time updated to ${timeVal}!`, 'success');
+      await loadAdminPlatformSettings();
+      await loadAdminData();
     } else {
       showToast(data.error || 'Failed to update ROI closing time', 'error');
     }
