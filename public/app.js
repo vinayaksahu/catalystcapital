@@ -2688,6 +2688,61 @@ function recalcWithdrawalBreakdown() {
 }
 window.recalcWithdrawalBreakdown = recalcWithdrawalBreakdown;
 
+let hasShownTextNoticePopupThisSession = false;
+
+function checkAndShowTextNoticePopup(title, body, type = 'announcement', force = false) {
+  if (!body || !body.trim()) return;
+  if (!force && hasShownTextNoticePopupThisSession) return;
+  // Don't show popup on purely auth pages or inside admin dashboard (unless force preview)
+  if (!force && (activeViewName === 'login' || activeViewName === 'register' || activeViewName === 'adminlogin' || activeViewName === 'admin')) return;
+
+  const modalTitle = document.getElementById('text-popup-title');
+  const modalBody = document.getElementById('text-popup-body');
+  const modalBadge = document.getElementById('text-popup-badge');
+
+  if (modalTitle) modalTitle.textContent = title || 'Platform Announcement';
+  if (modalBody) modalBody.textContent = body;
+  if (modalBadge) {
+    const cleanType = (type || 'announcement').toUpperCase();
+    modalBadge.textContent = cleanType;
+    if (type === 'important') {
+      modalBadge.className = 'px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider bg-rose-500/20 text-rose-300 border border-rose-500/30';
+    } else if (type === 'maintenance') {
+      modalBadge.className = 'px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider bg-sky-500/20 text-sky-300 border border-sky-500/30';
+    } else if (type === 'bonus') {
+      modalBadge.className = 'px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30';
+    } else {
+      modalBadge.className = 'px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30';
+    }
+  }
+
+  hasShownTextNoticePopupThisSession = true;
+
+  // Check if pop image modal is currently visible; if so, delay slightly so user sees both
+  const popImgModal = document.getElementById('memberLoginPopupModal');
+  const isImgModalOpen = popImgModal && !popImgModal.classList.contains('hidden');
+  const delay = isImgModalOpen ? 1200 : 500;
+
+  setTimeout(() => {
+    openModal('memberTextNoticeModal');
+    if (window.lucide) lucide.createIcons();
+  }, delay);
+}
+window.checkAndShowTextNoticePopup = checkAndShowTextNoticePopup;
+
+function previewMemberTextPopupDirectly() {
+  const title = document.getElementById('admin-text-notice-title-input')?.value.trim() || 'Platform Announcement';
+  const body = document.getElementById('admin-text-notice-body-input')?.value.trim();
+  const type = document.getElementById('admin-text-notice-type-select')?.value || 'announcement';
+
+  if (!body) {
+    showToast('Please enter announcement text before previewing!', 'info');
+    return;
+  }
+  checkAndShowTextNoticePopup(title, body, type, true);
+}
+window.previewMemberTextPopupDirectly = previewMemberTextPopupDirectly;
+
 function renderHomeTextNotice(rules) {
   const section = document.getElementById('home-text-notice-section');
   if (!section) return;
@@ -2705,6 +2760,9 @@ function renderHomeTextNotice(rules) {
     }
     section.classList.remove('hidden');
     section.style.display = 'block';
+
+    // Also trigger the text announcement popup modal for members
+    checkAndShowTextNoticePopup(rules.textNoticeTitle, rules.textNoticeBody, rules.textNoticeType);
   } else {
     section.classList.add('hidden');
     section.style.display = 'none';
@@ -3110,11 +3168,11 @@ async function loadAdminData() {
       const runRoiText = document.getElementById('admin-btn-run-roi-text');
 
       if (s.alreadyExecutedToday) {
-        const execTimeStr = s.lastRoiExecution ? new Date(s.lastRoiExecution).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : roiTime;
+        const execTimeStr = s.lastRoiExecution ? new Date(s.lastRoiExecution).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kolkata' }) : roiTime;
         if (roiSubtitleEl) {
-          roiSubtitleEl.innerHTML = `Today's cycle completed (Executed at <span class="text-amber-400 font-semibold font-mono">${execTimeStr}</span>) &bull; Closing Time: <span class="text-white font-mono font-semibold">${roiTime}</span>`;
+          roiSubtitleEl.innerHTML = `Today's cycle completed (Executed at <span class="text-amber-400 font-semibold font-mono">${execTimeStr} IST</span>) &bull; Closing Time: <span class="text-white font-mono font-semibold">${roiTime} IST</span>`;
         } else if (roiTimeEl) {
-          roiTimeEl.textContent = roiTime;
+          roiTimeEl.textContent = `${roiTime} IST`;
         }
         if (roiBadgeEl) {
           roiBadgeEl.textContent = 'Completed Today ✓';
@@ -3128,23 +3186,24 @@ async function loadAdminData() {
         }
       } else {
         if (roiSubtitleEl) {
-          roiSubtitleEl.innerHTML = `Runs automatically daily at <span id="admin-roi-closing-time-text" class="text-amber-400 font-semibold font-mono">${roiTime}</span>`;
+          roiSubtitleEl.innerHTML = `Runs automatically daily at <span id="admin-roi-closing-time-text" class="text-amber-400 font-semibold font-mono">${roiTime} IST</span> (Asia/Kolkata)`;
         } else if (roiTimeEl) {
-          roiTimeEl.textContent = roiTime;
+          roiTimeEl.textContent = `${roiTime} IST`;
         }
         if (roiBadgeEl) {
-          roiBadgeEl.textContent = `Auto Scheduled @ ${roiTime}`;
+          roiBadgeEl.textContent = `Auto Scheduled @ ${roiTime} IST`;
           roiBadgeEl.className = 'text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20';
         }
         if (runRoiBtn) {
           runRoiBtn.disabled = true;
           runRoiBtn.className = 'flex-1 sm:flex-initial px-4 py-2 rounded-xl font-extrabold bg-slate-800 text-slate-500 cursor-not-allowed transition text-xs flex items-center justify-center gap-1.5 whitespace-nowrap border border-slate-700/50';
-          runRoiBtn.title = `ROI cycle executes automatically once daily at ${roiTime}.`;
-          if (runRoiText) runRoiText.textContent = `Auto Scheduled (${roiTime})`;
+          runRoiBtn.title = `ROI cycle executes automatically once daily at ${roiTime} IST.`;
+          if (runRoiText) runRoiText.textContent = `Auto Scheduled (${roiTime} IST)`;
         }
       }
 
-      // Also refresh admin notification badge
+      // Start live IST clock and refresh admin notification badge
+      startLiveIstClock();
       await loadNotificationBadge();
     }
 
@@ -3217,7 +3276,157 @@ function switchAdminTab(tabName) {
 window.switchAdminTab = switchAdminTab;
 
 let adminCachedUsersStats = null;
-let adminMemberStatusFilter = 'all';
+let adminMemberStatusFilter = 'all'; // 'all', 'active', 'inactive'
+let adminMemberDatePreset = 'all'; // 'all', 'today', 'yesterday', 'week', 'month', 'custom'
+let adminMemberFromDate = '';
+let adminMemberToDate = '';
+let adminLastFilteredUsers = [];
+
+function formatIstDateTime(dateVal) {
+  if (!dateVal) return '-';
+  let d;
+  if (dateVal instanceof Date) {
+    d = dateVal;
+  } else if (typeof dateVal === 'string') {
+    let clean = dateVal.trim();
+    if (!clean.includes('Z') && !clean.includes('+')) {
+      clean = clean.replace(' ', 'T') + 'Z';
+    }
+    d = new Date(clean);
+  } else {
+    d = new Date(dateVal);
+  }
+  if (isNaN(d.getTime())) return '-';
+
+  return d.toLocaleDateString('en-GB', {
+    timeZone: 'Asia/Kolkata',
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric'
+  }) + ', ' + d.toLocaleTimeString('en-US', {
+    timeZone: 'Asia/Kolkata',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true
+  });
+}
+window.formatIstDateTime = formatIstDateTime;
+
+function getIstDateKey(dateVal) {
+  if (!dateVal) return '';
+  let d;
+  if (dateVal instanceof Date) {
+    d = dateVal;
+  } else if (typeof dateVal === 'string') {
+    let clean = dateVal.trim();
+    if (!clean.includes('Z') && !clean.includes('+')) {
+      clean = clean.replace(' ', 'T') + 'Z';
+    }
+    d = new Date(clean);
+  } else {
+    d = new Date(dateVal);
+  }
+  if (isNaN(d.getTime())) return '';
+
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Kolkata',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).format(d);
+}
+
+function matchesAdminMemberDateFilter(userCreatedAt) {
+  if (adminMemberDatePreset === 'all' && !adminMemberFromDate && !adminMemberToDate) return true;
+  if (!userCreatedAt) return false;
+
+  const userIstDate = getIstDateKey(userCreatedAt);
+  if (!userIstDate) return false;
+  const todayIst = getIstDateKey(new Date());
+
+  if (adminMemberDatePreset === 'today') {
+    return userIstDate === todayIst;
+  }
+
+  if (adminMemberDatePreset === 'yesterday') {
+    const yest = new Date(Date.now() - 86400000);
+    const yestIst = getIstDateKey(yest);
+    return userIstDate === yestIst;
+  }
+
+  if (adminMemberDatePreset === 'week') {
+    const weekAgo = new Date(Date.now() - 7 * 86400000);
+    const weekAgoIst = getIstDateKey(weekAgo);
+    return userIstDate >= weekAgoIst && userIstDate <= todayIst;
+  }
+
+  if (adminMemberDatePreset === 'month') {
+    const currentMonthPrefix = todayIst.slice(0, 7);
+    return userIstDate.startsWith(currentMonthPrefix);
+  }
+
+  if (adminMemberDatePreset === 'custom' || adminMemberFromDate || adminMemberToDate) {
+    if (adminMemberFromDate && userIstDate < adminMemberFromDate) return false;
+    if (adminMemberToDate && userIstDate > adminMemberToDate) return false;
+    return true;
+  }
+
+  return true;
+}
+
+function setAdminMemberDatePreset(preset) {
+  adminMemberDatePreset = preset;
+  adminMemberFromDate = '';
+  adminMemberToDate = '';
+
+  const fromInput = document.getElementById('admin-member-from-date');
+  const toInput = document.getElementById('admin-member-to-date');
+  if (fromInput) fromInput.value = '';
+  if (toInput) toInput.value = '';
+
+  const presets = ['all', 'today', 'yesterday', 'week', 'month'];
+  presets.forEach(p => {
+    const btn = document.getElementById(`admin-mem-date-btn-${p}`);
+    if (btn) {
+      if (p === preset) {
+        btn.className = 'px-2.5 py-1 rounded-xl text-[10px] font-bold bg-amber-500 text-black shadow-sm transition active:scale-95 cursor-pointer';
+      } else {
+        btn.className = 'px-2.5 py-1 rounded-xl text-[10px] font-bold bg-slate-800 hover:bg-slate-700 text-slate-300 transition active:scale-95 cursor-pointer';
+      }
+    }
+  });
+
+  filterAdminUsersList();
+}
+window.setAdminMemberDatePreset = setAdminMemberDatePreset;
+
+function applyAdminMemberCustomDate() {
+  const fromVal = document.getElementById('admin-member-from-date')?.value || '';
+  const toVal = document.getElementById('admin-member-to-date')?.value || '';
+  adminMemberFromDate = fromVal;
+  adminMemberToDate = toVal;
+
+  if (adminMemberFromDate || adminMemberToDate) {
+    adminMemberDatePreset = 'custom';
+    const presets = ['all', 'today', 'yesterday', 'week', 'month'];
+    presets.forEach(p => {
+      const btn = document.getElementById(`admin-mem-date-btn-${p}`);
+      if (btn) btn.className = 'px-2.5 py-1 rounded-xl text-[10px] font-bold bg-slate-800 hover:bg-slate-700 text-slate-300 transition active:scale-95 cursor-pointer';
+    });
+  } else {
+    adminMemberDatePreset = 'all';
+    const allBtn = document.getElementById('admin-mem-date-btn-all');
+    if (allBtn) allBtn.className = 'px-2.5 py-1 rounded-xl text-[10px] font-bold bg-amber-500 text-black shadow-sm transition active:scale-95 cursor-pointer';
+  }
+
+  filterAdminUsersList();
+}
+window.applyAdminMemberCustomDate = applyAdminMemberCustomDate;
+
+function resetAdminMemberDateFilter() {
+  setAdminMemberDatePreset('all');
+}
+window.resetAdminMemberDateFilter = resetAdminMemberDateFilter;
 
 function setAdminMemberStatusFilter(status) {
   adminMemberStatusFilter = status;
@@ -3263,12 +3472,13 @@ function updateAdminMembersKpis(users, stats) {
 window.updateAdminMembersKpis = updateAdminMembersKpis;
 
 function exportMembersToCSV() {
-  if (!adminCachedUsers || adminCachedUsers.length === 0) {
+  const sourceList = (adminLastFilteredUsers && adminLastFilteredUsers.length > 0) ? adminLastFilteredUsers : (adminCachedUsers || []);
+  if (!sourceList || sourceList.length === 0) {
     showToast('No members data to export', 'error');
     return;
   }
-  const headers = ['ID', 'Username', 'Full Name', 'Email', 'Phone', 'Role', 'Status', 'Investor Status', 'Referral Code', 'Sponsor', 'Active Investment ($)', 'Recharge Balance ($)', 'Total Withdrawn ($)', 'Joined At'];
-  const rows = adminCachedUsers.map(u => [
+  const headers = ['ID', 'Username', 'Full Name', 'Email', 'Phone', 'Role', 'Status', 'Investor Status', 'Referral Code', 'Sponsor', 'Active Investment ($)', 'Recharge Balance ($)', 'Total Withdrawn ($)', 'Joined At (IST)'];
+  const rows = sourceList.map(u => [
     u.id,
     `"${(u.username || '').replace(/"/g, '""')}"`,
     `"${(u.full_name || '').replace(/"/g, '""')}"`,
@@ -3282,17 +3492,17 @@ function exportMembersToCSV() {
     parseFloat(u.active_invested || 0).toFixed(2),
     parseFloat(u.wallet_balance || 0).toFixed(2),
     parseFloat(u.total_withdrawn || 0).toFixed(2),
-    `"${u.created_at || ''}"`
+    `"${formatIstDateTime(u.created_at)}"`
   ]);
   const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
   const encodedUri = encodeURI(csvContent);
   const link = document.createElement('a');
   link.setAttribute('href', encodedUri);
-  link.setAttribute('download', `Catalyst_Members_${new Date().toISOString().slice(0, 10)}.csv`);
+  link.setAttribute('download', `Catalyst_Members_${getIstDateKey(new Date())}.csv`);
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
-  showToast('Members directory exported to CSV', 'success');
+  showToast(`Exported ${sourceList.length} members to CSV`, 'success');
 }
 window.exportMembersToCSV = exportMembersToCSV;
 
@@ -3301,7 +3511,7 @@ function renderAdminUsersList(users) {
   if (!container) return;
 
   if (!users || users.length === 0) {
-    container.innerHTML = `<div class="text-center py-8 text-slate-500 bg-slate-900/50 rounded-2xl border border-slate-800">No members found matching your search.</div>`;
+    container.innerHTML = `<div class="text-center py-8 text-slate-500 bg-slate-900/50 rounded-2xl border border-slate-800">No members found matching your search and filter criteria.</div>`;
     return;
   }
 
@@ -3309,6 +3519,7 @@ function renderAdminUsersList(users) {
     const actInv = parseFloat(u.active_invested) || 0;
     const isInvestor = actInv > 0;
     const wth = parseFloat(u.total_withdrawn) || 0;
+    const joinFormatted = formatIstDateTime(u.created_at);
 
     return `
     <div class="p-3.5 sm:p-4 rounded-2xl bg-slate-900/90 border border-slate-800 hover:border-slate-700 transition space-y-3 shadow-md overflow-hidden">
@@ -3336,6 +3547,8 @@ function renderAdminUsersList(users) {
               <span>Ref: <strong class="text-amber-400">${u.referral_code}</strong></span>
               <span class="text-slate-600">&bull;</span>
               <span>Sponsor: <span class="text-slate-300">${u.sponsor_username ? '@' + u.sponsor_username : 'None'}</span></span>
+              <span class="text-slate-600">&bull;</span>
+              <span class="text-amber-300/90 font-sans flex items-center gap-1"><i data-lucide="calendar" class="w-2.5 h-2.5 text-amber-400"></i>Joined: <strong>${joinFormatted}</strong></span>
             </div>
           </div>
         </div>
@@ -3389,14 +3602,43 @@ function renderAdminUsersList(users) {
 
 function filterAdminUsersList() {
   const query = (document.getElementById('admin-user-search-input')?.value || '').trim().toLowerCase();
-  let list = adminCachedUsers || [];
+  const allUsers = adminCachedUsers || [];
 
+  // 1. Date filter on all users
+  const dateFiltered = allUsers.filter(u => matchesAdminMemberDateFilter(u.created_at));
+
+  // Update dynamic counts matching current date filter
+  const totalInDate = dateFiltered.length;
+  const activeInDate = dateFiltered.filter(u => (parseFloat(u.active_invested) || 0) > 0).length;
+  const inactiveInDate = totalInDate - activeInDate;
+  const totalActiveInvestInDate = dateFiltered.reduce((sum, u) => sum + (parseFloat(u.active_invested) || 0), 0);
+
+  const kpiTot = document.getElementById('admin-kpi-total-members');
+  const kpiAct = document.getElementById('admin-kpi-active-members');
+  const kpiInact = document.getElementById('admin-kpi-inactive-members');
+  const kpiInvest = document.getElementById('admin-kpi-total-active-invest');
+
+  if (kpiTot) kpiTot.textContent = totalInDate;
+  if (kpiAct) kpiAct.textContent = activeInDate;
+  if (kpiInact) kpiInact.textContent = inactiveInDate;
+  if (kpiInvest) kpiInvest.textContent = `$${totalActiveInvestInDate.toFixed(2)}`;
+
+  const cntAll = document.getElementById('admin-count-all-members');
+  const cntAct = document.getElementById('admin-count-active-members');
+  const cntInact = document.getElementById('admin-count-inactive-members');
+  if (cntAll) cntAll.textContent = totalInDate;
+  if (cntAct) cntAct.textContent = activeInDate;
+  if (cntInact) cntInact.textContent = inactiveInDate;
+
+  // 2. Status filter on dateFiltered
+  let list = dateFiltered;
   if (adminMemberStatusFilter === 'active') {
     list = list.filter(u => (parseFloat(u.active_invested) || 0) > 0);
   } else if (adminMemberStatusFilter === 'inactive') {
     list = list.filter(u => (parseFloat(u.active_invested) || 0) === 0);
   }
 
+  // 3. Search query
   if (query) {
     list = list.filter(u =>
       (u.username && u.username.toLowerCase().includes(query)) ||
@@ -3406,8 +3648,11 @@ function filterAdminUsersList() {
       (u.phone && u.phone.toLowerCase().includes(query))
     );
   }
+
+  adminLastFilteredUsers = list;
   renderAdminUsersList(list);
 }
+window.filterAdminUsersList = filterAdminUsersList;
 window.filterAdminUsersList = filterAdminUsersList;
 
 async function inspectAdminUser(userId) {
@@ -5314,7 +5559,29 @@ async function handleSaveMinWithdrawal(e) {
 }
 window.handleSaveMinWithdrawal = handleSaveMinWithdrawal;
 
+let istClockInterval = null;
+function startLiveIstClock() {
+  const updateClock = () => {
+    const clockEl = document.getElementById('admin-live-ist-clock');
+    if (!clockEl) return;
+    const now = new Date();
+    clockEl.textContent = now.toLocaleTimeString('en-US', {
+      timeZone: 'Asia/Kolkata',
+      hour12: true,
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    }) + ' IST';
+  };
+  updateClock();
+  if (!istClockInterval) {
+    istClockInterval = setInterval(updateClock, 1000);
+  }
+}
+window.startLiveIstClock = startLiveIstClock;
+
 function loadAdminPlatformSettings() {
+  startLiveIstClock();
   // Load settings from server and populate the settings tab
   if (!token) return;
   fetch(`${API_BASE}/admin/settings`, {
@@ -5454,6 +5721,7 @@ async function handleSaveAdminTextNotice(e) {
     });
     const data = await res.json();
     if (data.success) {
+      hasShownTextNoticePopupThisSession = false;
       showToast('Admin text notice updated successfully!', 'success');
       await loadAdminSettings();
       await loadAssetsData();
@@ -5488,6 +5756,7 @@ async function clearAdminTextNotice() {
         }
       })
     });
+    closeModal('memberTextNoticeModal');
     showToast('Admin text notice cleared', 'info');
     await loadAdminSettings();
     await loadAssetsData();

@@ -5,6 +5,33 @@ const walletService = require('../services/walletService');
 const { authenticateToken } = require('../middleware/authMiddleware');
 const { financialLimiter } = require('../middleware/rateLimiter');
 
+/**
+ * Returns YYYY-MM-DD string strictly in Indian Standard Time (Asia/Kolkata, UTC+5:30)
+ */
+function getIstDateString(val = new Date()) {
+  let dateObj;
+  if (!val) return null;
+  if (val instanceof Date) {
+    dateObj = val;
+  } else if (typeof val === 'string') {
+    let clean = val.trim();
+    if (!clean.includes('Z') && !clean.includes('+')) {
+      clean = clean.replace(' ', 'T') + 'Z';
+    }
+    dateObj = new Date(clean);
+  } else {
+    dateObj = new Date(val);
+  }
+  if (isNaN(dateObj.getTime())) return null;
+
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Kolkata',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).format(dateObj);
+}
+
 // Public endpoint for anyone (members, guests) to get active BEP-20 deposit address
 router.get('/deposit-address', async (req, res) => {
   try {
@@ -82,10 +109,10 @@ router.get('/overview', authenticateToken, async (req, res) => {
       return acc;
     }, {});
 
-    const todayStr = new Date().toISOString().slice(0, 10);
+    const todayStr = getIstDateString();
     const cycleDate = settings.last_roi_cycle_date || todayStr;
-    const yest = new Date(Date.now() - 86400000);
-    const yestStr = yest.toISOString().slice(0, 10);
+    const yestDate = new Date(Date.now() - 86400000);
+    const yestStr = getIstDateString(yestDate);
 
     let totalRoiIncome = 0;
     let totalTeamRoiIncome = 0;
@@ -98,7 +125,7 @@ router.get('/overview', authenticateToken, async (req, res) => {
     let totalEarned = 0;
 
     for (const tx of earningsRows) {
-      const txDate = new Date(tx.created_at).toISOString().slice(0, 10);
+      const txDate = getIstDateString(tx.created_at);
       const amt = parseFloat(tx.amount) || 0;
       totalEarned += amt;
       const isTodayCycle = (txDate === todayStr || txDate === cycleDate);

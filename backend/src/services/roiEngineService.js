@@ -2,21 +2,48 @@ const { db } = require('../db/database');
 const mlmService = require('./mlmService');
 const notificationService = require('./notificationService');
 
+/**
+ * Returns YYYY-MM-DD string strictly in Indian Standard Time (Asia/Kolkata, UTC+5:30)
+ */
+function getIstDateString(val = new Date()) {
+  let dateObj;
+  if (!val) return null;
+  if (val instanceof Date) {
+    dateObj = val;
+  } else if (typeof val === 'string') {
+    let clean = val.trim();
+    if (!clean.includes('Z') && !clean.includes('+')) {
+      clean = clean.replace(' ', 'T') + 'Z';
+    }
+    dateObj = new Date(clean);
+  } else {
+    dateObj = new Date(val);
+  }
+  if (isNaN(dateObj.getTime())) return null;
+
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Kolkata',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).format(dateObj);
+}
+
 class RoiEngineService {
   /**
    * Process daily ROI for all active investments and distribute ROI of ROI to upline
    */
   async processDailyRoi(force = false) {
-    const today = new Date().toISOString().split('T')[0];
+    const today = getIstDateString();
 
-    // System-wide Rule: Daily ROI cycle can only execute once per calendar day
+    // System-wide Rule: Daily ROI cycle can only execute once per calendar day (evaluated in IST)
     if (!force) {
       const lastCycleSetting = await db.get("SELECT value FROM system_settings WHERE key = 'last_roi_cycle_date'");
       if (lastCycleSetting && lastCycleSetting.value === today) {
         return {
           success: false,
           alreadyExecutedToday: true,
-          message: `Daily ROI cycle has already executed today (${today}). Allowed only once per day.`,
+          message: `Daily ROI cycle has already executed today (${today} IST). Allowed only once per day.`,
           processedInvestments: 0,
           totalRoiDistributed: 0,
           totalReferralRoiDistributed: 0,
@@ -44,22 +71,18 @@ class RoiEngineService {
     for (const inv of activeInvestments) {
       if (!force) {
         // 1. Newly created package rule: A package bought today must NOT get ROI on the same day.
-        // First ROI is credited on the next calendar day's closing time.
+        // First ROI is credited on the next calendar day's closing time (in IST).
         if (inv.created_at) {
-          const createdDate = typeof inv.created_at === 'string'
-            ? inv.created_at.split(' ')[0].split('T')[0]
-            : new Date(inv.created_at).toISOString().split('T')[0];
-          if (createdDate >= today) {
+          const createdDate = getIstDateString(inv.created_at);
+          if (createdDate && createdDate >= today) {
             continue;
           }
         }
 
-        // 2. Already credited today rule: Only credit once per day
+        // 2. Already credited today rule: Only credit once per day (in IST)
         if (inv.last_roi_at) {
-          const lastDate = typeof inv.last_roi_at === 'string'
-            ? inv.last_roi_at.split(' ')[0].split('T')[0]
-            : new Date(inv.last_roi_at).toISOString().split('T')[0];
-          if (lastDate === today) {
+          const lastDate = getIstDateString(inv.last_roi_at);
+          if (lastDate && lastDate === today) {
             continue;
           }
         }
@@ -209,26 +232,22 @@ class RoiEngineService {
     let estimatedDailyRoi = 0;
     let estimatedReferralRoi = 0;
 
-    const today = new Date().toISOString().split('T')[0];
+    const today = getIstDateString();
     let eligibleCount = 0;
 
     for (const inv of activeInvestments) {
-      // Skip if created today (first ROI eligible next day at closing)
+      // Skip if created today (first ROI eligible next day at closing in IST)
       if (inv.created_at) {
-        const createdDate = typeof inv.created_at === 'string'
-          ? inv.created_at.split(' ')[0].split('T')[0]
-          : new Date(inv.created_at).toISOString().split('T')[0];
-        if (createdDate >= today) {
+        const createdDate = getIstDateString(inv.created_at);
+        if (createdDate && createdDate >= today) {
           continue;
         }
       }
 
-      // Skip if already credited today
+      // Skip if already credited today (in IST)
       if (inv.last_roi_at) {
-        const lastDate = typeof inv.last_roi_at === 'string'
-          ? inv.last_roi_at.split(' ')[0].split('T')[0]
-          : new Date(inv.last_roi_at).toISOString().split('T')[0];
-        if (lastDate === today) {
+        const lastDate = getIstDateString(inv.last_roi_at);
+        if (lastDate && lastDate === today) {
           continue;
         }
       }
