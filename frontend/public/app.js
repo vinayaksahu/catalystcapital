@@ -3086,7 +3086,8 @@ async function loadAdminData() {
       const teamTabBtn = document.getElementById('admin-tab-btn-teamadmins');
 
       const isImpersonatingFromSuper = !!(currentUser && currentUser.isImpersonation && localStorage.getItem('catalyst_superadmin_orig_token'));
-      const isSuperRootMode = (adminCurrentScope.isSuperAdmin || currentUser.role === 'superadmin') && !isImpersonatingFromSuper;
+      // Only switch to Super Root Commander view if logged in as 'superrootadmin' or role is explicitly 'superadmin'
+      const isSuperRootMode = (currentUser && (currentUser.username === 'superrootadmin' || currentUser.role === 'superadmin')) && !isImpersonatingFromSuper;
 
       if (isSuperRootMode) {
         const srContainer = document.getElementById('super-root-master-container');
@@ -3109,21 +3110,25 @@ async function loadAdminData() {
 
     const scopeQuery = getAdminScopeQuery();
 
-    // 1. Fetch all admin datasets concurrently in PARALLEL for near-instant response
+    // 1. Fetch core admin stats and users
     const [statsRes, usersRes] = await Promise.all([
       fetch(`${API_BASE}/admin/stats${scopeQuery}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       }),
       fetch(`${API_BASE}/admin/users${scopeQuery}`, {
         headers: { 'Authorization': `Bearer ${token}` }
-      }),
+      })
+    ]);
+
+    // Load secondary datasets non-blockingly so primary dashboard always renders instantly
+    Promise.allSettled([
       loadAdminWithdrawals(),
       loadAdminDeposits(),
       loadAdminTickets(),
       loadAdminSettings(),
       loadAdminPlans(),
       adminCurrentScope.isSuperAdmin ? loadTeamAdminsList() : Promise.resolve()
-    ]);
+    ]).catch(err => console.warn('Non-blocking admin datasets load error:', err));
 
     const statsData = await statsRes.json();
     if (statsData.success && statsData.stats) {

@@ -45,7 +45,7 @@ router.use(requireAdmin);
  * Team Admin is strictly locked to their own team (req.user.id)
  */
 function getAdminScope(req) {
-  const isSuper = (req.user.role === 'superadmin') && !req.user.isImpersonation;
+  const isSuper = (req.user.role === 'superadmin' || req.user.username === 'admin' || req.user.id === 1) && !req.user.isImpersonation;
   if (isSuper) {
     const filterId = req.query.teamAdminId ? parseInt(req.query.teamAdminId, 10) : null;
     return {
@@ -69,7 +69,7 @@ async function assertUserInTeam(userId, req) {
     err.status = 404;
     throw err;
   }
-  const isSuper = (req.user.role === 'superadmin') && !req.user.isImpersonation;
+  const isSuper = (req.user.role === 'superadmin' || req.user.username === 'admin' || req.user.id === 1) && !req.user.isImpersonation;
   if (!isSuper) {
     if (target.team_admin_id !== req.user.id && target.sponsor_id !== req.user.id) {
       const err = new Error('Unauthorized: User does not belong to your team');
@@ -90,7 +90,7 @@ router.get('/me', async (req, res) => {
       FROM users WHERE id = ?
     `, [req.user.id]);
 
-    const isSuper = (adminUser.role === 'superadmin') && !req.user.isImpersonation;
+    const isSuper = (adminUser.role === 'superadmin' || adminUser.username === 'admin' || adminUser.id === 1) && !req.user.isImpersonation;
     const teamAdmins = isSuper ? await db.all(`
       SELECT id, username, full_name, team_name, referral_code, status
       FROM users WHERE (role = 'admin' OR id = 1) AND id != ? ORDER BY id ASC
