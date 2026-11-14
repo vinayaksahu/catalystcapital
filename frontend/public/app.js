@@ -1208,14 +1208,106 @@ function openBnvGuideModal() {
   openCatalystGuideModal();
 }
 
+// Multi-page Official Plan Presentation pages
+const officialPlanPages = [
+  { src: 'plan_page_1.jpg', title: 'Welcome to Catalyst Capital & Core Vision' },
+  { src: 'plan_page_2.jpg', title: 'Global Investment Strategy & Wealth Creation' },
+  { src: 'plan_page_3.jpg', title: 'Leadership Recognition & BMW Reward' },
+  { src: 'plan_page_4.jpg', title: 'Leadership Recognition & Fortuner Reward' }
+];
+let currentPlanPageIndex = 0;
+
 // Lightbox image viewer for plan and legal certificates
 function openImageViewer(src, title) {
   const img = document.getElementById('lightbox-img');
   const titleEl = document.getElementById('lightbox-title');
   if (img) img.src = src;
   if (titleEl && title) titleEl.textContent = title;
+
+  // Hide multi-page navigation controls when viewing a single image
+  const multiPageNav = document.getElementById('lightbox-plan-nav');
+  if (multiPageNav) multiPageNav.classList.add('hidden');
+  const pdfActions = document.getElementById('lightbox-pdf-actions');
+  if (pdfActions) pdfActions.classList.add('hidden');
+  const prevBtn = document.getElementById('lightbox-prev-btn');
+  if (prevBtn) prevBtn.classList.add('hidden');
+  const nextBtn = document.getElementById('lightbox-next-btn');
+  if (nextBtn) nextBtn.classList.add('hidden');
+
   openModal('imageViewerModal');
 }
+
+function openPlanViewer(pageIndex = 0) {
+  currentPlanPageIndex = Math.max(0, Math.min(officialPlanPages.length - 1, pageIndex));
+  renderPlanPageInModal();
+  openModal('imageViewerModal');
+}
+
+function renderPlanPageInModal() {
+  const page = officialPlanPages[currentPlanPageIndex];
+  const img = document.getElementById('lightbox-img');
+  const titleEl = document.getElementById('lightbox-title');
+  if (img) img.src = page.src;
+  if (titleEl) {
+    titleEl.textContent = `Official Plan (Page ${currentPlanPageIndex + 1} of 4: ${page.title})`;
+  }
+
+  // Show multi-page controls & PDF actions
+  const multiPageNav = document.getElementById('lightbox-plan-nav');
+  if (multiPageNav) multiPageNav.classList.remove('hidden');
+  const pdfActions = document.getElementById('lightbox-pdf-actions');
+  if (pdfActions) pdfActions.classList.remove('hidden');
+  const prevBtn = document.getElementById('lightbox-prev-btn');
+  if (prevBtn) prevBtn.classList.remove('hidden');
+  const nextBtn = document.getElementById('lightbox-next-btn');
+  if (nextBtn) nextBtn.classList.remove('hidden');
+
+  // Update dots
+  for (let i = 0; i < officialPlanPages.length; i++) {
+    const dot = document.getElementById(`lightbox-dot-${i}`);
+    if (dot) {
+      if (i === currentPlanPageIndex) {
+        dot.className = 'w-6 h-1.5 rounded-full bg-amber-500 transition-all cursor-pointer';
+      } else {
+        dot.className = 'w-2 h-1.5 rounded-full bg-slate-600 hover:bg-slate-400 transition-all cursor-pointer';
+      }
+    }
+  }
+
+  if (window.lucide && typeof window.lucide.createIcons === 'function') {
+    window.lucide.createIcons();
+  }
+}
+
+function prevPlanPage(e) {
+  if (e && e.stopPropagation) e.stopPropagation();
+  currentPlanPageIndex = (currentPlanPageIndex - 1 + officialPlanPages.length) % officialPlanPages.length;
+  renderPlanPageInModal();
+}
+
+function nextPlanPage(e) {
+  if (e && e.stopPropagation) e.stopPropagation();
+  currentPlanPageIndex = (currentPlanPageIndex + 1) % officialPlanPages.length;
+  renderPlanPageInModal();
+}
+
+window.openPlanViewer = openPlanViewer;
+window.prevPlanPage = prevPlanPage;
+window.nextPlanPage = nextPlanPage;
+
+// Keyboard navigation for image lightbox & multi-page plan
+document.addEventListener('keydown', (e) => {
+  const modal = document.getElementById('imageViewerModal');
+  if (modal && !modal.classList.contains('hidden')) {
+    if (e.key === 'ArrowLeft') {
+      prevPlanPage();
+    } else if (e.key === 'ArrowRight') {
+      nextPlanPage();
+    } else if (e.key === 'Escape') {
+      closeModal('imageViewerModal');
+    }
+  }
+});
 
 // Open Dedicated Invest tab to see the Investment Packages ($25 - $350)
 function openInvestPackages() {

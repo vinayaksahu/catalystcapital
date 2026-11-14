@@ -664,20 +664,57 @@
         </div>
       </div>
 
-      <!-- Document 1: cc_PLAN.png (Official Investment & Compensation Plan) -->
+      <!-- Document 1: Official Investment & Compensation Plan Presentation PDF -->
       <div class="theme-card p-3 space-y-2.5">
-        <div class="flex items-center justify-between">
-          <div class="flex items-center gap-1.5">
-            <div class="w-6 h-6 rounded-lg bg-amber-500/20 text-amber-500 flex items-center justify-center font-bold text-xs">1</div>
-            <h4 class="font-cf-title text-xs">Official Investment & Compensation Plan Chart</h4>
+        <div class="flex items-center justify-between flex-wrap gap-2">
+          <div class="flex items-center gap-1.5 min-w-0">
+            <div class="w-6 h-6 rounded-lg bg-amber-500/20 text-amber-500 flex items-center justify-center font-bold text-xs shrink-0">1</div>
+            <h4 class="font-cf-title text-xs truncate">Official Investment & Compensation Plan Chart</h4>
+            <span class="px-1.5 py-0.5 rounded text-[9px] font-black bg-amber-500/20 text-amber-400 border border-amber-500/30 uppercase shrink-0">4-Page PDF</span>
           </div>
-          <button onclick="openImageViewer('cc_PLAN.png', 'Catalyst Capital - Official Investment & Referral Plan Chart')" class="px-2.5 py-1 rounded-full bg-amber-500 hover:bg-amber-400 text-black text-[10px] font-extrabold flex items-center gap-1 shadow-sm transition">
-            <i data-lucide="maximize-2" class="w-3 h-3"></i> Full Zoom
-          </button>
+          <div class="flex items-center gap-1.5">
+            <a href="catalyst_capital_plan.pdf" target="_blank" class="px-2.5 py-1 rounded-full bg-amber-500 hover:bg-amber-400 text-black text-[10px] font-extrabold flex items-center gap-1 shadow-sm transition" title="Open full PDF presentation in new tab">
+              <i data-lucide="file-text" class="w-3 h-3 text-black"></i> Open PDF
+            </a>
+            <a href="catalyst_capital_plan.pdf" download="Catalyst_Capital_Official_Plan.pdf" class="px-2.5 py-1 rounded-full bg-slate-800 hover:bg-slate-700 text-amber-400 border border-amber-500/30 text-[10px] font-bold flex items-center gap-1 shadow-sm transition" title="Download official presentation PDF">
+              <i data-lucide="download" class="w-3 h-3 text-amber-400"></i> Download
+            </a>
+            <button type="button" onclick="openPlanViewer(0)" class="px-2.5 py-1 rounded-full bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 border border-amber-500/30 text-[10px] font-extrabold flex items-center gap-1 shadow-sm transition">
+              <i data-lucide="maximize-2" class="w-3 h-3 text-amber-400"></i> Full Zoom
+            </button>
+          </div>
         </div>
 
-        <div onclick="openImageViewer('cc_PLAN.png', 'Catalyst Capital - Official Investment & Referral Plan Chart')" class="group relative rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-black cursor-pointer shadow-md hover:border-amber-500/50 transition">
-          <img src="cc_PLAN.png" alt="Catalyst Capital Investment Plan" loading="lazy" decoding="async" class="w-full h-auto object-cover group-hover:scale-[1.01] transition duration-300">
+        <div onclick="openPlanViewer(0)" class="group relative rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-black cursor-pointer shadow-md hover:border-amber-500/50 transition">
+          <img src="plan_page_1.jpg" alt="Catalyst Capital Investment Plan Presentation" loading="lazy" decoding="async" class="w-full h-auto object-cover group-hover:scale-[1.01] transition duration-300">
+          <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex flex-col justify-end p-3 pointer-events-none">
+            <div class="flex items-center justify-between text-white text-[11px] font-bold">
+              <span class="flex items-center gap-1.5 bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-lg border border-white/10">
+                <i data-lucide="layers" class="w-3.5 h-3.5 text-amber-400"></i> Tap to browse all 4 pages
+              </span>
+              <span class="bg-amber-500 text-black text-[10px] font-black px-2 py-0.5 rounded-md">Page 1 / 4</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4 Page Thumbnails Strip -->
+        <div class="grid grid-cols-4 gap-1.5 pt-1">
+          <button type="button" onclick="openPlanViewer(0)" class="group relative aspect-video rounded-lg overflow-hidden border border-amber-500/60 bg-black cursor-pointer hover:border-amber-400 transition" title="Page 1: Welcome & Vision">
+            <img src="plan_page_1.jpg" alt="Page 1" class="w-full h-full object-cover group-hover:scale-105 transition">
+            <span class="absolute bottom-0.5 right-0.5 text-[8px] font-bold bg-black/80 text-amber-400 px-1 rounded">P1</span>
+          </button>
+          <button type="button" onclick="openPlanViewer(1)" class="group relative aspect-video rounded-lg overflow-hidden border border-slate-700 bg-black cursor-pointer hover:border-amber-400 transition" title="Page 2: Strategy & Leadership">
+            <img src="plan_page_2.jpg" alt="Page 2" class="w-full h-full object-cover group-hover:scale-105 transition">
+            <span class="absolute bottom-0.5 right-0.5 text-[8px] font-bold bg-black/80 text-amber-400 px-1 rounded">P2</span>
+          </button>
+          <button type="button" onclick="openPlanViewer(2)" class="group relative aspect-video rounded-lg overflow-hidden border border-slate-700 bg-black cursor-pointer hover:border-amber-400 transition" title="Page 3: Rewards BMW">
+            <img src="plan_page_3.jpg" alt="Page 3" class="w-full h-full object-cover group-hover:scale-105 transition">
+            <span class="absolute bottom-0.5 right-0.5 text-[8px] font-bold bg-black/80 text-amber-400 px-1 rounded">P3</span>
+          </button>
+          <button type="button" onclick="openPlanViewer(3)" class="group relative aspect-video rounded-lg overflow-hidden border border-slate-700 bg-black cursor-pointer hover:border-amber-400 transition" title="Page 4: Rewards Fortuner">
+            <img src="plan_page_4.jpg" alt="Page 4" class="w-full h-full object-cover group-hover:scale-105 transition">
+            <span class="absolute bottom-0.5 right-0.5 text-[8px] font-bold bg-black/80 text-amber-400 px-1 rounded">P4</span>
+          </button>
         </div>
       </div>
 
@@ -2805,17 +2842,55 @@
 
   <!-- ==================== MODALS & POPUPS ==================== -->
 
-  <!-- IMAGE LIGHTBOX / DOCUMENT VIEWER MODAL (For cc_PLAN.png & catlystcapital_doc.jpeg) -->
+  <!-- IMAGE LIGHTBOX / DOCUMENT VIEWER MODAL (For Presentation PDF & Legal Document) -->
   <div id="imageViewerModal" class="modal fixed inset-0 z-50 bg-black/95 backdrop-blur-md hidden items-center justify-center p-2 sm:p-4">
-    <div class="relative max-w-lg w-full max-h-[92vh] flex flex-col items-center bg-[#0d1017] border border-slate-800 rounded-2xl overflow-hidden shadow-2xl">
-      <div class="w-full flex items-center justify-between p-3 border-b border-slate-800 bg-black/70">
-        <h4 id="lightbox-title" class="font-cf-title text-xs text-white">Document Preview</h4>
-        <button onclick="closeModal('imageViewerModal')" class="p-1 rounded-lg text-slate-400 hover:text-white bg-slate-800/80">
-          <i data-lucide="x" class="w-5 h-5"></i>
+    <div class="relative max-w-xl w-full max-h-[94vh] flex flex-col items-center bg-[#0d1017] border border-slate-800 rounded-2xl overflow-hidden shadow-2xl">
+      <div class="w-full flex items-center justify-between p-3 border-b border-slate-800 bg-black/70 flex-wrap gap-2">
+        <h4 id="lightbox-title" class="font-cf-title text-xs text-white truncate max-w-[200px] sm:max-w-none">Document Preview</h4>
+        
+        <div class="flex items-center gap-2">
+          <!-- PDF Actions (Shown only when viewing multi-page plan) -->
+          <div id="lightbox-pdf-actions" class="hidden flex items-center gap-1.5">
+            <a href="catalyst_capital_plan.pdf" target="_blank" class="px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-black font-extrabold text-[10px] transition flex items-center gap-1 shadow-sm">
+              <i data-lucide="file-text" class="w-3 h-3 text-black"></i> <span>Open PDF</span>
+            </a>
+            <a href="catalyst_capital_plan.pdf" download="Catalyst_Capital_Official_Plan.pdf" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-400 border border-amber-500/30 font-bold text-[10px] transition flex items-center gap-1">
+              <i data-lucide="download" class="w-3 h-3 text-amber-400"></i> <span>Download</span>
+            </a>
+          </div>
+
+          <button onclick="closeModal('imageViewerModal')" class="p-1 rounded-lg text-slate-400 hover:text-white bg-slate-800/80 cursor-pointer">
+            <i data-lucide="x" class="w-5 h-5"></i>
+          </button>
+        </div>
+      </div>
+
+      <div class="relative overflow-auto max-h-[76vh] p-2 flex items-center justify-center w-full bg-black/40">
+        <img id="lightbox-img" src="" alt="Preview" class="max-w-full max-h-[74vh] object-contain rounded-lg shadow-lg">
+        
+        <!-- Multi-page Left & Right overlay buttons -->
+        <button id="lightbox-prev-btn" type="button" onclick="prevPlanPage(event)" class="hidden absolute left-3 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/70 hover:bg-amber-500 text-white hover:text-black transition border border-white/10 shadow-lg cursor-pointer">
+          <i data-lucide="chevron-left" class="w-5 h-5"></i>
+        </button>
+        <button id="lightbox-next-btn" type="button" onclick="nextPlanPage(event)" class="hidden absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/70 hover:bg-amber-500 text-white hover:text-black transition border border-white/10 shadow-lg cursor-pointer">
+          <i data-lucide="chevron-right" class="w-5 h-5"></i>
         </button>
       </div>
-      <div class="overflow-auto max-h-[82vh] p-2 flex items-center justify-center w-full">
-        <img id="lightbox-img" src="" alt="Preview" class="max-w-full h-auto object-contain rounded-lg">
+
+      <!-- Footer Multi-page Navigator -->
+      <div id="lightbox-plan-nav" class="hidden w-full flex items-center justify-between px-4 py-2 bg-black/80 border-t border-slate-800 text-xs">
+        <button type="button" onclick="prevPlanPage(event)" class="px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px] font-bold flex items-center gap-1 cursor-pointer">
+          <i data-lucide="arrow-left" class="w-3.5 h-3.5"></i> Previous
+        </button>
+        <div class="flex items-center gap-1.5">
+          <span id="lightbox-dot-0" onclick="openPlanViewer(0)" class="w-6 h-1.5 rounded-full bg-amber-500 transition-all cursor-pointer"></span>
+          <span id="lightbox-dot-1" onclick="openPlanViewer(1)" class="w-2 h-1.5 rounded-full bg-slate-600 hover:bg-slate-400 transition-all cursor-pointer"></span>
+          <span id="lightbox-dot-2" onclick="openPlanViewer(2)" class="w-2 h-1.5 rounded-full bg-slate-600 hover:bg-slate-400 transition-all cursor-pointer"></span>
+          <span id="lightbox-dot-3" onclick="openPlanViewer(3)" class="w-2 h-1.5 rounded-full bg-slate-600 hover:bg-slate-400 transition-all cursor-pointer"></span>
+        </div>
+        <button type="button" onclick="nextPlanPage(event)" class="px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px] font-bold flex items-center gap-1 cursor-pointer">
+          Next <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
+        </button>
       </div>
     </div>
   </div>
@@ -4288,6 +4363,6 @@
   <div id="toast-container" class="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-2 w-11/12 max-w-sm pointer-events-none"></div>
 
   <!-- Main JavaScript App -->
-  <script src="app.js?v=9.7"></script>
+  <script src="app.js?v=9.8"></script>
 </body>
 </html>
