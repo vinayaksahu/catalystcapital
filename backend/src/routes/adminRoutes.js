@@ -403,11 +403,13 @@ router.post('/team-admins/:id/impersonate', requireSuperAdmin, async (req, res) 
 });
 
 // -------------------------------------------------------------
-// Scoped Users Management
+// Scoped Users Management with Advanced Filters & Analytics
 // -------------------------------------------------------------
 router.get('/users', async (req, res) => {
   try {
     const scope = getAdminScope(req);
+    const { status, search, startDate, endDate } = req.query;
+
     let query = `
       SELECT u.id, u.username, u.email, u.full_name, u.phone, u.role, u.referral_code, u.sponsor_id,
              u.team_admin_id, u.team_name,
@@ -415,21 +417,82 @@ router.get('/users', async (req, res) => {
              s.username as sponsor_username,
              tm.username as team_admin_username,
              tm.team_name as team_admin_team_name,
-             COALESCE((SELECT SUM(amount) FROM investments WHERE user_id = u.id AND status = 'active'), 0) as active_invested
+             COALESCE((SELECT SUM(amount) FROM investments WHERE user_id = u.id AND status = 'active'), 0) as active_invested,
+             COALESCE((SELECT COUNT(*) FROM investments WHERE user_id = u.id), 0) as total_investments_count,
+             COALESCE((SELECT SUM(amount) FROM withdrawals WHERE user_id = u.id AND status = 'approved'), 0) as total_withdrawn
       FROM users u
       LEFT JOIN users s ON u.sponsor_id = s.id
       LEFT JOIN users tm ON u.team_admin_id = tm.id
       WHERE u.role IN ('user', 'member')
     `;
     const params = [];
+
     if (scope.teamAdminId) {
       query += ` AND (u.team_admin_id = ? OR u.sponsor_id = ?)`;
       params.push(scope.teamAdminId, scope.teamAdminId);
     }
+
+    if (search && search.trim()) {
+      const q = `%${search.trim().toLowerCase()}%`;
+      query += ` AND (LOWER(u.username) LIKE ? OR LOWER(COALESCE(u.full_name, '')) LIKE ? OR LOWER(COALESCE(u.email, '')) LIKE ? OR LOWER(COALESCE(u.referral_code, '')) LIKE ? OR LOWER(COALESCE(u.phone, '')) LIKE ?)`;
+      params.push(q, q, q, q, q);
+    }
+
+    if (startDate) {
+      query += ` AND u.created_at >= ?`;
+      params.push(startDate);
+    }
+    if (endDate) {
+      query += ` AND u.created_at <= ?`;
+      params.push(endDate + ' 23:59:59');
+    }
+
     query += ` ORDER BY u.created_at DESC`;
 
-    const users = await db.all(query, params);
-    res.json({ success: true, users, scopedTeamAdminId: scope.teamAdminId, isSuperAdmin: scope.isSuperAdmin });
+    let users = await db.all(query, params);
+
+    // Compute Overall Analytics across returned members
+    const totalUsers = users.length;
+    let activeUsers = 0;
+    let inactiveUsers = 0;
+    let totalInvested = 0;
+    let totalWithdrawn = 0;
+
+    users = users.map(u => {
+      const actInv = parseFloat(u.active_invested) || 0;
+      const wth = parseFloat(u.total_withdrawn) || 0;
+      totalInvested += actInv;
+      totalWithdrawn += wth;
+      if (actInv > 0) activeUsers++;
+      else inactiveUsers++;
+      return {
+        ...u,
+        isActiveInvestor: actInv > 0
+      };
+    });
+
+    // Filter by Active / Inactive member status if requested
+    if (status === 'active') {
+      users = users.filter(u => u.isActiveInvestor);
+    } else if (status === 'inactive') {
+      users = users.filter(u => !u.isActiveInvestor);
+    }
+
+    const stats = {
+      totalUsers,
+      activeUsers,
+      inactiveUsers,
+      totalInvested: parseFloat(totalInvested.toFixed(2)),
+      totalWithdrawn: parseFloat(totalWithdrawn.toFixed(2))
+    };
+
+    res.json({
+      success: true,
+      users,
+      stats,
+      scopedTeamAdminId: scope.teamAdminId,
+      isSuperAdmin: scope.isSuperAdmin
+    });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -497,26 +560,98 @@ router.post('/adjust-balance', async (req, res) => {
 });
 
 // -------------------------------------------------------------
-// Scoped Withdrawals List & Actions
+// Scoped Withdrawals List, Analytics & Comprehensive Management
 // -------------------------------------------------------------
 router.get('/withdrawals', async (req, res) => {
   try {
     const scope = getAdminScope(req);
+    const { status, search, startDate, endDate } = req.query;
+
     let query = `
-      SELECT w.*, u.username, u.full_name, u.email, u.team_admin_id, tm.team_name, tm.username as team_admin_username
+      SELECT w.*, u.username, u.full_name, u.email, u.phone, u.team_admin_id, tm.team_name, tm.username as team_admin_username
       FROM withdrawals w
       JOIN users u ON w.user_id = u.id
       LEFT JOIN users tm ON u.team_admin_id = tm.id
+      WHERE 1=1
     `;
     const params = [];
+
     if (scope.teamAdminId) {
-      query += ` WHERE (u.team_admin_id = ? OR u.sponsor_id = ?)`;
+      query += ` AND (u.team_admin_id = ? OR u.sponsor_id = ?)`;
       params.push(scope.teamAdminId, scope.teamAdminId);
     }
+
+    if (status && status !== 'all') {
+      query += ` AND LOWER(w.status) = LOWER(?)`;
+      params.push(status);
+    }
+
+    if (search && search.trim()) {
+      const q = `%${search.trim().toLowerCase()}%`;
+      query += ` AND (LOWER(u.username) LIKE ? OR LOWER(COALESCE(u.full_name, '')) LIKE ? OR LOWER(COALESCE(w.usdt_address, '')) LIKE ? OR LOWER(COALESCE(w.tx_hash, '')) LIKE ?)`;
+      params.push(q, q, q, q);
+    }
+
+    if (startDate) {
+      query += ` AND w.created_at >= ?`;
+      params.push(startDate);
+    }
+    if (endDate) {
+      query += ` AND w.created_at <= ?`;
+      params.push(endDate + ' 23:59:59');
+    }
+
     query += ` ORDER BY w.created_at DESC`;
 
     const withdrawals = await db.all(query, params);
-    res.json({ success: true, withdrawals });
+
+    // Compute Overall Analytics for Withdrawals
+    let totalAmount = 0;
+    let totalFee = 0;
+    let totalNet = 0;
+    let pendingCount = 0;
+    let pendingAmount = 0;
+    let approvedCount = 0;
+    let approvedAmount = 0;
+    let rejectedCount = 0;
+    let rejectedAmount = 0;
+
+    withdrawals.forEach(w => {
+      const amt = parseFloat(w.amount) || 0;
+      const fee = parseFloat(w.fee) || 0;
+      const net = (w.net_amount !== null && w.net_amount !== undefined) ? parseFloat(w.net_amount) : (amt - fee);
+
+      totalAmount += amt;
+      totalFee += fee;
+      totalNet += net;
+
+      const st = (w.status || '').toLowerCase();
+      if (st === 'pending') {
+        pendingCount++;
+        pendingAmount += amt;
+      } else if (st === 'approved') {
+        approvedCount++;
+        approvedAmount += amt;
+      } else if (st === 'rejected') {
+        rejectedCount++;
+        rejectedAmount += amt;
+      }
+    });
+
+    const stats = {
+      totalCount: withdrawals.length,
+      totalAmount: parseFloat(totalAmount.toFixed(2)),
+      totalFee: parseFloat(totalFee.toFixed(2)),
+      totalNet: parseFloat(totalNet.toFixed(2)),
+      pendingCount,
+      pendingAmount: parseFloat(pendingAmount.toFixed(2)),
+      approvedCount,
+      approvedAmount: parseFloat(approvedAmount.toFixed(2)),
+      rejectedCount,
+      rejectedAmount: parseFloat(rejectedAmount.toFixed(2))
+    };
+
+    res.json({ success: true, withdrawals, stats });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -547,6 +682,103 @@ router.post('/withdrawals/:id/reject', async (req, res) => {
     res.json(result);
   } catch (err) {
     res.status(err.status || 400).json({ success: false, error: err.message });
+  }
+});
+
+/**
+ * Edit withdrawal record (Amount, Fee, Net Amount, Status, USDT Address, TxID, Note, Date)
+ * Updates both withdrawals table and corresponding transactions table so user's history shows accurately.
+ */
+router.put('/withdrawals/:id', async (req, res) => {
+  try {
+    const withdrawalId = Number(req.params.id);
+    const existing = await db.get('SELECT * FROM withdrawals WHERE id = ?', [withdrawalId]);
+    if (!existing) return res.status(404).json({ success: false, error: 'Withdrawal record not found' });
+    await assertUserInTeam(existing.user_id, req);
+
+    const {
+      amount,
+      fee,
+      net_amount,
+      status,
+      usdt_address,
+      tx_hash,
+      admin_note,
+      created_at
+    } = req.body;
+
+    const newAmount = (amount !== undefined && amount !== null && amount !== '') ? parseFloat(amount) : parseFloat(existing.amount);
+    let newFee = (fee !== undefined && fee !== null && fee !== '') ? parseFloat(fee) : parseFloat(existing.fee || 0);
+    let newNet = (net_amount !== undefined && net_amount !== null && net_amount !== '') ? parseFloat(net_amount) : (newAmount - newFee);
+
+    if (isNaN(newNet)) newNet = newAmount - newFee;
+
+    const newStatus = status ? String(status).toLowerCase().trim() : existing.status;
+    const newAddress = (usdt_address !== undefined && usdt_address !== null) ? String(usdt_address).trim() : existing.usdt_address;
+    const newTxHash = (tx_hash !== undefined && tx_hash !== null) ? String(tx_hash).trim() : existing.tx_hash;
+    const newAdminNote = (admin_note !== undefined && admin_note !== null) ? String(admin_note).trim() : existing.admin_note;
+    const newCreatedAt = (created_at && String(created_at).trim()) ? String(created_at).trim() : existing.created_at;
+
+    // 1. Update withdrawals record
+    await db.run(`
+      UPDATE withdrawals
+      SET amount = ?,
+          fee = ?,
+          net_amount = ?,
+          status = ?,
+          usdt_address = ?,
+          tx_hash = ?,
+          admin_note = ?,
+          created_at = ?
+      WHERE id = ?
+    `, [newAmount, newFee, newNet, newStatus, newAddress, newTxHash, newAdminNote, newCreatedAt, withdrawalId]);
+
+    // 2. Synchronize corresponding transactions record
+    const txStatus = newStatus === 'approved' ? 'completed' : (newStatus === 'rejected' ? 'rejected' : 'pending');
+    const txDesc = `Withdrawal Request to ${newAddress} (Fee: $${newFee}, Net: $${newNet})${newTxHash ? ` [Tx: ${newTxHash}]` : ''}`;
+
+    await db.run(`
+      UPDATE transactions
+      SET amount = ?,
+          status = ?,
+          description = ?,
+          created_at = ?
+      WHERE reference_id = ?
+    `, [newAmount, txStatus, txDesc, newCreatedAt, `WTH-${withdrawalId}`]);
+
+    const updated = await db.get('SELECT * FROM withdrawals WHERE id = ?', [withdrawalId]);
+    res.json({ success: true, message: 'Withdrawal history record updated successfully', withdrawal: updated });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+/**
+ * Delete withdrawal record from history
+ * Removes from both withdrawals table and transactions table so user's history is cleanly synchronized.
+ * Optional query: ?refund=true to refund balance back to user if it was pending.
+ */
+router.delete('/withdrawals/:id', async (req, res) => {
+  try {
+    const withdrawalId = Number(req.params.id);
+    const existing = await db.get('SELECT * FROM withdrawals WHERE id = ?', [withdrawalId]);
+    if (!existing) return res.status(404).json({ success: false, error: 'Withdrawal record not found' });
+    await assertUserInTeam(existing.user_id, req);
+
+    const shouldRefund = req.query.refund === 'true' || req.query.refund === '1';
+    if (shouldRefund && existing.status === 'pending') {
+      const refundWallet = existing.wallet_type === 'roi_balance' ? 'roi_balance' :
+                          (existing.wallet_type === 'commission_balance' ? 'commission_balance' : 'wallet_balance');
+      await db.run(`UPDATE users SET ${refundWallet} = ${refundWallet} + ? WHERE id = ?`, [existing.amount, existing.user_id]);
+    }
+
+    // Delete from withdrawals and transactions
+    await db.run('DELETE FROM withdrawals WHERE id = ?', [withdrawalId]);
+    await db.run('DELETE FROM transactions WHERE reference_id = ?', [`WTH-${withdrawalId}`]);
+
+    res.json({ success: true, message: 'Withdrawal history record permanently deleted' });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 
@@ -1071,6 +1303,92 @@ router.post('/tickets/:id/reply', async (req, res) => {
 });
 
 // -------------------------------------------------------------
+// Investment Packages & Plans Management (Full CRUD)
+// -------------------------------------------------------------
+router.get('/plans', async (req, res) => {
+  try {
+    const plans = await db.all('SELECT * FROM plans ORDER BY price ASC, id ASC');
+    res.json({ success: true, plans });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+router.post('/plans', async (req, res) => {
+  try {
+    const { name, price, duration_days, daily_roi, total_roi, color = '#38bdf8', is_active = 1 } = req.body;
+    if (!name || price === undefined || duration_days === undefined || daily_roi === undefined) {
+      return res.status(400).json({ success: false, error: 'Name, price, duration days and daily ROI are required' });
+    }
+
+    const numPrice = parseFloat(price);
+    const numDays = parseInt(duration_days, 10);
+    const numDaily = parseFloat(daily_roi);
+    const numTotal = (total_roi !== undefined && total_roi !== null && total_roi !== '') ? parseFloat(total_roi) : parseFloat((numDays * numDaily).toFixed(2));
+
+    const ins = await db.run(`
+      INSERT INTO plans (name, price, duration_days, daily_roi, total_roi, color, is_active)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `, [name.trim(), numPrice, numDays, numDaily, numTotal, color.trim(), is_active ? 1 : 0]);
+
+    const createdPlan = await db.get('SELECT * FROM plans WHERE id = ?', [ins.lastInsertRowid]);
+    res.json({ success: true, message: 'Plan created successfully', plan: createdPlan });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+router.put('/plans/:id', async (req, res) => {
+  try {
+    const planId = Number(req.params.id);
+    const existing = await db.get('SELECT * FROM plans WHERE id = ?', [planId]);
+    if (!existing) return res.status(404).json({ success: false, error: 'Plan not found' });
+
+    const { name, price, duration_days, daily_roi, total_roi, color, is_active } = req.body;
+
+    const newName = name !== undefined ? name.trim() : existing.name;
+    const newPrice = price !== undefined ? parseFloat(price) : parseFloat(existing.price);
+    const newDays = duration_days !== undefined ? parseInt(duration_days, 10) : parseInt(existing.duration_days, 10);
+    const newDaily = daily_roi !== undefined ? parseFloat(daily_roi) : parseFloat(existing.daily_roi);
+    const newTotal = total_roi !== undefined ? parseFloat(total_roi) : (parseFloat((newDays * newDaily).toFixed(2)));
+    const newColor = color !== undefined ? color.trim() : existing.color;
+    const newActive = is_active !== undefined ? (is_active ? 1 : 0) : existing.is_active;
+
+    await db.run(`
+      UPDATE plans
+      SET name = ?, price = ?, duration_days = ?, daily_roi = ?, total_roi = ?, color = ?, is_active = ?
+      WHERE id = ?
+    `, [newName, newPrice, newDays, newDaily, newTotal, newColor, newActive, planId]);
+
+    const updated = await db.get('SELECT * FROM plans WHERE id = ?', [planId]);
+    res.json({ success: true, message: 'Plan updated successfully', plan: updated });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+router.delete('/plans/:id', async (req, res) => {
+  try {
+    const planId = Number(req.params.id);
+    const existing = await db.get('SELECT * FROM plans WHERE id = ?', [planId]);
+    if (!existing) return res.status(404).json({ success: false, error: 'Plan not found' });
+
+    // Check if any investments are associated with this plan
+    const invCount = await db.get('SELECT COUNT(*) as count FROM investments WHERE plan_id = ?', [planId]);
+    if (invCount && parseInt(invCount.count, 10) > 0) {
+      // Soft delete to protect relational integrity
+      await db.run('UPDATE plans SET is_active = 0 WHERE id = ?', [planId]);
+      return res.json({ success: true, message: 'Plan has existing investments; deactivated' });
+    } else {
+      await db.run('DELETE FROM plans WHERE id = ?', [planId]);
+      return res.json({ success: true, message: 'Plan permanently deleted' });
+    }
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// -------------------------------------------------------------
 // System Settings (Super Root Admin or Admin with sync)
 // -------------------------------------------------------------
 router.get('/settings', async (req, res) => {
@@ -1088,6 +1406,13 @@ router.post('/settings', async (req, res) => {
 
     if (settings && typeof settings === 'object') {
       for (let [k, v] of Object.entries(settings)) {
+        // Enforce strict 150KB limit on uploaded documents
+        if ((k === 'quotes_plan_pdf_data' || k === 'quotes_plan_doc_data') && typeof v === 'string' && v.startsWith('data:')) {
+          if (v.length > 215000) {
+            return res.status(400).json({ success: false, error: `File size for ${k} exceeds 150KB limit! Please upload a file smaller than 150KB.` });
+          }
+        }
+
         // Sanitize popup_image_title to prevent JWT tokens or accidental leaks
         if (k === 'popup_image_title') {
           if (typeof v !== 'string' || v.startsWith('eyJ') || v.length > 250) {
@@ -1122,6 +1447,13 @@ router.post('/settings', async (req, res) => {
     if (!key) return res.status(400).json({ success: false, error: 'Key is required' });
 
     let finalValue = value;
+    // Enforce strict 150KB limit on uploaded documents
+    if ((key === 'quotes_plan_pdf_data' || key === 'quotes_plan_doc_data') && typeof finalValue === 'string' && finalValue.startsWith('data:')) {
+      if (finalValue.length > 215000) {
+        return res.status(400).json({ success: false, error: 'File size exceeds 150KB limit! Please upload a file smaller than 150KB.' });
+      }
+    }
+
     if (key === 'popup_image_title') {
       if (typeof finalValue !== 'string' || finalValue.startsWith('eyJ') || finalValue.length > 250) {
         finalValue = 'Special Platform Announcement';

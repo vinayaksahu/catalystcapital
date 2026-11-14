@@ -2556,6 +2556,21 @@ async function loadAssetsData() {
           amtInput.placeholder = `Min ${currentMinWithdrawal}`;
         }
       }
+
+      // Dynamic Withdrawal Deduction Fee (Admin configurable, default: 6%)
+      if (data.rules.withdrawalFee !== undefined) {
+        currentWithdrawalFeePercent = parseFloat(data.rules.withdrawalFee) || 6.0;
+        const feeDisp = document.getElementById('withdraw-fee-display');
+        if (feeDisp) feeDisp.textContent = `${currentWithdrawalFeePercent}% Deduction`;
+        const feePercentDisp = document.getElementById('withdraw-calc-fee-percent');
+        if (feePercentDisp) feePercentDisp.textContent = currentWithdrawalFeePercent;
+      }
+
+      // Admin Text Broadcast Notice on Member Home Dashboard
+      renderHomeTextNotice(data.rules);
+
+      // Quotes Admin Uploaded Presentation Documents
+      renderQuotesDocs(data.rules);
     }
     if (window.lucide) lucide.createIcons();
   } catch (err) {
@@ -2653,16 +2668,107 @@ async function loadHomeActivePackages() {
 window.loadHomeActivePackages = loadHomeActivePackages;
 
 let currentMinWithdrawal = 15;
+let currentWithdrawalFeePercent = 6.0;
+
+function recalcWithdrawalBreakdown() {
+  const amtInput = document.getElementById('withdraw-amount');
+  const amt = parseFloat(amtInput?.value) || 0;
+  const fee = parseFloat(((amt * currentWithdrawalFeePercent) / 100).toFixed(4));
+  const net = Math.max(0, parseFloat((amt - fee).toFixed(4)));
+
+  const grossEl = document.getElementById('withdraw-calc-gross');
+  const feeEl = document.getElementById('withdraw-calc-fee');
+  const netEl = document.getElementById('withdraw-calc-net');
+  const feePercentEl = document.getElementById('withdraw-calc-fee-percent');
+
+  if (grossEl) grossEl.textContent = `$${amt.toFixed(2)}`;
+  if (feeEl) feeEl.textContent = `-$${fee.toFixed(2)}`;
+  if (netEl) netEl.textContent = `$${net.toFixed(2)}`;
+  if (feePercentEl) feePercentEl.textContent = currentWithdrawalFeePercent;
+}
+window.recalcWithdrawalBreakdown = recalcWithdrawalBreakdown;
+
+function renderHomeTextNotice(rules) {
+  const section = document.getElementById('home-text-notice-section');
+  if (!section) return;
+
+  if (rules && rules.textNoticeActive && rules.textNoticeBody && rules.textNoticeBody.trim()) {
+    const titleEl = document.getElementById('home-text-notice-title');
+    const bodyEl = document.getElementById('home-text-notice-body');
+    const badgeEl = document.getElementById('home-text-notice-badge');
+
+    if (titleEl) titleEl.textContent = rules.textNoticeTitle || 'Platform Announcement';
+    if (bodyEl) bodyEl.textContent = rules.textNoticeBody;
+    if (badgeEl) {
+      const type = (rules.textNoticeType || 'announcement').toUpperCase();
+      badgeEl.textContent = type;
+    }
+    section.classList.remove('hidden');
+    section.style.display = 'block';
+  } else {
+    section.classList.add('hidden');
+    section.style.display = 'none';
+  }
+}
+window.renderHomeTextNotice = renderHomeTextNotice;
+
+function renderQuotesDocs(rules) {
+  const card = document.getElementById('quotes-admin-docs-card');
+  if (!card) return;
+
+  let hasAnyDoc = false;
+  const pdfContainer = document.getElementById('quotes-plan-pdf-container');
+  const pdfName = document.getElementById('quotes-plan-pdf-name');
+  const pdfLink = document.getElementById('quotes-plan-pdf-download');
+
+  if (rules && rules.quotesPlanPdf && rules.quotesPlanPdf.startsWith('data:')) {
+    hasAnyDoc = true;
+    if (pdfContainer) pdfContainer.classList.remove('hidden');
+    if (pdfName) pdfName.textContent = rules.quotesPlanPdfName || 'Catalyst_Capital_Plan.pdf';
+    if (pdfLink) {
+      pdfLink.href = rules.quotesPlanPdf;
+      pdfLink.download = rules.quotesPlanPdfName || 'Catalyst_Capital_Plan.pdf';
+    }
+  } else {
+    if (pdfContainer) pdfContainer.classList.add('hidden');
+  }
+
+  const docContainer = document.getElementById('quotes-plan-doc-container');
+  const docName = document.getElementById('quotes-plan-doc-name');
+  const docLink = document.getElementById('quotes-plan-doc-download');
+
+  if (rules && rules.quotesPlanDoc && rules.quotesPlanDoc.startsWith('data:')) {
+    hasAnyDoc = true;
+    if (docContainer) docContainer.classList.remove('hidden');
+    if (docName) docName.textContent = rules.quotesPlanDocName || 'Catalyst_Capital_Document.pdf';
+    if (docLink) {
+      docLink.href = rules.quotesPlanDoc;
+      docLink.download = rules.quotesPlanDocName || 'Catalyst_Capital_Document.pdf';
+    }
+  } else {
+    if (docContainer) docContainer.classList.add('hidden');
+  }
+
+  if (hasAnyDoc) {
+    card.classList.remove('hidden');
+  } else {
+    card.classList.add('hidden');
+  }
+}
+window.renderQuotesDocs = renderQuotesDocs;
 
 function loadWithdrawalModalData() {
   updateWithdrawSourceAvailable();
   const minDisp = document.getElementById('withdraw-min-display');
   if (minDisp) minDisp.textContent = `${currentMinWithdrawal} USDT`;
+  const feeDisp = document.getElementById('withdraw-fee-display');
+  if (feeDisp) feeDisp.textContent = `${currentWithdrawalFeePercent}% Deduction`;
   const amtInput = document.getElementById('withdraw-amount');
   if (amtInput) {
     amtInput.min = currentMinWithdrawal;
     amtInput.placeholder = `Min ${currentMinWithdrawal}`;
   }
+  recalcWithdrawalBreakdown();
 }
 
 function updateWithdrawSourceAvailable() {
@@ -2693,7 +2799,10 @@ function setMaxWithdrawAmount() {
   else if (source === 'wallet_balance') max = userWallets.depositWallet || 0;
   else max = userWallets.totalWithdrawable || 0;
 
-  if (input) input.value = max;
+  if (input) {
+    input.value = max;
+    recalcWithdrawalBreakdown();
+  }
 }
 
 function setRechargeAmount(amt) {
@@ -3039,14 +3148,16 @@ async function loadAdminData() {
       await loadNotificationBadge();
     }
 
-    // 2. Load Members List
+    // 2. Load Members List with Advanced Stats
     const usersRes = await fetch(`${API_BASE}/admin/users${scopeQuery}`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
     const usersData = await usersRes.json();
     if (usersData.success && usersData.users) {
       adminCachedUsers = usersData.users;
-      renderAdminUsersList(adminCachedUsers);
+      adminCachedUsersStats = usersData.stats;
+      updateAdminMembersKpis(adminCachedUsers, usersData.stats);
+      filterAdminUsersList();
       populateManualDepositUserSelect(adminCachedUsers);
     }
 
@@ -3062,7 +3173,10 @@ async function loadAdminData() {
     // 6. Load Announcements & Pop Image Settings
     await loadAdminSettings();
 
-    // 7. Load Team Admins (if Super Root Admin)
+    // 7. Load Investment Packages & Plans
+    await loadAdminPlans();
+
+    // 8. Load Team Admins (if Super Root Admin)
     if (adminCurrentScope.isSuperAdmin) {
       await loadTeamAdminsList();
     }
@@ -3102,6 +3216,86 @@ function switchAdminTab(tabName) {
 }
 window.switchAdminTab = switchAdminTab;
 
+let adminCachedUsersStats = null;
+let adminMemberStatusFilter = 'all';
+
+function setAdminMemberStatusFilter(status) {
+  adminMemberStatusFilter = status;
+  const allBtn = document.getElementById('admin-mem-filter-btn-all');
+  const actBtn = document.getElementById('admin-mem-filter-btn-active');
+  const inactBtn = document.getElementById('admin-mem-filter-btn-inactive');
+
+  const activeClass = 'px-2.5 py-1 rounded-xl text-[11px] font-bold bg-amber-500 text-black shadow-sm transition';
+  const inactiveClass = 'px-2.5 py-1 rounded-xl text-[11px] font-bold bg-slate-800 hover:bg-slate-700 text-slate-300 transition';
+
+  if (allBtn) allBtn.className = status === 'all' ? activeClass : inactiveClass;
+  if (actBtn) actBtn.className = status === 'active' ? activeClass : inactiveClass;
+  if (inactBtn) inactBtn.className = status === 'inactive' ? activeClass : inactiveClass;
+
+  filterAdminUsersList();
+}
+window.setAdminMemberStatusFilter = setAdminMemberStatusFilter;
+
+function updateAdminMembersKpis(users, stats) {
+  const total = stats?.totalUsers ?? (users ? users.length : 0);
+  const active = stats?.activeUsers ?? (users ? users.filter(u => (parseFloat(u.active_invested) || 0) > 0).length : 0);
+  const inactive = stats?.inactiveUsers ?? (total - active);
+  const totalInvest = stats?.totalInvested ?? (users ? users.reduce((sum, u) => sum + (parseFloat(u.active_invested) || 0), 0) : 0);
+
+  const kpiTotal = document.getElementById('admin-kpi-total-members');
+  const kpiActive = document.getElementById('admin-kpi-active-members');
+  const kpiInactive = document.getElementById('admin-kpi-inactive-members');
+  const kpiInvest = document.getElementById('admin-kpi-total-active-invest');
+
+  if (kpiTotal) kpiTotal.textContent = total;
+  if (kpiActive) kpiActive.textContent = active;
+  if (kpiInactive) kpiInactive.textContent = inactive;
+  if (kpiInvest) kpiInvest.textContent = `$${parseFloat(totalInvest).toFixed(2)}`;
+
+  const cntAll = document.getElementById('admin-count-all-members');
+  const cntAct = document.getElementById('admin-count-active-members');
+  const cntInact = document.getElementById('admin-count-inactive-members');
+
+  if (cntAll) cntAll.textContent = total;
+  if (cntAct) cntAct.textContent = active;
+  if (cntInact) cntInact.textContent = inactive;
+}
+window.updateAdminMembersKpis = updateAdminMembersKpis;
+
+function exportMembersToCSV() {
+  if (!adminCachedUsers || adminCachedUsers.length === 0) {
+    showToast('No members data to export', 'error');
+    return;
+  }
+  const headers = ['ID', 'Username', 'Full Name', 'Email', 'Phone', 'Role', 'Status', 'Investor Status', 'Referral Code', 'Sponsor', 'Active Investment ($)', 'Recharge Balance ($)', 'Total Withdrawn ($)', 'Joined At'];
+  const rows = adminCachedUsers.map(u => [
+    u.id,
+    `"${(u.username || '').replace(/"/g, '""')}"`,
+    `"${(u.full_name || '').replace(/"/g, '""')}"`,
+    `"${(u.email || '').replace(/"/g, '""')}"`,
+    `"${(u.phone || '').replace(/"/g, '""')}"`,
+    u.role,
+    u.status,
+    (parseFloat(u.active_invested) || 0) > 0 ? 'Active' : 'Inactive',
+    u.referral_code || '',
+    u.sponsor_username || '',
+    parseFloat(u.active_invested || 0).toFixed(2),
+    parseFloat(u.wallet_balance || 0).toFixed(2),
+    parseFloat(u.total_withdrawn || 0).toFixed(2),
+    `"${u.created_at || ''}"`
+  ]);
+  const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+  const encodedUri = encodeURI(csvContent);
+  const link = document.createElement('a');
+  link.setAttribute('href', encodedUri);
+  link.setAttribute('download', `Catalyst_Members_${new Date().toISOString().slice(0, 10)}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  showToast('Members directory exported to CSV', 'success');
+}
+window.exportMembersToCSV = exportMembersToCSV;
+
 function renderAdminUsersList(users) {
   const container = document.getElementById('admin-users-list');
   if (!container) return;
@@ -3111,7 +3305,12 @@ function renderAdminUsersList(users) {
     return;
   }
 
-  container.innerHTML = users.map(u => `
+  container.innerHTML = users.map(u => {
+    const actInv = parseFloat(u.active_invested) || 0;
+    const isInvestor = actInv > 0;
+    const wth = parseFloat(u.total_withdrawn) || 0;
+
+    return `
     <div class="p-3.5 sm:p-4 rounded-2xl bg-slate-900/90 border border-slate-800 hover:border-slate-700 transition space-y-3 shadow-md overflow-hidden">
       <!-- Top Row: Avatar + User Info + Role/Status Badges -->
       <div class="flex items-start justify-between gap-2.5">
@@ -3123,6 +3322,15 @@ function renderAdminUsersList(users) {
             <div class="flex items-center gap-1.5 flex-wrap">
               <span class="font-bold text-white text-xs sm:text-sm truncate max-w-[140px] sm:max-w-[200px]">${u.full_name || u.username}</span>
               <span class="text-slate-400 font-mono text-[11px]">(@${u.username})</span>
+              ${isInvestor ? `
+                <span class="px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
+                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Active Investor
+                </span>
+              ` : `
+                <span class="px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-slate-800 text-slate-400 border border-slate-700">
+                  Inactive ($0 Plan)
+                </span>
+              `}
             </div>
             <div class="text-[10px] text-slate-400 flex items-center gap-1.5 mt-0.5 flex-wrap font-mono">
               <span>Ref: <strong class="text-amber-400">${u.referral_code}</strong></span>
@@ -3150,14 +3358,18 @@ function renderAdminUsersList(users) {
       </div>
 
       <!-- Financial Metrics Grid -->
-      <div class="grid grid-cols-2 gap-2 p-2.5 rounded-xl bg-slate-950/60 border border-slate-800/80 text-[11px]">
+      <div class="grid grid-cols-3 gap-2 p-2.5 rounded-xl bg-slate-950/60 border border-slate-800/80 text-[11px]">
         <div>
           <div class="text-[10px] text-slate-400 font-medium">Recharge Balance</div>
           <div class="font-bold font-mono text-cyan-300 text-xs sm:text-sm mt-0.5">$${(u.wallet_balance || 0).toFixed(2)}</div>
         </div>
-        <div class="text-right">
+        <div>
           <div class="text-[10px] text-slate-400 font-medium">Active Investment</div>
-          <div class="font-bold font-mono text-emerald-400 text-xs sm:text-sm mt-0.5">$${(u.active_invested || 0).toFixed(2)}</div>
+          <div class="font-bold font-mono text-emerald-400 text-xs sm:text-sm mt-0.5">$${actInv.toFixed(2)}</div>
+        </div>
+        <div class="text-right">
+          <div class="text-[10px] text-slate-400 font-medium">Total Withdrawn</div>
+          <div class="font-bold font-mono text-rose-400 text-xs sm:text-sm mt-0.5">$${wth.toFixed(2)}</div>
         </div>
       </div>
 
@@ -3169,24 +3381,32 @@ function renderAdminUsersList(users) {
         </button>
       </div>
     </div>
-  `).join('');
+  `;
+  }).join('');
 
   if (window.lucide) lucide.createIcons();
 }
 
 function filterAdminUsersList() {
   const query = (document.getElementById('admin-user-search-input')?.value || '').trim().toLowerCase();
-  if (!query) {
-    renderAdminUsersList(adminCachedUsers);
-    return;
+  let list = adminCachedUsers || [];
+
+  if (adminMemberStatusFilter === 'active') {
+    list = list.filter(u => (parseFloat(u.active_invested) || 0) > 0);
+  } else if (adminMemberStatusFilter === 'inactive') {
+    list = list.filter(u => (parseFloat(u.active_invested) || 0) === 0);
   }
-  const filtered = adminCachedUsers.filter(u =>
-    (u.username && u.username.toLowerCase().includes(query)) ||
-    (u.full_name && u.full_name.toLowerCase().includes(query)) ||
-    (u.email && u.email.toLowerCase().includes(query)) ||
-    (u.referral_code && u.referral_code.toLowerCase().includes(query))
-  );
-  renderAdminUsersList(filtered);
+
+  if (query) {
+    list = list.filter(u =>
+      (u.username && u.username.toLowerCase().includes(query)) ||
+      (u.full_name && u.full_name.toLowerCase().includes(query)) ||
+      (u.email && u.email.toLowerCase().includes(query)) ||
+      (u.referral_code && u.referral_code.toLowerCase().includes(query)) ||
+      (u.phone && u.phone.toLowerCase().includes(query))
+    );
+  }
+  renderAdminUsersList(list);
 }
 window.filterAdminUsersList = filterAdminUsersList;
 
@@ -3463,22 +3683,147 @@ window.handleAdminAdjustBalance = handleAdminAdjustBalance;
 
 // ==================== ADMIN DEPOSITS & WITHDRAWALS ====================
 
+let adminCachedWithdrawals = [];
+let adminWithdrawalFilter = 'all';
+
 async function loadAdminWithdrawals() {
   const scopeQuery = getAdminScopeQuery();
   const withRes = await fetch(`${API_BASE}/admin/withdrawals${scopeQuery}`, {
     headers: { 'Authorization': `Bearer ${token}` }
   });
   const withData = await withRes.json();
+  if (withData.success && withData.withdrawals) {
+    adminCachedWithdrawals = withData.withdrawals;
+    updateAdminWithdrawalsKpis(adminCachedWithdrawals, withData.stats);
+    filterAdminWithdrawalsList();
+  }
+}
+window.loadAdminWithdrawals = loadAdminWithdrawals;
+
+function updateAdminWithdrawalsKpis(withdrawals, stats) {
+  let totalAmt = 0;
+  let totalFee = 0;
+  let totalNet = 0;
+  let pendingCount = 0;
+  let pendingAmt = 0;
+  let approvedCount = 0;
+  let rejectedCount = 0;
+
+  withdrawals.forEach(w => {
+    const a = parseFloat(w.amount) || 0;
+    const f = parseFloat(w.fee) || 0;
+    const n = (w.net_amount !== null && w.net_amount !== undefined) ? parseFloat(w.net_amount) : (a - f);
+    totalAmt += a;
+    totalFee += f;
+    totalNet += n;
+
+    const st = (w.status || '').toLowerCase();
+    if (st === 'pending') {
+      pendingCount++;
+      pendingAmt += a;
+    } else if (st === 'approved') {
+      approvedCount++;
+    } else if (st === 'rejected') {
+      rejectedCount++;
+    }
+  });
+
+  const kpiTot = document.getElementById('admin-kpi-wth-total');
+  const kpiFee = document.getElementById('admin-kpi-wth-fee');
+  const kpiNet = document.getElementById('admin-kpi-wth-net');
+  const kpiPend = document.getElementById('admin-kpi-wth-pending');
+
+  if (kpiTot) kpiTot.textContent = `$${totalAmt.toFixed(2)}`;
+  if (kpiFee) kpiFee.textContent = `$${totalFee.toFixed(2)}`;
+  if (kpiNet) kpiNet.textContent = `$${totalNet.toFixed(2)}`;
+  if (kpiPend) kpiPend.textContent = `${pendingCount} ($${pendingAmt.toFixed(2)})`;
+
+  const cntAll = document.getElementById('admin-count-wth-all');
+  const cntPend = document.getElementById('admin-count-wth-pending');
+  const cntApp = document.getElementById('admin-count-wth-approved');
+  const cntRej = document.getElementById('admin-count-wth-rejected');
+
+  if (cntAll) cntAll.textContent = withdrawals.length;
+  if (cntPend) cntPend.textContent = pendingCount;
+  if (cntApp) cntApp.textContent = approvedCount;
+  if (cntRej) cntRej.textContent = rejectedCount;
+
+  // Also update tab badge
+  const badge = document.getElementById('admin-badge-wth');
+  if (badge) {
+    if (pendingCount > 0) {
+      badge.textContent = pendingCount;
+      badge.classList.remove('hidden');
+    } else {
+      badge.classList.add('hidden');
+    }
+  }
+}
+window.updateAdminWithdrawalsKpis = updateAdminWithdrawalsKpis;
+
+function setAdminWithdrawalFilter(status) {
+  adminWithdrawalFilter = status;
+  const allBtn = document.getElementById('admin-wth-filter-btn-all');
+  const pendBtn = document.getElementById('admin-wth-filter-btn-pending');
+  const appBtn = document.getElementById('admin-wth-filter-btn-approved');
+  const rejBtn = document.getElementById('admin-wth-filter-btn-rejected');
+
+  const activeClass = 'px-2.5 py-1 rounded-xl text-[11px] font-bold bg-amber-500 text-black shadow-sm transition';
+  const inactiveClass = 'px-2.5 py-1 rounded-xl text-[11px] font-bold bg-slate-800 hover:bg-slate-700 text-slate-300 transition';
+
+  if (allBtn) allBtn.className = status === 'all' ? activeClass : inactiveClass;
+  if (pendBtn) pendBtn.className = status === 'pending' ? activeClass : inactiveClass;
+  if (appBtn) appBtn.className = status === 'approved' ? activeClass : inactiveClass;
+  if (rejBtn) rejBtn.className = status === 'rejected' ? activeClass : inactiveClass;
+
+  filterAdminWithdrawalsList();
+}
+window.setAdminWithdrawalFilter = setAdminWithdrawalFilter;
+
+function filterAdminWithdrawalsList() {
+  const query = (document.getElementById('admin-withdrawal-search-input')?.value || '').trim().toLowerCase();
+  let list = adminCachedWithdrawals || [];
+
+  if (adminWithdrawalFilter !== 'all') {
+    list = list.filter(w => (w.status || '').toLowerCase() === adminWithdrawalFilter);
+  }
+
+  if (query) {
+    list = list.filter(w =>
+      (w.id && String(w.id).includes(query)) ||
+      (w.username && w.username.toLowerCase().includes(query)) ||
+      (w.full_name && w.full_name.toLowerCase().includes(query)) ||
+      (w.usdt_address && w.usdt_address.toLowerCase().includes(query)) ||
+      (w.tx_hash && w.tx_hash.toLowerCase().includes(query))
+    );
+  }
+
+  renderAdminWithdrawalsList(list);
+}
+window.filterAdminWithdrawalsList = filterAdminWithdrawalsList;
+
+function renderAdminWithdrawalsList(withdrawals) {
   const withContainer = document.getElementById('admin-withdrawals-list');
   if (!withContainer) return;
 
-  if (withData.success && withData.withdrawals && withData.withdrawals.length > 0) {
-    withContainer.innerHTML = withData.withdrawals.map(w => `
-      <div class="p-3.5 sm:p-4 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-2.5 hover:border-slate-700 transition shadow-md overflow-hidden">
-        <div class="flex items-start justify-between gap-2">
+  if (!withdrawals || withdrawals.length === 0) {
+    withContainer.innerHTML = `<div class="text-center py-8 text-slate-500 bg-slate-900/50 rounded-2xl border border-slate-800">No withdrawal requests found matching your filter.</div>`;
+    return;
+  }
+
+  withContainer.innerHTML = withdrawals.map(w => {
+    const amt = parseFloat(w.amount) || 0;
+    const fee = parseFloat(w.fee) || 0;
+    const net = (w.net_amount !== null && w.net_amount !== undefined) ? parseFloat(w.net_amount) : (amt - fee);
+    const feePct = amt > 0 ? ((fee / amt) * 100).toFixed(0) : '6';
+
+    return `
+      <div class="p-3.5 sm:p-4 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-3 hover:border-slate-700 transition shadow-md overflow-hidden">
+        <!-- Top Row: Request ID + Member + Status + Payout Figures -->
+        <div class="flex items-start justify-between gap-2.5">
           <div>
             <div class="font-bold text-white text-xs flex items-center gap-1.5 flex-wrap">
-              <span>#${w.id}</span>
+              <span class="px-2 py-0.5 rounded-md bg-slate-800 text-amber-400 font-mono text-[10px]">#${w.id}</span>
               <span class="text-slate-600">&bull;</span>
               <span>${w.full_name || w.username}</span>
               <span class="text-slate-400 font-mono text-[11px]">(@${w.username})</span>
@@ -3487,15 +3832,35 @@ async function loadAdminWithdrawals() {
               ${new Date(w.created_at).toLocaleString()}
             </div>
           </div>
-          <div class="text-right shrink-0">
-            <div class="font-bold text-rose-400 font-mono text-sm sm:text-base">$${parseFloat(w.amount).toFixed(2)} USDT</div>
-            <span class="text-[9px] uppercase px-2 py-0.5 rounded font-bold font-mono inline-block mt-0.5 ${w.status === 'approved' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : (w.status === 'rejected' ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30' : 'bg-amber-500/20 text-amber-400 border border-amber-500/30')}">${w.status}</span>
+          <div class="flex flex-col items-end gap-0.5 shrink-0">
+            <span class="text-[9px] uppercase px-2 py-0.5 rounded font-bold font-mono ${
+              w.status === 'approved' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' :
+              (w.status === 'rejected' ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30' : 'bg-amber-500/20 text-amber-400 border border-amber-500/30')
+            }">${w.status}</span>
+            <div class="text-[10px] text-slate-400 font-mono mt-0.5">Gross: $${amt.toFixed(2)}</div>
           </div>
         </div>
 
+        <!-- Financial Breakdown Strip: Gross, 6% Deduction, Net Payable -->
+        <div class="grid grid-cols-3 gap-2 p-2.5 rounded-xl bg-slate-950/80 border border-slate-800/80 text-[11px] font-mono">
+          <div>
+            <div class="text-[10px] text-slate-400">Gross Request</div>
+            <div class="font-bold text-white text-xs sm:text-sm mt-0.5">$${amt.toFixed(2)}</div>
+          </div>
+          <div>
+            <div class="text-[10px] text-rose-400">Deduction (${feePct}%)</div>
+            <div class="font-bold text-rose-400 text-xs sm:text-sm mt-0.5">-$${fee.toFixed(2)}</div>
+          </div>
+          <div class="text-right">
+            <div class="text-[10px] text-emerald-400 font-bold">Net Payout to Member</div>
+            <div class="font-black text-emerald-300 text-xs sm:text-sm mt-0.5">$${net.toFixed(2)}</div>
+          </div>
+        </div>
+
+        <!-- Destination Address Box -->
         <div class="p-2.5 rounded-xl bg-slate-950/60 border border-slate-800/80 text-[11px] font-mono">
           <div class="text-[10px] text-slate-400 flex items-center justify-between mb-1">
-            <span>Destination Address (BEP-20):</span>
+            <span>Destination BEP-20 USDT Address:</span>
             <span class="text-cyan-400 text-[10px] font-bold">${w.network || 'USDT-BEP20'}</span>
           </div>
           ${w.usdt_address && /^0x[a-fA-F0-9]{40}$/i.test(w.usdt_address) ? `
@@ -3503,7 +3868,7 @@ async function loadAdminWithdrawals() {
               <div class="text-slate-200 font-bold break-all select-all text-[11px]">${w.usdt_address}</div>
               <div class="flex items-center gap-2 flex-wrap pt-0.5">
                 <a href="https://bscscan.com/address/${w.usdt_address}" target="_blank" rel="noopener noreferrer" class="px-2.5 py-1 rounded-lg bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 hover:bg-cyan-500/30 text-[10px] font-bold inline-flex items-center gap-1 transition shadow-sm">
-                  <i data-lucide="external-link" class="w-3 h-3"></i> View Address on BscScan
+                  <i data-lucide="external-link" class="w-3 h-3"></i> View on BscScan
                 </a>
                 <button type="button" onclick="copyToClipboard('${w.usdt_address}')" class="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-sans font-bold transition">Copy</button>
               </div>
@@ -3519,27 +3884,190 @@ async function loadAdminWithdrawals() {
               </a>
             </div>
           ` : ''}
+          ${w.admin_note ? `
+            <div class="mt-1.5 pt-1.5 border-t border-slate-800/60 text-[10px] text-slate-400">
+              <span class="font-bold text-slate-300">Admin Note:</span> ${w.admin_note}
+            </div>
+          ` : ''}
         </div>
 
-        ${w.status === 'pending' ? `
-          <div class="flex items-center gap-2 pt-1 border-t border-slate-800/80">
-            <button onclick="approveWithdrawal(${w.id}, this)" class="flex-1 py-2 px-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs transition flex items-center justify-center gap-1.5 cursor-pointer shadow-sm shadow-emerald-500/20 active:scale-95">
+        <!-- Action Buttons: Approve, Reject, Edit, Delete -->
+        <div class="flex items-center gap-2 pt-1 border-t border-slate-800/80 flex-wrap">
+          ${w.status === 'pending' ? `
+            <button onclick="approveWithdrawal(${w.id}, this)" class="flex-1 min-w-[120px] py-2 px-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs transition flex items-center justify-center gap-1.5 cursor-pointer shadow-sm shadow-emerald-500/20 active:scale-95">
               <i data-lucide="check-circle-2" class="w-3.5 h-3.5"></i>
-              <span>Approve Payout</span>
+              <span>Approve Payout ($${net.toFixed(2)})</span>
             </button>
-            <button onclick="rejectWithdrawal(${w.id})" class="flex-1 py-2 px-3 rounded-xl bg-rose-500/20 border border-rose-500/40 hover:bg-rose-500/30 text-rose-400 font-bold text-xs transition flex items-center justify-center gap-1.5 cursor-pointer active:scale-95">
+            <button onclick="rejectWithdrawal(${w.id})" class="py-2 px-3 rounded-xl bg-rose-500/20 border border-rose-500/40 hover:bg-rose-500/30 text-rose-400 font-bold text-xs transition flex items-center justify-center gap-1.5 cursor-pointer active:scale-95">
               <i data-lucide="x-circle" class="w-3.5 h-3.5"></i>
               <span>Reject</span>
             </button>
-          </div>
-        ` : ''}
+          ` : ''}
+          <button onclick="openEditWithdrawalModal(${w.id})" class="py-2 px-3 rounded-xl bg-amber-500/15 border border-amber-500/30 hover:bg-amber-500/25 text-amber-300 font-bold text-xs transition flex items-center justify-center gap-1 cursor-pointer active:scale-95" title="Edit this withdrawal">
+            <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
+            <span>Edit</span>
+          </button>
+          <button onclick="handleDeleteWithdrawal(${w.id})" class="py-2 px-2.5 rounded-xl bg-slate-800 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 border border-slate-700 hover:border-rose-500/40 text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer active:scale-95" title="Delete from history">
+            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+            <span>Delete</span>
+          </button>
+        </div>
       </div>
-    `).join('');
-    if (window.lucide) lucide.createIcons();
-  } else {
-    withContainer.innerHTML = `<div class="text-center py-8 text-slate-500 bg-slate-900/50 rounded-2xl border border-slate-800">No withdrawal requests found</div>`;
+    `;
+  }).join('');
+
+  if (window.lucide) lucide.createIcons();
+}
+window.renderAdminWithdrawalsList = renderAdminWithdrawalsList;
+
+function exportWithdrawalsToCSV() {
+  if (!adminCachedWithdrawals || adminCachedWithdrawals.length === 0) {
+    showToast('No withdrawals data to export', 'error');
+    return;
+  }
+  const headers = ['ID', 'Username', 'Full Name', 'Gross Amount ($)', 'Fee ($)', 'Net Payout ($)', 'Status', 'BEP20 Address', 'Tx Hash', 'Date', 'Admin Note'];
+  const rows = adminCachedWithdrawals.map(w => {
+    const amt = parseFloat(w.amount) || 0;
+    const fee = parseFloat(w.fee) || 0;
+    const net = (w.net_amount !== null && w.net_amount !== undefined) ? parseFloat(w.net_amount) : (amt - fee);
+    return [
+      w.id,
+      `"${(w.username || '').replace(/"/g, '""')}"`,
+      `"${(w.full_name || '').replace(/"/g, '""')}"`,
+      amt.toFixed(2),
+      fee.toFixed(2),
+      net.toFixed(2),
+      w.status,
+      `"${w.usdt_address || ''}"`,
+      `"${w.tx_hash || ''}"`,
+      `"${w.created_at || ''}"`,
+      `"${(w.admin_note || '').replace(/"/g, '""')}"`
+    ];
+  });
+  const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+  const encodedUri = encodeURI(csvContent);
+  const link = document.createElement('a');
+  link.setAttribute('href', encodedUri);
+  link.setAttribute('download', `Catalyst_Withdrawals_${new Date().toISOString().slice(0, 10)}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  showToast('Withdrawals exported to CSV', 'success');
+}
+window.exportWithdrawalsToCSV = exportWithdrawalsToCSV;
+
+function openEditWithdrawalModal(id) {
+  const w = adminCachedWithdrawals.find(item => item.id === id);
+  if (!w) {
+    showToast('Withdrawal record not found', 'error');
+    return;
+  }
+  const amt = parseFloat(w.amount) || 0;
+  const fee = parseFloat(w.fee) || 0;
+  const net = (w.net_amount !== null && w.net_amount !== undefined) ? parseFloat(w.net_amount) : (amt - fee);
+
+  document.getElementById('ewm-id').textContent = w.id;
+  document.getElementById('ewm-withdrawal-id').value = w.id;
+  document.getElementById('ewm-amount').value = amt;
+  document.getElementById('ewm-fee').value = fee;
+  document.getElementById('ewm-net').value = net;
+  document.getElementById('ewm-status').value = (w.status || 'pending').toLowerCase();
+  document.getElementById('ewm-address').value = w.usdt_address || '';
+  document.getElementById('ewm-txhash').value = w.tx_hash || '';
+  document.getElementById('ewm-note').value = w.admin_note || '';
+  document.getElementById('ewm-date').value = w.created_at || '';
+
+  openModal('editWithdrawalModal');
+}
+window.openEditWithdrawalModal = openEditWithdrawalModal;
+
+function recalcEditWithdrawalNet() {
+  const amt = parseFloat(document.getElementById('ewm-amount').value) || 0;
+  const fee = parseFloat(document.getElementById('ewm-fee').value) || 0;
+  const netInput = document.getElementById('ewm-net');
+  if (netInput) netInput.value = parseFloat((amt - fee).toFixed(4));
+}
+window.recalcEditWithdrawalNet = recalcEditWithdrawalNet;
+
+async function handleSaveWithdrawalEdit(e) {
+  e.preventDefault();
+  const id = document.getElementById('ewm-withdrawal-id').value;
+  const amount = parseFloat(document.getElementById('ewm-amount').value);
+  const fee = parseFloat(document.getElementById('ewm-fee').value);
+  const net_amount = parseFloat(document.getElementById('ewm-net').value);
+  const status = document.getElementById('ewm-status').value;
+  const usdt_address = document.getElementById('ewm-address').value.trim();
+  const tx_hash = document.getElementById('ewm-txhash').value.trim();
+  const admin_note = document.getElementById('ewm-note').value.trim();
+  const created_at = document.getElementById('ewm-date').value.trim();
+
+  const btn = document.getElementById('btn-save-edit-withdrawal');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Saving...';
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}/admin/withdrawals/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        amount,
+        fee,
+        net_amount,
+        status,
+        usdt_address,
+        tx_hash,
+        admin_note,
+        created_at: created_at || undefined
+      })
+    });
+    const data = await res.json();
+    if (data.success) {
+      closeModal('editWithdrawalModal');
+      showToast('Withdrawal record and user history updated successfully!', 'success');
+      await loadAdminWithdrawals();
+    } else {
+      showToast(data.error || 'Failed to update withdrawal', 'error');
+    }
+  } catch (err) {
+    showToast(err.message, 'error');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = 'Save Changes';
+    }
   }
 }
+window.handleSaveWithdrawalEdit = handleSaveWithdrawalEdit;
+
+async function handleDeleteWithdrawal(id) {
+  if (!confirm(`Are you sure you want to permanently delete withdrawal record #${id}? It will be removed from withdrawals and user history.`)) {
+    return;
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}/admin/withdrawals/${id}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast(`Withdrawal #${id} permanently deleted from history`, 'success');
+      await loadAdminWithdrawals();
+    } else {
+      showToast(data.error || 'Failed to delete withdrawal', 'error');
+    }
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+window.handleDeleteWithdrawal = handleDeleteWithdrawal;
 
 async function approveWithdrawal(id, btnElement) {
   const btn = btnElement || (typeof event !== 'undefined' ? (event?.currentTarget || event?.target) : null);
@@ -4172,6 +4700,54 @@ async function loadAdminSettings() {
       if (depositAddrInput) {
         depositAddrInput.value = settingsMap.usdt_deposit_address || '';
       }
+
+      // Withdrawal deduction fee %
+      const feeInput = document.getElementById('admin-withdrawal-fee-input');
+      if (feeInput) {
+        const f = parseFloat(settingsMap.withdrawal_fee_percent);
+        feeInput.value = (!isNaN(f) && f >= 0) ? f : 6;
+      }
+
+      // Admin Text Notice Announcement
+      const noticeTitleInput = document.getElementById('admin-text-notice-title-input');
+      if (noticeTitleInput) {
+        noticeTitleInput.value = settingsMap.admin_text_notice_title || '';
+      }
+      const noticeBodyInput = document.getElementById('admin-text-notice-body-input');
+      if (noticeBodyInput) {
+        noticeBodyInput.value = settingsMap.admin_text_notice_body || '';
+      }
+      const noticeTypeSelect = document.getElementById('admin-text-notice-type-select');
+      if (noticeTypeSelect && settingsMap.admin_text_notice_type) {
+        noticeTypeSelect.value = settingsMap.admin_text_notice_type;
+      }
+      const noticeActiveChk = document.getElementById('admin-text-notice-active-checkbox');
+      if (noticeActiveChk) {
+        noticeActiveChk.checked = (settingsMap.admin_text_notice_active === '1' || settingsMap.admin_text_notice_active === 'true');
+      }
+
+      // Quotes Uploaded Docs status badges
+      const planPdfBadge = document.getElementById('admin-plan-pdf-size-badge');
+      if (planPdfBadge) {
+        if (settingsMap.quotes_plan_pdf_data && settingsMap.quotes_plan_pdf_data.startsWith('data:')) {
+          planPdfBadge.textContent = `${settingsMap.quotes_plan_pdf_name || 'Plan.pdf'} (Uploaded)`;
+          planPdfBadge.className = 'text-[10px] text-emerald-400 font-mono font-bold';
+        } else {
+          planPdfBadge.textContent = 'No file';
+          planPdfBadge.className = 'text-[10px] text-slate-500 font-mono';
+        }
+      }
+
+      const planDocBadge = document.getElementById('admin-plan-doc-size-badge');
+      if (planDocBadge) {
+        if (settingsMap.quotes_plan_doc_data && settingsMap.quotes_plan_doc_data.startsWith('data:')) {
+          planDocBadge.textContent = `${settingsMap.quotes_plan_doc_name || 'Document.pdf'} (Uploaded)`;
+          planDocBadge.className = 'text-[10px] text-cyan-400 font-mono font-bold';
+        } else {
+          planDocBadge.textContent = 'No file';
+          planDocBadge.className = 'text-[10px] text-slate-500 font-mono';
+        }
+      }
     }
   } catch (err) {
     console.error('Failed to load admin settings:', err);
@@ -4787,6 +5363,13 @@ function loadAdminPlatformSettings() {
       }
       renderCommissionLevelRow(document.getElementById('team-roi-levels-container'), teamRoiLevelsData, 'roi');
 
+      // Withdrawal deduction fee %
+      const feeInput = document.getElementById('admin-withdrawal-fee-input');
+      if (feeInput) {
+        const f = parseFloat(settingsMap.withdrawal_fee_percent);
+        feeInput.value = (!isNaN(f) && f >= 0) ? f : 6;
+      }
+
       // SMTP Email configuration
       const smtpHostInp = document.getElementById('admin-smtp-host');
       const smtpPortInp = document.getElementById('admin-smtp-port');
@@ -4799,9 +5382,403 @@ function loadAdminPlatformSettings() {
       if (smtpUserInp && settingsMap.smtp_user) smtpUserInp.value = settingsMap.smtp_user;
       if (smtpPassInp && settingsMap.smtp_pass) smtpPassInp.value = settingsMap.smtp_pass;
       if (smtpFromInp && settingsMap.smtp_from) smtpFromInp.value = settingsMap.smtp_from;
+
+      loadAdminPlans();
     }
   }).catch(err => console.error('Failed to load platform settings:', err));
 }
+window.loadAdminPlatformSettings = loadAdminPlatformSettings;
+
+// ==================== WITHDRAWAL FEE SETTING ====================
+
+async function handleSaveWithdrawalFee(e) {
+  e.preventDefault();
+  const feeVal = document.getElementById('admin-withdrawal-fee-input')?.value;
+  const numFee = parseFloat(feeVal);
+  if (isNaN(numFee) || numFee < 0 || numFee > 50) {
+    showToast('Please enter a valid deduction percentage (0 - 50%)', 'error');
+    return;
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}/admin/settings`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ key: 'withdrawal_fee_percent', value: numFee.toString() })
+    });
+    const data = await res.json();
+    if (data.success) {
+      currentWithdrawalFeePercent = numFee;
+      showToast(`Withdrawal deduction set to ${numFee}% successfully!`, 'success');
+      await loadAdminSettings();
+      await loadAssetsData();
+    } else {
+      showToast(data.error || 'Failed to update fee', 'error');
+    }
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+window.handleSaveWithdrawalFee = handleSaveWithdrawalFee;
+
+// ==================== ADMIN TEXT NOTICE BROADCAST ====================
+
+async function handleSaveAdminTextNotice(e) {
+  e.preventDefault();
+  const title = document.getElementById('admin-text-notice-title-input')?.value.trim();
+  const body = document.getElementById('admin-text-notice-body-input')?.value.trim();
+  const type = document.getElementById('admin-text-notice-type-select')?.value || 'announcement';
+  const active = document.getElementById('admin-text-notice-active-checkbox')?.checked ? '1' : '0';
+
+  const btn = document.getElementById('btn-save-text-notice');
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
+
+  try {
+    const res = await fetch(`${API_BASE}/admin/settings`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        settings: {
+          admin_text_notice_title: title || 'Catalyst Capital Official Announcement',
+          admin_text_notice_body: body || '',
+          admin_text_notice_type: type,
+          admin_text_notice_active: active
+        }
+      })
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast('Admin text notice updated successfully!', 'success');
+      await loadAdminSettings();
+      await loadAssetsData();
+    } else {
+      showToast(data.error || 'Failed to save notice', 'error');
+    }
+  } catch (err) {
+    showToast(err.message, 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Save Text Notice'; }
+  }
+}
+window.handleSaveAdminTextNotice = handleSaveAdminTextNotice;
+
+async function clearAdminTextNotice() {
+  document.getElementById('admin-text-notice-title-input').value = '';
+  document.getElementById('admin-text-notice-body-input').value = '';
+  document.getElementById('admin-text-notice-active-checkbox').checked = false;
+
+  try {
+    await fetch(`${API_BASE}/admin/settings`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        settings: {
+          admin_text_notice_title: '',
+          admin_text_notice_body: '',
+          admin_text_notice_active: '0'
+        }
+      })
+    });
+    showToast('Admin text notice cleared', 'info');
+    await loadAdminSettings();
+    await loadAssetsData();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+window.clearAdminTextNotice = clearAdminTextNotice;
+
+// ==================== QUOTES DOCUMENTS UPLOAD (STRICT 150KB) ====================
+
+let quotesSelectedFiles = {
+  pdf: { data: null, name: '' },
+  doc: { data: null, name: '' }
+};
+
+function handleQuotesFileSelect(input, type) {
+  const file = input?.files?.[0];
+  const badgeId = type === 'pdf' ? 'admin-plan-pdf-size-badge' : 'admin-plan-doc-size-badge';
+  const badge = document.getElementById(badgeId);
+
+  if (!file) {
+    quotesSelectedFiles[type] = { data: null, name: '' };
+    if (badge) badge.textContent = 'No file';
+    return;
+  }
+
+  // Strict 150 KB check (150 * 1024 = 153,600 bytes)
+  const maxBytes = 150 * 1024;
+  if (file.size > maxBytes) {
+    const sizeKb = (file.size / 1024).toFixed(1);
+    alert(`File size exceeds strict 150KB limit!\nSelected file is ${sizeKb} KB.\nPlease compress or choose a file under 150KB.`);
+    input.value = '';
+    quotesSelectedFiles[type] = { data: null, name: '' };
+    if (badge) {
+      badge.textContent = `${sizeKb} KB (EXCEEDS 150KB)`;
+      badge.className = 'text-[10px] text-rose-400 font-mono font-bold';
+    }
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    quotesSelectedFiles[type] = {
+      data: e.target.result,
+      name: file.name
+    };
+    if (badge) {
+      badge.textContent = `${(file.size / 1024).toFixed(1)} KB [OK <= 150KB]`;
+      badge.className = 'text-[10px] text-emerald-400 font-mono font-bold';
+    }
+  };
+  reader.readAsDataURL(file);
+}
+window.handleQuotesFileSelect = handleQuotesFileSelect;
+
+async function uploadQuotesDoc(type) {
+  const fileObj = quotesSelectedFiles[type];
+  if (!fileObj || !fileObj.data) {
+    showToast('Please select a file under 150KB first', 'error');
+    return;
+  }
+
+  const payloadKeyData = type === 'pdf' ? 'quotes_plan_pdf_data' : 'quotes_plan_doc_data';
+  const payloadKeyName = type === 'pdf' ? 'quotes_plan_pdf_name' : 'quotes_plan_doc_name';
+
+  try {
+    const res = await fetch(`${API_BASE}/admin/settings`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        settings: {
+          [payloadKeyData]: fileObj.data,
+          [payloadKeyName]: fileObj.name
+        }
+      })
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast(`${type === 'pdf' ? 'Plan PDF' : 'Company Document'} uploaded successfully!`, 'success');
+      await loadAdminSettings();
+      await loadAssetsData();
+    } else {
+      showToast(data.error || 'Upload failed', 'error');
+    }
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+window.uploadQuotesDoc = uploadQuotesDoc;
+
+async function clearQuotesDoc(type) {
+  const payloadKeyData = type === 'pdf' ? 'quotes_plan_pdf_data' : 'quotes_plan_doc_data';
+  const payloadKeyName = type === 'pdf' ? 'quotes_plan_pdf_name' : 'quotes_plan_doc_name';
+
+  try {
+    const res = await fetch(`${API_BASE}/admin/settings`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        settings: {
+          [payloadKeyData]: '',
+          [payloadKeyName]: ''
+        }
+      })
+    });
+    const data = await res.json();
+    if (data.success) {
+      const input = document.getElementById(type === 'pdf' ? 'admin-quotes-plan-pdf-input' : 'admin-quotes-plan-doc-input');
+      if (input) input.value = '';
+      const badge = document.getElementById(type === 'pdf' ? 'admin-plan-pdf-size-badge' : 'admin-plan-doc-size-badge');
+      if (badge) {
+        badge.textContent = 'No file';
+        badge.className = 'text-[10px] text-slate-500 font-mono';
+      }
+      showToast(`${type === 'pdf' ? 'Plan PDF' : 'Company Document'} cleared`, 'info');
+      await loadAdminSettings();
+      await loadAssetsData();
+    }
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+window.clearQuotesDoc = clearQuotesDoc;
+
+// ==================== INVESTMENT PLANS & PACKAGES CRUD ====================
+
+let adminCachedPlans = [];
+
+async function loadAdminPlans() {
+  const container = document.getElementById('admin-plans-container');
+  if (!container || !token) return;
+
+  try {
+    const res = await fetch(`${API_BASE}/admin/plans`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const data = await res.json();
+    if (data.success && data.plans) {
+      adminCachedPlans = data.plans;
+      if (adminCachedPlans.length === 0) {
+        container.innerHTML = `<div class="text-center py-4 text-slate-500">No investment packages configured</div>`;
+        return;
+      }
+      container.innerHTML = adminCachedPlans.map(p => {
+        const total = (parseFloat(p.duration_days) * parseFloat(p.daily_roi)).toFixed(2);
+        return `
+          <div class="p-3 rounded-xl bg-slate-950/80 border border-slate-800 flex items-center justify-between gap-3 hover:border-slate-700 transition">
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 rounded-lg flex items-center justify-center font-black text-xs text-black shrink-0" style="background-color: ${p.color || '#38bdf8'}">
+                $${parseFloat(p.price).toFixed(0)}
+              </div>
+              <div>
+                <div class="flex items-center gap-2">
+                  <span class="font-bold text-white text-xs">${p.name}</span>
+                  <span class="px-1.5 py-0.2 rounded text-[9px] font-bold ${p.is_active ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-800 text-slate-500'}">${p.is_active ? 'Active' : 'Inactive'}</span>
+                </div>
+                <div class="text-[10px] text-slate-400 font-mono mt-0.5">
+                  $${parseFloat(p.daily_roi).toFixed(2)}/day &bull; ${p.duration_days} Days &bull; Total: $${p.total_roi || total}
+                </div>
+              </div>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <button type="button" onclick="openEditPlanModal(${p.id})" class="px-2.5 py-1 rounded-lg bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 hover:bg-cyan-500/30 text-[10px] font-bold transition cursor-pointer">
+                Edit
+              </button>
+              <button type="button" onclick="handleDeletePlan(${p.id})" class="px-2 py-1 rounded-lg bg-rose-500/10 text-rose-400 border border-rose-500/20 hover:bg-rose-500/20 text-[10px] font-bold transition cursor-pointer">
+                Delete
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+      if (window.lucide) lucide.createIcons();
+    }
+  } catch (err) {
+    console.warn('Failed to load admin plans:', err);
+  }
+}
+window.loadAdminPlans = loadAdminPlans;
+
+function openCreatePlanModal() {
+  document.getElementById('epm-modal-title').textContent = 'Add New Investment Package';
+  document.getElementById('epm-plan-id').value = '';
+  document.getElementById('epm-name').value = '';
+  document.getElementById('epm-price').value = '';
+  document.getElementById('epm-duration').value = '25';
+  document.getElementById('epm-daily').value = '1.00';
+  document.getElementById('epm-total').value = '25.00';
+  document.getElementById('epm-color').value = '#38bdf8';
+  document.getElementById('epm-active').checked = true;
+
+  openModal('editPlanModal');
+}
+window.openCreatePlanModal = openCreatePlanModal;
+
+function openEditPlanModal(id) {
+  const p = adminCachedPlans.find(item => item.id === id);
+  if (!p) return;
+
+  document.getElementById('epm-modal-title').textContent = `Edit Investment Package (${p.name})`;
+  document.getElementById('epm-plan-id').value = p.id;
+  document.getElementById('epm-name').value = p.name;
+  document.getElementById('epm-price').value = p.price;
+  document.getElementById('epm-duration').value = p.duration_days;
+  document.getElementById('epm-daily').value = p.daily_roi;
+  document.getElementById('epm-total').value = p.total_roi || (p.duration_days * p.daily_roi).toFixed(2);
+  document.getElementById('epm-color').value = p.color || '#38bdf8';
+  document.getElementById('epm-active').checked = (p.is_active === 1 || p.is_active === true);
+
+  openModal('editPlanModal');
+}
+window.openEditPlanModal = openEditPlanModal;
+
+function recalcPlanTotalRoi() {
+  const days = parseInt(document.getElementById('epm-duration').value, 10) || 0;
+  const daily = parseFloat(document.getElementById('epm-daily').value) || 0;
+  const totInput = document.getElementById('epm-total');
+  if (totInput) totInput.value = (days * daily).toFixed(2);
+}
+window.recalcPlanTotalRoi = recalcPlanTotalRoi;
+
+async function handleSavePlanSubmit(e) {
+  e.preventDefault();
+  const id = document.getElementById('epm-plan-id').value;
+  const name = document.getElementById('epm-name').value.trim();
+  const price = parseFloat(document.getElementById('epm-price').value);
+  const duration_days = parseInt(document.getElementById('epm-duration').value, 10);
+  const daily_roi = parseFloat(document.getElementById('epm-daily').value);
+  const total_roi = parseFloat(document.getElementById('epm-total').value);
+  const color = document.getElementById('epm-color').value;
+  const is_active = document.getElementById('epm-active').checked ? 1 : 0;
+
+  const btn = document.getElementById('btn-save-plan');
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
+
+  try {
+    const url = id ? `${API_BASE}/admin/plans/${id}` : `${API_BASE}/admin/plans`;
+    const method = id ? 'PUT' : 'POST';
+
+    const res = await fetch(url, {
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ name, price, duration_days, daily_roi, total_roi, color, is_active })
+    });
+    const data = await res.json();
+    if (data.success) {
+      closeModal('editPlanModal');
+      showToast(data.message || 'Investment package saved successfully!', 'success');
+      await loadAdminPlans();
+      if (typeof renderPresentationPlans === 'function') renderPresentationPlans();
+    } else {
+      showToast(data.error || 'Failed to save package', 'error');
+    }
+  } catch (err) {
+    showToast(err.message, 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Save Package'; }
+  }
+}
+window.handleSavePlanSubmit = handleSavePlanSubmit;
+
+async function handleDeletePlan(id) {
+  if (!confirm('Are you sure you want to delete or deactivate this investment package?')) return;
+  try {
+    const res = await fetch(`${API_BASE}/admin/plans/${id}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast(data.message || 'Package removed', 'success');
+      await loadAdminPlans();
+      if (typeof renderPresentationPlans === 'function') renderPresentationPlans();
+    } else {
+      showToast(data.error || 'Failed to delete package', 'error');
+    }
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+window.handleDeletePlan = handleDeletePlan;
 
 async function handleSaveSmtpSettings() {
   const host = document.getElementById('admin-smtp-host')?.value.trim();

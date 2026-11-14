@@ -406,7 +406,7 @@ async function initDatabase() {
   // Insert Default System Settings
   const settings = [
     { key: 'min_withdrawal', value: '15' },
-    { key: 'withdrawal_fee_percent', value: '0' },
+    { key: 'withdrawal_fee_percent', value: '6' },
     { key: 'withdrawal_processing_time', value: '0-24 Hours' },
     { key: 'min_joining', value: '25' },
     { key: 'max_joining', value: '5000' },
@@ -417,7 +417,15 @@ async function initDatabase() {
     { key: 'referral_roi_level_2', value: '4' },
     { key: 'referral_roi_level_3', value: '2' },
     { key: 'usdt_deposit_address', value: '0x71C87050fA86BD1b297bB3B6a8d6C9081B1A53b5' },
-    { key: 'company_name', value: 'Catalyst Capital Partners Private Limited' }
+    { key: 'company_name', value: 'Catalyst Capital Partners Private Limited' },
+    { key: 'admin_text_notice_title', value: 'Catalyst Capital Official Announcement' },
+    { key: 'admin_text_notice_body', value: '' },
+    { key: 'admin_text_notice_active', value: '0' },
+    { key: 'admin_text_notice_type', value: 'announcement' },
+    { key: 'quotes_plan_pdf_data', value: '' },
+    { key: 'quotes_plan_pdf_name', value: 'Catalyst_Capital_Plan.pdf' },
+    { key: 'quotes_plan_doc_data', value: '' },
+    { key: 'quotes_plan_doc_name', value: 'Catalyst_Capital_Profile.pdf' }
   ];
 
   for (const s of settings) {
@@ -427,6 +435,9 @@ async function initDatabase() {
       await db.run('INSERT OR IGNORE INTO system_settings (key, value) VALUES (?, ?)', [s.key, s.value]);
     }
   }
+
+  // Update default withdrawal fee to 6% if set to 0 or null
+  await db.run("UPDATE system_settings SET value = '6' WHERE key = 'withdrawal_fee_percent' AND (value = '0' OR value IS NULL OR value = '')");
 
   // Ensure deposit address is updated to BEP-20 if previously set to TRC20 address
   await db.run("UPDATE system_settings SET value = '0x71C87050fA86BD1b297bB3B6a8d6C9081B1A53b5' WHERE key = 'usdt_deposit_address' AND (value LIKE 'TYD%' OR value LIKE 'T%')");

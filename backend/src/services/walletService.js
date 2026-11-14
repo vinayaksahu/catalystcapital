@@ -154,8 +154,15 @@ class WalletService {
       teamAdminId: user.team_admin_id
     });
 
-    // 4. Distribute Team Commission (One-Time: L1: 6%, L2: 2%, L3: 1%)
-    const teamCommissions = await mlmService.distributeTeamCommission(userId, plan.price, investmentId);
+    // 4. Distribute Team Commission ONLY on First Investment (One-Time: L1: 6%, L2: 2%, L3: 1%)
+    // If the downline member reinvests, referral commission is NOT granted again.
+    const priorInv = await db.get(`SELECT COUNT(*) as count FROM investments WHERE user_id = ? AND id != ?`, [userId, investmentId]);
+    const isFirstInvestment = !priorInv || parseInt(priorInv.count, 10) === 0;
+
+    let teamCommissions = [];
+    if (isFirstInvestment) {
+      teamCommissions = await mlmService.distributeTeamCommission(userId, plan.price, investmentId);
+    }
 
     return {
       success: true,
@@ -310,9 +317,20 @@ class WalletService {
       // Update saved USDT address
       await db.run('UPDATE users SET usdt_address = ? WHERE id = ?', [usdtAddress.trim(), userId]);
 
-      // Fee is 0%
-      const fee = 0.0;
-      const netAmount = amount;
+      // Dynamic Withdrawal Deduction Fee (Admin configurable, Default: 6%)
+      let feePercent = 6.0;
+      try {
+        const feeSetting = await db.get("SELECT value FROM system_settings WHERE key = 'withdrawal_fee_percent'");
+        if (feeSetting && feeSetting.value !== undefined && feeSetting.value !== null && feeSetting.value !== '') {
+          const parsed = parseFloat(feeSetting.value);
+          if (!isNaN(parsed) && parsed >= 0) feePercent = parsed;
+        }
+      } catch (e) {
+        feePercent = 6.0;
+      }
+
+      const fee = parseFloat(((amount * feePercent) / 100).toFixed(4));
+      const netAmount = parseFloat((amount - fee).toFixed(4));
 
       const res = await db.run(`
         INSERT INTO withdrawals (user_id, amount, fee, net_amount, wallet_type, usdt_address, network, status)
@@ -327,7 +345,7 @@ class WalletService {
         userId,
         amount,
         walletSource,
-        `Withdrawal Request to ${usdtAddress.trim()} (Fee: 0%, Processing: 0-24hr)`,
+        `Withdrawal Request to ${usdtAddress.trim()} (Fee: ${feePercent}%, Net: $${netAmount})`,
         `WTH-${res.lastInsertRowid}`
       ]);
 

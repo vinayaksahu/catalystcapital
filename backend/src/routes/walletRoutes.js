@@ -166,13 +166,21 @@ router.get('/overview', authenticateToken, async (req, res) => {
       },
       rules: {
         minWithdrawal: parseFloat(settings.min_withdrawal || '15'),
-        withdrawalFee: parseFloat(settings.withdrawal_fee_percent || '0'),
+        withdrawalFee: parseFloat(settings.withdrawal_fee_percent || '6'),
         processingTime: settings.withdrawal_processing_time || '0 - 24 Hours',
         depositAddress: depositAddress || '0x71C87050fA86BD1b297bB3B6a8d6C9081B1A53b5',
-        announcementTicker: settings.announcement_ticker || 'Welcome to the official Catalyst Capital trading platform • High Frequency AI Trading • Instant 0% Withdrawal Payouts • Daily ROI Active •',
+        announcementTicker: settings.announcement_ticker || 'Welcome to the official Catalyst Capital trading platform • High Frequency AI Trading • Instant 6% Withdrawal Deduction • Daily ROI Active •',
         popupImageUrl: settings.popup_image_url || '',
         popupImageActive: settings.popup_image_active === '1' || settings.popup_image_active === 'true',
-        popupImageTitle: (settings.popup_image_title && !settings.popup_image_title.startsWith('eyJ')) ? settings.popup_image_title : 'Special Platform Announcement'
+        popupImageTitle: (settings.popup_image_title && !settings.popup_image_title.startsWith('eyJ')) ? settings.popup_image_title : 'Special Platform Announcement',
+        quotesPlanPdf: settings.quotes_plan_pdf_data || '',
+        quotesPlanPdfName: settings.quotes_plan_pdf_name || 'Catalyst_Capital_Plan.pdf',
+        quotesPlanDoc: settings.quotes_plan_doc_data || '',
+        quotesPlanDocName: settings.quotes_plan_doc_name || 'Catalyst_Capital_Profile.pdf',
+        textNoticeTitle: settings.admin_text_notice_title || '',
+        textNoticeBody: settings.admin_text_notice_body || '',
+        textNoticeActive: settings.admin_text_notice_active === '1' || settings.admin_text_notice_active === 'true',
+        textNoticeType: settings.admin_text_notice_type || 'announcement'
       }
     });
   } catch (err) {
