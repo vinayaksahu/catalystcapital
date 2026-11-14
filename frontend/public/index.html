@@ -1853,14 +1853,15 @@
             <button type="button" onclick="setAdminMemberDatePreset('month')" id="admin-mem-date-btn-month" class="px-2.5 py-1 rounded-xl text-[10px] font-bold bg-slate-800 hover:bg-slate-700 text-slate-300 transition active:scale-95 cursor-pointer">
               This Month
             </button>
+            <span id="admin-mem-date-info-badge" class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">All (93)</span>
           </div>
 
           <!-- Custom Date Range -->
           <div class="flex items-center gap-1.5 flex-wrap text-[11px]">
             <span class="text-[10px] text-slate-400 font-semibold">From:</span>
-            <input type="date" id="admin-member-from-date" onchange="applyAdminMemberCustomDate()" class="px-2 py-1 rounded-xl bg-slate-950 border border-slate-800 text-white text-[10px] focus:outline-none focus:border-amber-400">
+            <input type="date" id="admin-member-from-date" onchange="applyAdminMemberCustomDate()" oninput="applyAdminMemberCustomDate()" class="px-2 py-1 rounded-xl bg-slate-950 border border-slate-800 text-white text-[10px] focus:outline-none focus:border-amber-400">
             <span class="text-[10px] text-slate-400 font-semibold">To:</span>
-            <input type="date" id="admin-member-to-date" onchange="applyAdminMemberCustomDate()" class="px-2 py-1 rounded-xl bg-slate-950 border border-slate-800 text-white text-[10px] focus:outline-none focus:border-amber-400">
+            <input type="date" id="admin-member-to-date" onchange="applyAdminMemberCustomDate()" oninput="applyAdminMemberCustomDate()" class="px-2 py-1 rounded-xl bg-slate-950 border border-slate-800 text-white text-[10px] focus:outline-none focus:border-amber-400">
             <button type="button" onclick="resetAdminMemberDateFilter()" class="px-2 py-1 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-[10px] font-bold transition active:scale-95 cursor-pointer" title="Reset date filters">
               Clear
             </button>
@@ -4267,6 +4268,6 @@
   <div id="toast-container" class="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-2 w-11/12 max-w-sm pointer-events-none"></div>
 
   <!-- Main JavaScript App -->
-  <script src="app.js?v=8.2"></script>
+  <script src="app.js?v=9.5"></script>
 </body>
 </html>

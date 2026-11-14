@@ -3023,6 +3023,7 @@ async function handleWithdrawSubmit(e) {
 // ==================== VIEW 6: ADMIN CONTROL & PORTAL IMPERSONATION ====================
 
 let adminCachedUsers = [];
+window.adminCachedUsers = adminCachedUsers;
 let currentInspectedUserId = null;
 let currentInspectedUser = null;
 let originalAdminToken = localStorage.getItem('catalyst_admin_orig_token') || null;
@@ -3225,8 +3226,10 @@ async function loadAdminData() {
     const usersData = await usersRes.json();
     if (usersData.success && usersData.users) {
       adminCachedUsers = usersData.users;
+      window.adminCachedUsers = adminCachedUsers;
       adminCachedUsersStats = usersData.stats;
       updateAdminMembersKpis(adminCachedUsers, usersData.stats);
+      if (typeof initAdminMemberDateFilterListeners === 'function') initAdminMemberDateFilterListeners();
       filterAdminUsersList();
       populateManualDepositUserSelect(adminCachedUsers);
     }
@@ -3255,6 +3258,7 @@ function switchAdminTab(tabName) {
       else content.classList.add('hidden');
     }
   });
+  if (tabName === 'users' && typeof initAdminMemberDateFilterListeners === 'function') initAdminMemberDateFilterListeners();
   if (tabName === 'settings') loadAdminPlatformSettings();
   if (tabName === 'teamadmins') loadTeamAdminsList();
   if (window.lucide) lucide.createIcons();
@@ -3278,16 +3282,18 @@ function formatIstDateTime(dateVal) {
   let d;
   if (dateVal instanceof Date) {
     d = dateVal;
+  } else if (typeof dateVal === 'number') {
+    d = new Date(dateVal);
   } else if (typeof dateVal === 'string') {
     let clean = dateVal.trim();
-    if (!clean.includes('Z') && !clean.includes('+')) {
+    if (!clean.includes('Z') && !/[+-]\d{2}:?\d{2}$/.test(clean)) {
       clean = clean.replace(' ', 'T') + 'Z';
     }
     d = new Date(clean);
   } else {
     d = new Date(dateVal);
   }
-  if (isNaN(d.getTime())) return '-';
+  if (!d || isNaN(d.getTime())) return '-';
 
   return d.toLocaleDateString('en-GB', {
     timeZone: 'Asia/Kolkata',
@@ -3308,16 +3314,21 @@ function getIstDateKey(dateVal) {
   let d;
   if (dateVal instanceof Date) {
     d = dateVal;
+  } else if (typeof dateVal === 'number') {
+    d = new Date(dateVal);
   } else if (typeof dateVal === 'string') {
     let clean = dateVal.trim();
-    if (!clean.includes('Z') && !clean.includes('+')) {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(clean)) {
+      return clean;
+    }
+    if (!clean.includes('Z') && !/[+-]\d{2}:?\d{2}$/.test(clean)) {
       clean = clean.replace(' ', 'T') + 'Z';
     }
     d = new Date(clean);
   } else {
     d = new Date(dateVal);
   }
-  if (isNaN(d.getTime())) return '';
+  if (!d || isNaN(d.getTime())) return '';
 
   return new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Asia/Kolkata',
@@ -3326,6 +3337,17 @@ function getIstDateKey(dateVal) {
     day: '2-digit'
   }).format(d);
 }
+window.getIstDateKey = getIstDateKey;
+
+function getIstCalendarDaysAgo(daysAgo = 0) {
+  const todayKey = getIstDateKey(new Date());
+  if (!todayKey) return '';
+  if (daysAgo === 0) return todayKey;
+  const parts = todayKey.split('-').map(Number);
+  const target = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2] - daysAgo));
+  return target.toISOString().slice(0, 10);
+}
+window.getIstCalendarDaysAgo = getIstCalendarDaysAgo;
 
 function matchesAdminMemberDateFilter(userCreatedAt) {
   if (adminMemberDatePreset === 'all' && !adminMemberFromDate && !adminMemberToDate) return true;
@@ -3340,15 +3362,13 @@ function matchesAdminMemberDateFilter(userCreatedAt) {
   }
 
   if (adminMemberDatePreset === 'yesterday') {
-    const yest = new Date(Date.now() - 86400000);
-    const yestIst = getIstDateKey(yest);
+    const yestIst = getIstCalendarDaysAgo(1);
     return userIstDate === yestIst;
   }
 
   if (adminMemberDatePreset === 'week') {
-    const weekAgo = new Date(Date.now() - 7 * 86400000);
-    const weekAgoIst = getIstDateKey(weekAgo);
-    return userIstDate >= weekAgoIst && userIstDate <= todayIst;
+    const weekAgoIst = getIstCalendarDaysAgo(7);
+    return userIstDate >= weekAgoIst;
   }
 
   if (adminMemberDatePreset === 'month') {
@@ -3364,6 +3384,7 @@ function matchesAdminMemberDateFilter(userCreatedAt) {
 
   return true;
 }
+window.matchesAdminMemberDateFilter = matchesAdminMemberDateFilter;
 
 function setAdminMemberDatePreset(preset) {
   adminMemberDatePreset = preset;
@@ -3418,6 +3439,31 @@ function resetAdminMemberDateFilter() {
   setAdminMemberDatePreset('all');
 }
 window.resetAdminMemberDateFilter = resetAdminMemberDateFilter;
+
+function initAdminMemberDateFilterListeners() {
+  const presets = ['all', 'today', 'yesterday', 'week', 'month'];
+  presets.forEach(p => {
+    const btn = document.getElementById(`admin-mem-date-btn-${p}`);
+    if (btn && !btn._hasDateListener) {
+      btn._hasDateListener = true;
+      btn.addEventListener('click', () => setAdminMemberDatePreset(p));
+    }
+  });
+
+  const fromInput = document.getElementById('admin-member-from-date');
+  const toInput = document.getElementById('admin-member-to-date');
+  if (fromInput && !fromInput._hasDateListener) {
+    fromInput._hasDateListener = true;
+    fromInput.addEventListener('change', applyAdminMemberCustomDate);
+    fromInput.addEventListener('input', applyAdminMemberCustomDate);
+  }
+  if (toInput && !toInput._hasDateListener) {
+    toInput._hasDateListener = true;
+    toInput.addEventListener('change', applyAdminMemberCustomDate);
+    toInput.addEventListener('input', applyAdminMemberCustomDate);
+  }
+}
+window.initAdminMemberDateFilterListeners = initAdminMemberDateFilterListeners;
 
 function setAdminMemberStatusFilter(status) {
   adminMemberStatusFilter = status;
@@ -3502,7 +3548,31 @@ function renderAdminUsersList(users) {
   if (!container) return;
 
   if (!users || users.length === 0) {
-    container.innerHTML = `<div class="text-center py-8 text-slate-500 bg-slate-900/50 rounded-2xl border border-slate-800">No members found matching your search and filter criteria.</div>`;
+    let presetLabel = 'selected criteria';
+    if (adminMemberDatePreset === 'today') presetLabel = 'today';
+    else if (adminMemberDatePreset === 'yesterday') presetLabel = 'yesterday';
+    else if (adminMemberDatePreset === 'week') presetLabel = 'this week (last 7 days)';
+    else if (adminMemberDatePreset === 'month') presetLabel = 'this month';
+    else if (adminMemberDatePreset === 'custom' || adminMemberFromDate || adminMemberToDate) {
+      presetLabel = `custom date range (${adminMemberFromDate || 'Start'} to ${adminMemberToDate || 'Today'})`;
+    }
+
+    container.innerHTML = `
+      <div class="text-center py-10 px-4 bg-slate-900/60 rounded-2xl border border-slate-800 space-y-2.5">
+        <div class="w-10 h-10 mx-auto rounded-full bg-slate-800/80 border border-slate-700 flex items-center justify-center text-amber-400">
+          <i data-lucide="calendar-x" class="w-5 h-5"></i>
+        </div>
+        <div class="text-sm font-bold text-white">No members found matching ${presetLabel}</div>
+        <div class="text-xs text-slate-400 max-w-md mx-auto">No members joined during this time period or matched your current status filter.</div>
+        <div class="pt-1">
+          <button type="button" onclick="resetAdminMemberDateFilter()" class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black text-xs font-bold transition active:scale-95 cursor-pointer shadow-sm">
+            <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+            <span>Show All Time Members (${(adminCachedUsers || []).length})</span>
+          </button>
+        </div>
+      </div>
+    `;
+    try { if (window.lucide) lucide.createIcons(); } catch (e) {}
     return;
   }
 
@@ -3588,7 +3658,7 @@ function renderAdminUsersList(users) {
   `;
   }).join('');
 
-  if (window.lucide) lucide.createIcons({ root: container });
+  try { if (window.lucide) lucide.createIcons(); } catch (e) {}
 }
 
 let adminUserSearchDebounce = null;
@@ -3611,7 +3681,7 @@ window.debouncedFilterAdminWithdrawalsList = debouncedFilterAdminWithdrawalsList
 
 function filterAdminUsersList() {
   const query = (document.getElementById('admin-user-search-input')?.value || '').trim().toLowerCase();
-  const allUsers = adminCachedUsers || [];
+  const allUsers = (adminCachedUsers && adminCachedUsers.length > 0) ? adminCachedUsers : (window.adminCachedUsers || []);
 
   // 1. Date filter on all users
   const dateFiltered = allUsers.filter(u => matchesAdminMemberDateFilter(u.created_at));
@@ -3638,6 +3708,18 @@ function filterAdminUsersList() {
   if (cntAll) cntAll.textContent = totalInDate;
   if (cntAct) cntAct.textContent = activeInDate;
   if (cntInact) cntInact.textContent = inactiveInDate;
+
+  // Update date strip count badge
+  const dateBadge = document.getElementById('admin-mem-date-info-badge');
+  if (dateBadge) {
+    if (adminMemberDatePreset === 'all' && !adminMemberFromDate && !adminMemberToDate) {
+      dateBadge.textContent = `All (${totalInDate})`;
+      dateBadge.className = 'px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30';
+    } else {
+      dateBadge.textContent = `Filtered: ${totalInDate} of ${allUsers.length}`;
+      dateBadge.className = 'px-2 py-0.5 rounded-full text-[9px] font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30';
+    }
+  }
 
   // 2. Status filter on dateFiltered
   let list = dateFiltered;

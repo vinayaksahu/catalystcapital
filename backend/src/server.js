@@ -87,16 +87,15 @@ const frontendPublic = path.join(__dirname, '..', '..', 'frontend', 'public');
 const frontendPath = require('node:fs').existsSync(rootPublic) ? rootPublic : frontendPublic;
 
 app.use(express.static(frontendPath, {
-  maxAge: '1d',
   etag: true,
   setHeaders: (res, filePath) => {
-    // HTML is not cached heavily so app updates apply immediately
-    if (filePath.endsWith('.html')) {
-      res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+    // HTML, JS & CSS must always revalidate so critical logic & UI updates apply immediately without browser caching locks
+    if (filePath.endsWith('.html') || filePath.endsWith('.js') || filePath.endsWith('.css')) {
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
     } else if (filePath.match(/\.(png|jpg|jpeg|gif|webp|svg|ico)$/)) {
       res.setHeader('Cache-Control', 'public, max-age=604800, immutable'); // 7 days for images
-    } else if (filePath.match(/\.(css|js)$/)) {
-      res.setHeader('Cache-Control', 'public, max-age=86400'); // 1 day for CSS/JS
     }
   }
 }));
