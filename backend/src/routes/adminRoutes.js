@@ -9,6 +9,33 @@ const walletService = require('../services/walletService');
 const notificationService = require('../services/notificationService');
 const { authenticateToken, requireAdmin, requireSuperAdmin, JWT_SECRET } = require('../middleware/authMiddleware');
 
+/**
+ * Returns YYYY-MM-DD string strictly in Indian Standard Time (Asia/Kolkata, UTC+5:30)
+ */
+function getIstDateString(val = new Date()) {
+  let dateObj;
+  if (!val) return null;
+  if (val instanceof Date) {
+    dateObj = val;
+  } else if (typeof val === 'string') {
+    let clean = val.trim();
+    if (!clean.includes('Z') && !clean.includes('+')) {
+      clean = clean.replace(' ', 'T') + 'Z';
+    }
+    dateObj = new Date(clean);
+  } else {
+    dateObj = new Date(val);
+  }
+  if (isNaN(dateObj.getTime())) return null;
+
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Kolkata',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).format(dateObj);
+}
+
 router.use(authenticateToken);
 router.use(requireAdmin);
 
@@ -227,9 +254,15 @@ router.get('/branch-inspector/:id', requireSuperAdmin, async (req, res) => {
       SELECT u.id, u.username, u.email, u.full_name, u.phone, u.referral_code, u.sponsor_id,
              u.wallet_balance, u.roi_balance, u.commission_balance, u.usdt_address, u.status, u.created_at,
              s.username as sponsor_username,
-             COALESCE((SELECT SUM(amount) FROM investments WHERE user_id = u.id AND status = 'active'), 0) as active_invested
+             COALESCE(inv.active_invested, 0) as active_invested
       FROM users u
       LEFT JOIN users s ON u.sponsor_id = s.id
+      LEFT JOIN (
+        SELECT user_id, SUM(amount) as active_invested
+        FROM investments
+        WHERE status = 'active'
+        GROUP BY user_id
+      ) inv ON inv.user_id = u.id
       WHERE (u.team_admin_id = ? OR u.sponsor_id = ?) AND u.role IN ('user', 'member')
       ORDER BY u.created_at DESC
     `, [adminId, adminId]);
@@ -417,12 +450,26 @@ router.get('/users', async (req, res) => {
              s.username as sponsor_username,
              tm.username as team_admin_username,
              tm.team_name as team_admin_team_name,
-             COALESCE((SELECT SUM(amount) FROM investments WHERE user_id = u.id AND status = 'active'), 0) as active_invested,
-             COALESCE((SELECT COUNT(*) FROM investments WHERE user_id = u.id), 0) as total_investments_count,
-             COALESCE((SELECT SUM(amount) FROM withdrawals WHERE user_id = u.id AND status = 'approved'), 0) as total_withdrawn
+             COALESCE(inv.active_invested, 0) as active_invested,
+             COALESCE(inv.total_investments_count, 0) as total_investments_count,
+             COALESCE(wth.total_withdrawn, 0) as total_withdrawn
       FROM users u
       LEFT JOIN users s ON u.sponsor_id = s.id
       LEFT JOIN users tm ON u.team_admin_id = tm.id
+      LEFT JOIN (
+        SELECT user_id,
+               SUM(CASE WHEN status = 'active' THEN amount ELSE 0 END) as active_invested,
+               COUNT(*) as total_investments_count
+        FROM investments
+        GROUP BY user_id
+      ) inv ON inv.user_id = u.id
+      LEFT JOIN (
+        SELECT user_id,
+               SUM(amount) as total_withdrawn
+        FROM withdrawals
+        WHERE status = 'approved'
+        GROUP BY user_id
+      ) wth ON wth.user_id = u.id
       WHERE u.role IN ('user', 'member')
     `;
     const params = [];
@@ -893,7 +940,7 @@ router.get('/stats', async (req, res) => {
     const referralRoiPaid = referralRoiPaidRow ? referralRoiPaidRow.total : 0;
     const teamCommissionPaid = teamCommissionPaidRow ? teamCommissionPaidRow.total : 0;
 
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = getIstDateString();
     const alreadyExecutedToday = lastRoiCycleDateRow?.value === todayStr;
 
     const totalInvestmentVol = totalInvestments ? totalInvestments.vol : 0;

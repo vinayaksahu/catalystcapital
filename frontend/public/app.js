@@ -914,6 +914,8 @@ function logout() {
   showToast('Logged out successfully', 'info');
   navigate('login');
 }
+window.logout = logout;
+window.handleLogout = logout;
 
 function togglePasswordVisibility(inputId, btn) {
   const input = document.getElementById(inputId);
@@ -3106,10 +3108,22 @@ async function loadAdminData() {
 
     const scopeQuery = getAdminScopeQuery();
 
-    // 1. Load Platform Stats (Total Business, Deposits, Withdrawals, Users, ROI)
-    const statsRes = await fetch(`${API_BASE}/admin/stats${scopeQuery}`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
+    // 1. Fetch all admin datasets concurrently in PARALLEL for near-instant response
+    const [statsRes, usersRes] = await Promise.all([
+      fetch(`${API_BASE}/admin/stats${scopeQuery}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      }),
+      fetch(`${API_BASE}/admin/users${scopeQuery}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      }),
+      loadAdminWithdrawals(),
+      loadAdminDeposits(),
+      loadAdminTickets(),
+      loadAdminSettings(),
+      loadAdminPlans(),
+      adminCurrentScope.isSuperAdmin ? loadTeamAdminsList() : Promise.resolve()
+    ]);
+
     const statsData = await statsRes.json();
     if (statsData.success && statsData.stats) {
       const s = statsData.stats;
@@ -3207,10 +3221,7 @@ async function loadAdminData() {
       await loadNotificationBadge();
     }
 
-    // 2. Load Members List with Advanced Stats
-    const usersRes = await fetch(`${API_BASE}/admin/users${scopeQuery}`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
+    // 2. Parse Members List with Advanced Stats
     const usersData = await usersRes.json();
     if (usersData.success && usersData.users) {
       adminCachedUsers = usersData.users;
@@ -3218,26 +3229,6 @@ async function loadAdminData() {
       updateAdminMembersKpis(adminCachedUsers, usersData.stats);
       filterAdminUsersList();
       populateManualDepositUserSelect(adminCachedUsers);
-    }
-
-    // 3. Load Withdrawals
-    await loadAdminWithdrawals();
-
-    // 4. Load Deposits
-    await loadAdminDeposits();
-
-    // 5. Load Tickets
-    await loadAdminTickets();
-
-    // 6. Load Announcements & Pop Image Settings
-    await loadAdminSettings();
-
-    // 7. Load Investment Packages & Plans
-    await loadAdminPlans();
-
-    // 8. Load Team Admins (if Super Root Admin)
-    if (adminCurrentScope.isSuperAdmin) {
-      await loadTeamAdminsList();
     }
 
   } catch (err) {
@@ -3597,8 +3588,26 @@ function renderAdminUsersList(users) {
   `;
   }).join('');
 
-  if (window.lucide) lucide.createIcons();
+  if (window.lucide) lucide.createIcons({ root: container });
 }
+
+let adminUserSearchDebounce = null;
+function debouncedFilterAdminUsersList() {
+  clearTimeout(adminUserSearchDebounce);
+  adminUserSearchDebounce = setTimeout(() => {
+    filterAdminUsersList();
+  }, 120);
+}
+window.debouncedFilterAdminUsersList = debouncedFilterAdminUsersList;
+
+let adminWithdrawalSearchDebounce = null;
+function debouncedFilterAdminWithdrawalsList() {
+  clearTimeout(adminWithdrawalSearchDebounce);
+  adminWithdrawalSearchDebounce = setTimeout(() => {
+    filterAdminWithdrawalsList();
+  }, 120);
+}
+window.debouncedFilterAdminWithdrawalsList = debouncedFilterAdminWithdrawalsList;
 
 function filterAdminUsersList() {
   const query = (document.getElementById('admin-user-search-input')?.value || '').trim().toLowerCase();
@@ -3652,7 +3661,6 @@ function filterAdminUsersList() {
   adminLastFilteredUsers = list;
   renderAdminUsersList(list);
 }
-window.filterAdminUsersList = filterAdminUsersList;
 window.filterAdminUsersList = filterAdminUsersList;
 
 async function inspectAdminUser(userId) {
@@ -4161,7 +4169,7 @@ function renderAdminWithdrawalsList(withdrawals) {
     `;
   }).join('');
 
-  if (window.lucide) lucide.createIcons();
+  if (window.lucide) lucide.createIcons({ root: container });
 }
 window.renderAdminWithdrawalsList = renderAdminWithdrawalsList;
 
@@ -4334,7 +4342,7 @@ async function approveWithdrawal(id, btnElement) {
     const data = await res.json();
     if (data.success) {
       showToast(`Withdrawal #${id} approved successfully!`, 'success');
-      loadAdminData();
+      await loadAdminWithdrawals();
     } else {
       showToast(data.error || 'Approval failed', 'error');
       if (btn) {
@@ -4352,9 +4360,16 @@ async function approveWithdrawal(id, btnElement) {
 }
 window.approveWithdrawal = approveWithdrawal;
 
-async function rejectWithdrawal(id) {
+async function rejectWithdrawal(id, btnElement) {
   const reason = prompt('Enter rejection reason for member:', 'Incorrect wallet address or suspicious activity');
   if (!reason) return;
+
+  const btn = btnElement || (typeof event !== 'undefined' ? (event?.currentTarget || event?.target) : null);
+  const origHtml = btn ? btn.innerHTML : '';
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = `<span class="inline-block animate-spin mr-1">⏳</span><span>Rejecting...</span>`;
+  }
 
   try {
     const res = await fetch(`${API_BASE}/admin/withdrawals/${id}/reject`, {
@@ -4368,12 +4383,14 @@ async function rejectWithdrawal(id) {
     const data = await res.json();
     if (data.success) {
       showToast(`Withdrawal #${id} rejected and funds refunded to user!`, 'info');
-      loadAdminData();
+      await loadAdminWithdrawals();
     } else {
       showToast(data.error || 'Rejection failed', 'error');
+      if (btn) { btn.disabled = false; btn.innerHTML = origHtml; }
     }
   } catch (err) {
     showToast(err.message, 'error');
+    if (btn) { btn.disabled = false; btn.innerHTML = origHtml; }
   }
 }
 window.rejectWithdrawal = rejectWithdrawal;
@@ -4430,11 +4447,11 @@ async function loadAdminDeposits() {
 
         ${d.status === 'pending' ? `
           <div class="flex items-center gap-2 pt-1 border-t border-slate-800/80">
-            <button onclick="approveDeposit(${d.id})" class="flex-1 py-2 px-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs transition flex items-center justify-center gap-1.5 cursor-pointer shadow-sm shadow-emerald-500/20 active:scale-95">
+            <button onclick="approveDeposit(${d.id}, this)" class="flex-1 py-2 px-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs transition flex items-center justify-center gap-1.5 cursor-pointer shadow-sm shadow-emerald-500/20 active:scale-95">
               <i data-lucide="check-circle-2" class="w-3.5 h-3.5"></i>
               <span>Approve & Credit</span>
             </button>
-            <button onclick="rejectDeposit(${d.id})" class="flex-1 py-2 px-3 rounded-xl bg-rose-500/20 border border-rose-500/40 hover:bg-rose-500/30 text-rose-400 font-bold text-xs transition flex items-center justify-center gap-1.5 cursor-pointer active:scale-95">
+            <button onclick="rejectDeposit(${d.id}, this)" class="flex-1 py-2 px-3 rounded-xl bg-rose-500/20 border border-rose-500/40 hover:bg-rose-500/30 text-rose-400 font-bold text-xs transition flex items-center justify-center gap-1.5 cursor-pointer active:scale-95">
               <i data-lucide="x-circle" class="w-3.5 h-3.5"></i>
               <span>Reject</span>
             </button>
@@ -4442,13 +4459,19 @@ async function loadAdminDeposits() {
         ` : ''}
       </div>
     `).join('');
-    if (window.lucide) lucide.createIcons();
+    if (window.lucide) lucide.createIcons({ root: depContainer });
   } else {
     depContainer.innerHTML = `<div class="text-center py-8 text-slate-500 bg-slate-900/50 rounded-2xl border border-slate-800">No deposit records found</div>`;
   }
 }
 
-async function approveDeposit(id) {
+async function approveDeposit(id, btnElement) {
+  const btn = btnElement || (typeof event !== 'undefined' ? (event?.currentTarget || event?.target) : null);
+  const origHtml = btn ? btn.innerHTML : '';
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = `<span class="inline-block animate-spin mr-1">⏳</span><span>Approving...</span>`;
+  }
   try {
     const res = await fetch(`${API_BASE}/admin/deposits/${id}/approve`, {
       method: 'POST',
@@ -4460,19 +4483,29 @@ async function approveDeposit(id) {
     const data = await res.json();
     if (data.success) {
       showToast(data.message || 'Deposit approved and credited!', 'success');
-      loadAdminData();
+      await loadAdminDeposits();
     } else {
       showToast(data.error || 'Approval failed', 'error');
+      if (btn) { btn.disabled = false; btn.innerHTML = origHtml; }
     }
   } catch (err) {
     showToast(err.message, 'error');
+    if (btn) { btn.disabled = false; btn.innerHTML = origHtml; }
   }
 }
 window.approveDeposit = approveDeposit;
 
-async function rejectDeposit(id) {
+async function rejectDeposit(id, btnElement) {
   const reason = prompt('Enter rejection reason:');
   if (!reason) return;
+
+  const btn = btnElement || (typeof event !== 'undefined' ? (event?.currentTarget || event?.target) : null);
+  const origHtml = btn ? btn.innerHTML : '';
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = `<span class="inline-block animate-spin mr-1">⏳</span><span>Rejecting...</span>`;
+  }
+
   try {
     const res = await fetch(`${API_BASE}/admin/deposits/${id}/reject`, {
       method: 'POST',
@@ -4485,12 +4518,14 @@ async function rejectDeposit(id) {
     const data = await res.json();
     if (data.success) {
       showToast(data.message || 'Deposit rejected', 'info');
-      loadAdminData();
+      await loadAdminDeposits();
     } else {
       showToast(data.error || 'Rejection failed', 'error');
+      if (btn) { btn.disabled = false; btn.innerHTML = origHtml; }
     }
   } catch (err) {
     showToast(err.message, 'error');
+    if (btn) { btn.disabled = false; btn.innerHTML = origHtml; }
   }
 }
 window.rejectDeposit = rejectDeposit;

@@ -1239,7 +1239,7 @@
               <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
               <span>Refresh</span>
             </button>
-            <button type="button" onclick="handleLogout()" class="px-3 py-2 rounded-xl bg-rose-500/15 border border-rose-500/30 hover:bg-rose-500/25 text-rose-400 font-bold text-xs transition flex items-center gap-1.5 cursor-pointer active:scale-95">
+            <button type="button" onclick="logout()" class="px-3 py-2 rounded-xl bg-rose-500/15 border border-rose-500/30 hover:bg-rose-500/25 text-rose-400 font-bold text-xs transition flex items-center gap-1.5 cursor-pointer active:scale-95">
               <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
               <span>Sign Out</span>
             </button>
@@ -1822,7 +1822,7 @@
           <div class="flex items-center gap-2">
             <div class="w-full sm:w-56 relative">
               <i data-lucide="search" class="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2"></i>
-              <input type="text" id="admin-user-search-input" oninput="filterAdminUsersList()" placeholder="Search username, ref or name..." class="w-full pl-8 pr-2.5 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-white text-[11px] focus:outline-none focus:border-amber-400 transition">
+              <input type="text" id="admin-user-search-input" oninput="debouncedFilterAdminUsersList()" placeholder="Search username, ref or name..." class="w-full pl-8 pr-2.5 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-white text-[11px] focus:outline-none focus:border-amber-400 transition">
             </div>
             <button type="button" onclick="exportMembersToCSV()" class="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-[11px] font-bold transition flex items-center gap-1 shrink-0 cursor-pointer" title="Export Members to CSV">
               <i data-lucide="file-spreadsheet" class="w-3.5 h-3.5 text-emerald-400"></i>
@@ -1929,7 +1929,7 @@
           <div class="flex items-center gap-2">
             <div class="w-full sm:w-56 relative">
               <i data-lucide="search" class="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2"></i>
-              <input type="text" id="admin-withdrawal-search-input" oninput="filterAdminWithdrawalsList()" placeholder="Search user, address, txid..." class="w-full pl-8 pr-2.5 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-white text-[11px] focus:outline-none focus:border-amber-400 transition">
+              <input type="text" id="admin-withdrawal-search-input" oninput="debouncedFilterAdminWithdrawalsList()" placeholder="Search user, address, txid..." class="w-full pl-8 pr-2.5 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-white text-[11px] focus:outline-none focus:border-amber-400 transition">
             </div>
             <button type="button" onclick="exportWithdrawalsToCSV()" class="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-[11px] font-bold transition flex items-center gap-1 shrink-0" title="Export Withdrawals to CSV">
               <i data-lucide="file-spreadsheet" class="w-3.5 h-3.5 text-emerald-400"></i>

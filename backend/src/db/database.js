@@ -8,8 +8,13 @@ let pool = null;
 let sqliteDb = null;
 
 if (isPostgres) {
-  pool = new Pool({ connectionString: process.env.DATABASE_URL });
-  console.log('🐘 Neon PostgreSQL connection pool initialized');
+  pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    max: 10,
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 10000
+  });
+  console.log('🐘 Neon PostgreSQL connection pool initialized (warm pool enabled)');
 } else {
   // Local fallback: native SQLite
   const { DatabaseSync } = require('node:sqlite');
@@ -359,22 +364,36 @@ async function initDatabase() {
       await pool.query(`
         CREATE INDEX IF NOT EXISTS idx_users_team_admin_id ON users(team_admin_id);
         CREATE INDEX IF NOT EXISTS idx_users_sponsor_id ON users(sponsor_id);
-        CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
+        CREATE INDEX IF NOT EXISTS idx_users_role_status ON users(role, status);
+        CREATE INDEX IF NOT EXISTS idx_users_created_at ON users(created_at);
         CREATE INDEX IF NOT EXISTS idx_investments_user_status ON investments(user_id, status);
+        CREATE INDEX IF NOT EXISTS idx_investments_status ON investments(status);
         CREATE INDEX IF NOT EXISTS idx_deposits_user_status ON deposits(user_id, status);
         CREATE INDEX IF NOT EXISTS idx_withdrawals_user_status ON withdrawals(user_id, status);
+        CREATE INDEX IF NOT EXISTS idx_withdrawals_status ON withdrawals(status);
+        CREATE INDEX IF NOT EXISTS idx_withdrawals_created_at ON withdrawals(created_at);
         CREATE INDEX IF NOT EXISTS idx_transactions_user_type ON transactions(user_id, type);
+        CREATE INDEX IF NOT EXISTS idx_transactions_created_at ON transactions(created_at);
+        CREATE INDEX IF NOT EXISTS idx_tickets_user_status ON support_tickets(user_id, status);
+        CREATE INDEX IF NOT EXISTS idx_tickets_status ON support_tickets(status);
         CREATE INDEX IF NOT EXISTS idx_notifications_user_unread ON notifications(user_id, is_read);
       `);
     } else {
       sqliteDb.exec(`
         CREATE INDEX IF NOT EXISTS idx_users_team_admin_id ON users(team_admin_id);
         CREATE INDEX IF NOT EXISTS idx_users_sponsor_id ON users(sponsor_id);
-        CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
+        CREATE INDEX IF NOT EXISTS idx_users_role_status ON users(role, status);
+        CREATE INDEX IF NOT EXISTS idx_users_created_at ON users(created_at);
         CREATE INDEX IF NOT EXISTS idx_investments_user_status ON investments(user_id, status);
+        CREATE INDEX IF NOT EXISTS idx_investments_status ON investments(status);
         CREATE INDEX IF NOT EXISTS idx_deposits_user_status ON deposits(user_id, status);
         CREATE INDEX IF NOT EXISTS idx_withdrawals_user_status ON withdrawals(user_id, status);
+        CREATE INDEX IF NOT EXISTS idx_withdrawals_status ON withdrawals(status);
+        CREATE INDEX IF NOT EXISTS idx_withdrawals_created_at ON withdrawals(created_at);
         CREATE INDEX IF NOT EXISTS idx_transactions_user_type ON transactions(user_id, type);
+        CREATE INDEX IF NOT EXISTS idx_transactions_created_at ON transactions(created_at);
+        CREATE INDEX IF NOT EXISTS idx_tickets_user_status ON support_tickets(user_id, status);
+        CREATE INDEX IF NOT EXISTS idx_tickets_status ON support_tickets(status);
         CREATE INDEX IF NOT EXISTS idx_notifications_user_unread ON notifications(user_id, is_read);
       `);
     }
