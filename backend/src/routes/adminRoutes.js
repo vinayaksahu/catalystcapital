@@ -999,7 +999,11 @@ router.post('/impersonate/:id', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Cannot impersonate another superadmin' });
     }
 
-    if ((targetUser.role === 'admin' || targetUser.role === 'superadmin') && req.user.role !== 'superadmin') {
+    if (targetUser.id === req.user.id) {
+      return res.status(400).json({ success: false, error: 'Cannot open portal for your own active account' });
+    }
+
+    if ((targetUser.role === 'admin' || targetUser.role === 'superadmin') && req.user.role !== 'superadmin' && req.user.username !== 'admin' && req.user.id !== 1) {
       return res.status(400).json({ success: false, error: 'Cannot open portal for administrator account' });
     }
 

@@ -730,6 +730,28 @@ function updateAuthUI() {
       document.body.classList.remove('has-sr-impersonation-bar');
     }
   }
+
+  // Admin Member Portal Impersonation Sticky Bar Handling
+  const adminOrigToken = localStorage.getItem('catalyst_admin_orig_token') || originalAdminToken;
+  const adminPortalBanner = document.getElementById('admin-member-portal-bar');
+  const isImpersonatingMember = !!(currentUser && currentUser.isImpersonation && adminOrigToken && adminOrigToken !== token);
+  if (adminPortalBanner) {
+    if (isImpersonatingMember) {
+      adminPortalBanner.classList.remove('hidden');
+      adminPortalBanner.style.removeProperty('display');
+      document.body.classList.add('has-admin-portal-bar');
+      const uEl = document.getElementById('admin-portal-user-name');
+      if (uEl) uEl.textContent = `@${currentUser.username} (${currentUser.full_name || currentUser.username})`;
+    } else {
+      if (adminOrigToken && (!currentUser || !currentUser.isImpersonation || adminOrigToken === token)) {
+        localStorage.removeItem('catalyst_admin_orig_token');
+        originalAdminToken = null;
+      }
+      adminPortalBanner.classList.add('hidden');
+      adminPortalBanner.style.setProperty('display', 'none', 'important');
+      document.body.classList.remove('has-admin-portal-bar');
+    }
+  }
 }
 
 // Logo click handler: Stays in Admin Portal if admin is in admin portal, else navigates to home
@@ -3652,11 +3674,15 @@ function renderAdminUsersList(users) {
         </div>
       </div>
 
-      <!-- Actions Bar: Inspect Member Details & Manage -->
-      <div class="pt-1 border-t border-slate-800/80">
-        <button onclick="inspectAdminUser(${u.id})" class="w-full py-2 px-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition flex items-center justify-center gap-1.5 border border-slate-700 cursor-pointer active:scale-95" title="View Portfolio & Adjust">
+      <!-- Actions Bar: Inspect & Enter Portal -->
+      <div class="grid grid-cols-2 gap-2 pt-1 border-t border-slate-800/80">
+        <button type="button" onclick="inspectAdminUser(${u.id})" class="py-2 px-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition flex items-center justify-center gap-1.5 border border-slate-700 cursor-pointer active:scale-95" title="View Portfolio & Adjust">
           <i data-lucide="eye" class="w-3.5 h-3.5 text-amber-400"></i>
           <span>Inspect</span>
+        </button>
+        <button type="button" onclick="adminEnterUserPortal(${u.id}, '${(u.username || '').replace(/'/g, "\\'")}')" class="py-2 px-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black text-xs font-extrabold transition flex items-center justify-center gap-1.5 shadow-sm shadow-amber-500/20 cursor-pointer active:scale-95" title="Login and enter @${u.username}'s Portal">
+          <i data-lucide="log-in" class="w-3.5 h-3.5 text-black"></i>
+          <span>Portal</span>
         </button>
       </div>
     </div>
@@ -3927,23 +3953,28 @@ async function handleAdminDeleteUser() {
 }
 window.handleAdminDeleteUser = handleAdminDeleteUser;
 
-async function adminImpersonateUser(userId) {
+async function adminEnterUserPortal(userId, username) {
+  if (!userId) return;
+  const targetName = username || `User #${userId}`;
   try {
+    showToast(`Opening portal for @${targetName}...`, 'info');
+
+    // Retain original admin token
+    const currentAdminToken = originalAdminToken || token;
+    if (!originalAdminToken) {
+      originalAdminToken = currentAdminToken;
+      localStorage.setItem('catalyst_admin_orig_token', originalAdminToken);
+    }
+
     const res = await fetch(`${API_BASE}/admin/impersonate/${userId}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
+        'Authorization': `Bearer ${currentAdminToken}`
       }
     });
     const data = await res.json();
-    if (!data.success || !data.token) throw new Error(data.error || 'Impersonation failed');
-
-    // Save admin original token so admin can return
-    if (!originalAdminToken) {
-      originalAdminToken = token;
-      localStorage.setItem('catalyst_admin_orig_token', originalAdminToken);
-    }
+    if (!data.success || !data.token) throw new Error(data.error || 'Failed to enter member portal');
 
     // Switch active credentials to target user
     token = data.token;
@@ -3952,39 +3983,47 @@ async function adminImpersonateUser(userId) {
 
     closeModal('adminUserDetailModal');
 
-    // Show Impersonation banner
-    const banner = document.getElementById('impersonation-alert-banner');
-    const uEl = document.getElementById('impersonation-active-user');
-    if (banner && uEl) {
-      uEl.textContent = `@${currentUser.username} (${currentUser.full_name || ''})`;
-      banner.classList.remove('hidden');
-    }
-
+    // Update sticky banner and UI
     updateAuthUI();
-    showToast(`Switched into member portal of @${currentUser.username}!`, 'info');
+
+    showToast(`Logged into @${currentUser.username}'s Member Portal!`, 'success');
     navigate('home');
   } catch (err) {
     showToast(err.message, 'error');
   }
 }
-window.adminImpersonateUser = adminImpersonateUser;
+window.adminEnterUserPortal = adminEnterUserPortal;
+window.adminImpersonateUser = adminEnterUserPortal;
 
-function exitImpersonation() {
-  if (!originalAdminToken) return;
-  token = originalAdminToken;
-  localStorage.setItem('catalyst_token', token);
-  localStorage.removeItem('catalyst_admin_orig_token');
-  originalAdminToken = null;
-
-  const banner = document.getElementById('impersonation-alert-banner');
-  if (banner) banner.classList.add('hidden');
-
-  fetchUserProfile().then(() => {
-    showToast('Returned to Master Admin Portal!', 'success');
+async function exitAdminMemberPortal() {
+  const savedAdminToken = localStorage.getItem('catalyst_admin_orig_token') || originalAdminToken;
+  if (!savedAdminToken) {
+    showToast('Admin session restored', 'info');
     navigate('admin');
-  });
+    return;
+  }
+
+  try {
+    token = savedAdminToken;
+    localStorage.setItem('catalyst_token', token);
+    localStorage.removeItem('catalyst_admin_orig_token');
+    originalAdminToken = null;
+
+    // Refresh profile back to Admin
+    await fetchUserProfile();
+    updateAuthUI();
+    showToast('Returned to Admin Panel successfully!', 'success');
+    navigate('admin');
+    if (typeof loadAdminData === 'function') {
+      await loadAdminData();
+    }
+  } catch (err) {
+    console.error('Error exiting member portal:', err);
+    navigate('admin');
+  }
 }
-window.exitImpersonation = exitImpersonation;
+window.exitAdminMemberPortal = exitAdminMemberPortal;
+window.exitImpersonation = exitAdminMemberPortal;
 
 async function handleAdminAdjustBalance(e) {
   e.preventDefault();

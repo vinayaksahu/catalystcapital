@@ -67,6 +67,23 @@
     </div>
   </div>
 
+  <!-- ==================== ADMIN MEMBER PORTAL IMPERSONATION STICKY BAR ==================== -->
+  <div id="admin-member-portal-bar" class="hidden fixed top-0 left-0 right-0 z-50 bg-gradient-to-r from-amber-950 via-slate-900 to-amber-950 border-b-2 border-amber-500 shadow-2xl px-3 sm:px-6 py-2.5 text-white" style="display: none;">
+    <div class="max-w-7xl mx-auto flex items-center justify-between gap-3 flex-wrap">
+      <div class="flex items-center gap-2 sm:gap-3 text-xs font-bold text-white min-w-0">
+        <span class="px-2.5 py-0.5 rounded-full bg-amber-500 text-black text-[9px] font-black uppercase tracking-wider shrink-0 animate-pulse">ADMIN PORTAL SESSION</span>
+        <div class="flex items-center gap-1.5 min-w-0 truncate">
+          <i data-lucide="user-check" class="w-4 h-4 text-amber-400 shrink-0"></i>
+          <span class="truncate">Browsing Member Portal: <strong id="admin-portal-user-name" class="text-amber-400 font-mono underline">@user</strong></span>
+        </div>
+      </div>
+      <button type="button" onclick="exitAdminMemberPortal()" class="px-4 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-extrabold text-xs shadow-lg shadow-amber-500/20 transition flex items-center gap-1.5 cursor-pointer active:scale-95 whitespace-nowrap shrink-0">
+        <i data-lucide="arrow-left-circle" class="w-4 h-4 text-black"></i>
+        <span>Return to Admin Panel</span>
+      </button>
+    </div>
+  </div>
+
   <!-- ==================== MOBILE APP SHELL ==================== -->
   <div class="mobile-shell pb-24">
 
@@ -3536,16 +3553,19 @@
         </div>
       </div>
 
-      <!-- Action Buttons: Credit Funds, Block User, Delete User -->
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+      <!-- Action Buttons: Portal Entry, Credit Funds, Block User, Delete User -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        <button type="button" onclick="adminEnterUserPortal(currentInspectedUserId, currentInspectedUser ? currentInspectedUser.username : '')" class="py-2.5 px-2 rounded-xl font-extrabold bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black text-xs transition flex items-center justify-center gap-1.5 cursor-pointer shadow-sm shadow-amber-500/20 active:scale-95" title="Login to this user's portal">
+          <i data-lucide="log-in" class="w-3.5 h-3.5 text-black"></i> <span>Portal</span>
+        </button>
         <button type="button" onclick="openManualDepositForUser(currentInspectedUserId)" class="py-2.5 px-2 rounded-xl font-bold bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/30 text-xs transition flex items-center justify-center gap-1.5 cursor-pointer">
-          <i data-lucide="plus-circle" class="w-3.5 h-3.5"></i> Credit Funds
+          <i data-lucide="plus-circle" class="w-3.5 h-3.5"></i> <span>Credit</span>
         </button>
         <button type="button" id="aud-btn-block" onclick="handleAdminToggleBlockUser()" class="py-2.5 px-2 rounded-xl font-bold text-xs transition flex items-center justify-center gap-1.5 cursor-pointer bg-amber-500/20 border border-amber-500/40 text-amber-400 hover:bg-amber-500/30">
-          <i data-lucide="shield-alert" class="w-3.5 h-3.5" id="aud-icon-block"></i> <span id="aud-btn-block-text">Block User</span>
+          <i data-lucide="shield-alert" class="w-3.5 h-3.5" id="aud-icon-block"></i> <span id="aud-btn-block-text">Block</span>
         </button>
         <button type="button" id="aud-btn-delete" onclick="handleAdminDeleteUser()" class="py-2.5 px-2 rounded-xl font-bold text-xs transition flex items-center justify-center gap-1.5 cursor-pointer bg-rose-500/20 border border-rose-500/40 text-rose-400 hover:bg-rose-500/30">
-          <i data-lucide="trash-2" class="w-3.5 h-3.5" id="aud-icon-delete"></i> <span id="aud-btn-delete-text">Delete User</span>
+          <i data-lucide="trash-2" class="w-3.5 h-3.5" id="aud-icon-delete"></i> <span id="aud-btn-delete-text">Delete</span>
         </button>
       </div>
 
@@ -4268,6 +4288,6 @@
   <div id="toast-container" class="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-2 w-11/12 max-w-sm pointer-events-none"></div>
 
   <!-- Main JavaScript App -->
-  <script src="app.js?v=9.6"></script>
+  <script src="app.js?v=9.7"></script>
 </body>
 </html>

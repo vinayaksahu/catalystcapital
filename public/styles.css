@@ -863,11 +863,13 @@ body.admin-view-active .bottom-nav-bar {
   box-shadow: 0 0 15px rgba(244, 63, 94, 0.2);
 }
 
-body.has-sr-impersonation-bar {
+body.has-sr-impersonation-bar,
+body.has-admin-portal-bar {
   padding-top: 46px !important;
 }
 @media (max-width: 640px) {
-  body.has-sr-impersonation-bar {
+  body.has-sr-impersonation-bar,
+  body.has-admin-portal-bar {
     padding-top: 54px !important;
   }
 }
