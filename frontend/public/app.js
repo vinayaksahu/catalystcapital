@@ -7421,6 +7421,40 @@ async function handleQuickPasswordResetSubmit(e) {
 window.handleQuickPasswordResetSubmit = handleQuickPasswordResetSubmit;
 
 // 16. Quick Vault Address Modal Handlers (Super Root & Team Admins)
+
+async function requestVaultSecurityOtp() {
+  const btn = document.getElementById('btn-qva-send-otp');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Sending OTP...';
+  }
+  try {
+    const res = await fetch(`${API_BASE}/admin/request-vault-otp`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast(data.message || 'OTP sent to Master Owner email!', 'success');
+      const otpInp = document.getElementById('qva-otp');
+      if (otpInp) otpInp.focus();
+    } else {
+      showToast(data.error || 'Failed to send OTP', 'error');
+    }
+  } catch (err) {
+    showToast(err.message, 'error');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = 'Get OTP on Email';
+    }
+  }
+}
+window.requestVaultSecurityOtp = requestVaultSecurityOtp;
+
 function openQuickVaultAddressModal(userId, username, currentAddress = '') {
   const inpId = document.getElementById('qva-user-id');
   const label = document.getElementById('qva-target-label');
@@ -7431,6 +7465,8 @@ function openQuickVaultAddressModal(userId, username, currentAddress = '') {
   if (label) label.textContent = `Modify Vault for @${username} (ID: ${userId})`;
   if (curLabel) curLabel.textContent = currentAddress ? currentAddress : 'None / Not configured';
   if (inpNew) inpNew.value = currentAddress || '';
+  const inpOtp = document.getElementById('qva-otp');
+  if (inpOtp) inpOtp.value = '';
 
   openModal('quickVaultAddressModal');
 }
@@ -7472,13 +7508,14 @@ async function handleQuickVaultAddressSubmit(e) {
   }
 
   try {
+    const otp = document.getElementById('qva-otp')?.value.trim();
     const res = await fetch(`${API_BASE}/admin/update-vault-address`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`
       },
-      body: JSON.stringify({ userId: parseInt(userId, 10), usdtAddress })
+      body: JSON.stringify({ userId: parseInt(userId, 10), usdtAddress, otp })
     });
     const data = await res.json();
     if (data.success) {
@@ -7494,7 +7531,16 @@ async function handleQuickVaultAddressSubmit(e) {
         await loadTeamAdminsList();
       }
     } else {
-      showToast(data.error || 'Failed to update vault address', 'error');
+      if (data.otpRequired) {
+        showToast(data.error || 'Security OTP required! Dispatched to Master Email.', 'warning');
+        const otpInp = document.getElementById('qva-otp');
+        if (otpInp) {
+          otpInp.focus();
+          otpInp.classList.add('border-rose-500');
+        }
+      } else {
+        showToast(data.error || 'Failed to update vault address', 'error');
+      }
     }
   } catch (err) {
     showToast(err.message, 'error');

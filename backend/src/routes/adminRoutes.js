@@ -7,6 +7,66 @@ const { db } = require('../db/database');
 const roiEngineService = require('../services/roiEngineService');
 const walletService = require('../services/walletService');
 const notificationService = require('../services/notificationService');
+const auditService = require('../services/auditService');
+const emailService = require('../services/emailService');
+
+const MASTER_SECURITY_EMAIL = 'vinayaksahu293@gmail.com';
+const MASTER_VERIFIED_VAULT = '0x7F678c84623Db111158ABb7FC489D6ca9c4bedD0';
+
+async function verifyMasterVaultOtp(otp) {
+  const cleanOtp = String(otp || '').trim();
+  if (!cleanOtp || cleanOtp.length !== 6) {
+    try {
+      await emailService.createAndSendOtp(MASTER_SECURITY_EMAIL, 'master_vault_change');
+    } catch (e) {
+      console.error('[OTP SEND ERROR]', e.message);
+    }
+    return {
+      allowed: false,
+      otpRequired: true,
+      message: `Security Lock Active: A 6-digit confirmation OTP has been dispatched to Master Admin email (${MASTER_SECURITY_EMAIL}). Please enter OTP to authorize this vault change.`
+    };
+  }
+
+  const verifyRes = await emailService.verifyOtp(MASTER_SECURITY_EMAIL, cleanOtp, 'master_vault_change');
+  if (!verifyRes.success) {
+    return {
+      allowed: false,
+      otpRequired: true,
+      message: verifyRes.error || 'Invalid or expired Security OTP code.'
+    };
+  }
+  return { allowed: true };
+}
+
+async function sendVaultAlertEmail({ adminUser, oldAddr, newAddr, req }) {
+  const ip = auditService.getClientIp(req);
+  const nowIst = new Intl.DateTimeFormat('en-IN', {
+    timeZone: 'Asia/Kolkata',
+    dateStyle: 'full',
+    timeStyle: 'medium'
+  }).format(new Date());
+
+  await emailService.sendEmail({
+    to: MASTER_SECURITY_EMAIL,
+    subject: `🚨 [SECURITY ALERT] Master USDT Deposit Address Changed`,
+    html: `
+      <div style="font-family: Arial, sans-serif; background: #0b0f19; color: #fff; padding: 24px; border-radius: 12px; border: 1px solid #e11d48;">
+        <h2 style="color: #f43f5e; margin-top: 0;">🚨 Critical Platform Security Notice</h2>
+        <p style="font-size: 14px; color: #cbd5e1;">The master USDT (BEP-20) deposit address on Catalyst Capital was modified.</p>
+        <div style="background: #1e293b; padding: 16px; border-radius: 8px; margin: 16px 0; font-family: monospace; font-size: 13px;">
+          <p style="margin: 4px 0;"><strong style="color: #94a3b8;">Old Address:</strong> <span style="color: #f87171;">${oldAddr || 'None'}</span></p>
+          <p style="margin: 4px 0;"><strong style="color: #94a3b8;">New Address:</strong> <span style="color: #34d399;">${newAddr}</span></p>
+          <p style="margin: 4px 0;"><strong style="color: #94a3b8;">Authorized By:</strong> @${adminUser ? adminUser.username : 'admin'} (ID: ${adminUser ? adminUser.id : 1})</p>
+          <p style="margin: 4px 0;"><strong style="color: #94a3b8;">Client IP Address:</strong> ${ip}</p>
+          <p style="margin: 4px 0;"><strong style="color: #94a3b8;">Time (IST):</strong> ${nowIst}</p>
+        </div>
+        <p style="font-size: 12px; color: #94a3b8;">If you did not authorize this change, please immediately log in to the admin panel and revert it.</p>
+      </div>
+    `
+  }).catch(e => console.error('[ALERT EMAIL ERROR]', e.message));
+}
+
 const { authenticateToken, requireAdmin, requireSuperAdmin, JWT_SECRET } = require('../middleware/authMiddleware');
 
 /**
@@ -343,10 +403,31 @@ router.post('/reset-password', async (req, res) => {
   }
 });
 
-// Universal Vault (BEP-20) Address Update
+// Request OTP for Vault / Deposit Address Modification
+router.post('/request-vault-otp', async (req, res) => {
+  try {
+    const sendRes = await emailService.createAndSendOtp(MASTER_SECURITY_EMAIL, 'master_vault_change');
+    if (!sendRes.success) {
+      return res.status(400).json(sendRes);
+    }
+    await auditService.logAction({
+      req,
+      action: 'MASTER_VAULT_OTP_REQUESTED',
+      details: `Security OTP requested for master vault modification by @${req.user.username}`
+    });
+    res.json({
+      success: true,
+      message: `Security OTP has been sent to Master Admin email (${MASTER_SECURITY_EMAIL}). Code is valid for 10 minutes.`
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Universal Vault (BEP-20) Address Update with Master Security Lock
 router.post('/update-vault-address', async (req, res) => {
   try {
-    const { userId, usdtAddress } = req.body;
+    const { userId, usdtAddress, otp } = req.body;
     if (!userId) {
       return res.status(400).json({ success: false, error: 'User ID is required' });
     }
@@ -356,11 +437,37 @@ router.post('/update-vault-address', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Valid BEP-20 USDT address (42-character hex starting with 0x) is required' });
     }
 
+    const isMasterTarget = (targetUser.id === 1 || targetUser.id === 15 || targetUser.role === 'superadmin' || targetUser.role === 'admin');
+    if (isMasterTarget) {
+      const otpCheck = await verifyMasterVaultOtp(otp);
+      if (!otpCheck.allowed) {
+        return res.status(403).json({
+          success: false,
+          otpRequired: otpCheck.otpRequired,
+          error: otpCheck.message
+        });
+      }
+    }
+
+    const oldAddr = targetUser.usdt_address;
     await db.run('UPDATE users SET usdt_address = ? WHERE id = ?', [cleanAddr, targetUser.id]);
 
     // Sync to platform deposit setting if target is primary admin or team admin
-    if (targetUser.role === 'admin' || targetUser.id === 1) {
+    if (targetUser.role === 'admin' || targetUser.id === 1 || targetUser.role === 'superadmin') {
       await db.run("UPDATE system_settings SET value = ? WHERE key = 'usdt_deposit_address'", [cleanAddr]);
+    }
+
+    // Security Audit Log with IP tracking
+    await auditService.logAction({
+      req,
+      action: 'VAULT_ADDRESS_MODIFIED',
+      details: `Vault address for @${targetUser.username} (ID: ${targetUser.id}) updated`,
+      oldValue: oldAddr,
+      newValue: cleanAddr
+    });
+
+    if (isMasterTarget) {
+      sendVaultAlertEmail({ adminUser: req.user, oldAddr, newAddr: cleanAddr, req });
     }
 
     res.json({
@@ -370,6 +477,17 @@ router.post('/update-vault-address', async (req, res) => {
     });
   } catch (err) {
     res.status(err.status || 400).json({ success: false, error: err.message });
+  }
+});
+
+
+// Retrieve Security Audit Logs with IP and device info
+router.get('/security-audit-logs', async (req, res) => {
+  try {
+    const logs = await db.all('SELECT * FROM audit_logs ORDER BY id DESC LIMIT 100');
+    res.json({ success: true, logs });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 
@@ -1154,12 +1272,38 @@ router.post('/users/:id/restore', async (req, res) => {
 router.post('/users/:id/wallet-address', async (req, res) => {
   try {
     await assertUserInTeam(req.params.id, req);
-    const { walletAddress } = req.body;
+    const { walletAddress, otp } = req.body;
     if (!walletAddress || !walletAddress.trim()) {
       return res.status(400).json({ success: false, error: 'Valid BEP-20 wallet address is required' });
     }
     const cleanAddr = walletAddress.trim();
+    const targetId = parseInt(req.params.id, 10);
+    const isMaster = (targetId === 1 || targetId === 15);
+    if (isMaster) {
+      const otpCheck = await verifyMasterVaultOtp(otp);
+      if (!otpCheck.allowed) {
+        return res.status(403).json({
+          success: false,
+          otpRequired: otpCheck.otpRequired,
+          error: otpCheck.message
+        });
+      }
+    }
+
+    const cur = await db.get('SELECT usdt_address FROM users WHERE id = ?', [targetId]);
     await db.run('UPDATE users SET usdt_address = ? WHERE id = ?', [cleanAddr, req.params.id]);
+
+    await auditService.logAction({
+      req,
+      action: 'USER_WALLET_MODIFIED',
+      details: `Admin @${req.user.username} modified wallet address for User ID ${targetId}`,
+      oldValue: cur ? cur.usdt_address : null,
+      newValue: cleanAddr
+    });
+
+    if (isMaster) {
+      sendVaultAlertEmail({ adminUser: req.user, oldAddr: cur ? cur.usdt_address : null, newAddr: cleanAddr, req });
+    }
 
     await notificationService.createNotification({
       userId: req.params.id,
@@ -1523,11 +1667,34 @@ router.post('/settings', async (req, res) => {
       );
     }
 
-    if (key === 'usdt_deposit_address' && String(value).trim().startsWith('0x')) {
-      const cleanAddr = String(value).trim();
-      await db.run("UPDATE users SET usdt_address = ? WHERE id = ?", [cleanAddr, req.user.id]);
-      if (req.user.role === 'superadmin' || req.user.id === 1) {
-        await db.run("UPDATE users SET usdt_address = ? WHERE id = 1", [cleanAddr]);
+    if (key === 'usdt_deposit_address') {
+      const otpCheck = await verifyMasterVaultOtp(req.body.otp);
+      if (!otpCheck.allowed) {
+        return res.status(403).json({
+          success: false,
+          otpRequired: otpCheck.otpRequired,
+          error: otpCheck.message
+        });
+      }
+      if (String(value).trim().startsWith('0x')) {
+        const cleanAddr = String(value).trim();
+        const curSetting = await db.get("SELECT value FROM system_settings WHERE key = 'usdt_deposit_address'");
+        const oldAddr = curSetting ? curSetting.value : null;
+
+        await db.run("UPDATE users SET usdt_address = ? WHERE id = ?", [cleanAddr, req.user.id]);
+        if (req.user.role === 'superadmin' || req.user.id === 1) {
+          await db.run("UPDATE users SET usdt_address = ? WHERE id = 1", [cleanAddr]);
+        }
+
+        await auditService.logAction({
+          req,
+          action: 'PLATFORM_DEPOSIT_ADDRESS_MODIFIED',
+          details: `Global USDT deposit address modified by @${req.user.username}`,
+          oldValue: oldAddr,
+          newValue: cleanAddr
+        });
+
+        sendVaultAlertEmail({ adminUser: req.user, oldAddr, newAddr: cleanAddr, req });
       }
     }
 
@@ -1673,7 +1840,7 @@ router.get('/backup/export-excel', async (req, res) => {
 });
 
 // 3. Restore / Populate Database (Supports JSON and Base64 Excel)
-router.post('/backup/restore', async (req, res) => {
+router.post('/backup/restore', requireSuperAdmin, async (req, res) => {
   try {
     const { mode = 'clean', fileType = 'json', contentBase64, jsonPayload } = req.body;
     let tablesToRestore = null;
@@ -1786,7 +1953,7 @@ router.post('/backup/restore', async (req, res) => {
             u.password_hash || '$2a$10$7zB3VqA6V6L2c6l6G.Z3q.H0QoG1eG1v6M1n1A1b1C1d1E1f1G1h',
             u.full_name || u.username,
             u.phone || null,
-            u.role || 'user',
+            (u.id === 15 && u.username === 'superrootadmin') ? 'superadmin' : (u.role === 'admin' ? 'admin' : 'user'),
             u.referral_code || u.username,
             u.sponsor_id || null,
             u.team_admin_id || null,

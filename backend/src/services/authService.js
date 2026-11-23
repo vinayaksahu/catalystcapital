@@ -29,6 +29,15 @@ class AuthService {
     }
 
     const cleanEmail = email.trim().toLowerCase();
+    const emailDomain = cleanEmail.split('@')[1];
+    const BLOCKED_DOMAINS = [
+      'mailinator.com', 'mailnesia.com', 'maxxspace.com', 'mail.td', 'euploading.com',
+      'tempmail.com', '10minutemail.com', 'guerrillamail.com', 'sharklasers.com',
+      'yopmail.com', 'throwawaymail.com', 'dispostable.com', 'fldubai.com'
+    ];
+    if (BLOCKED_DOMAINS.includes(emailDomain)) {
+      throw new Error('Disposable and temporary email addresses are strictly prohibited.');
+    }
     let cleanUsername = (username || '').trim().toLowerCase();
     const cleanFullName = (fullName || '').trim();
 
@@ -396,6 +405,15 @@ class AuthService {
     }
 
     const cleanEmail = email.trim().toLowerCase();
+    const emailDomain = cleanEmail.split('@')[1];
+    const BLOCKED_DOMAINS = [
+      'mailinator.com', 'mailnesia.com', 'maxxspace.com', 'mail.td', 'euploading.com',
+      'tempmail.com', '10minutemail.com', 'guerrillamail.com', 'sharklasers.com',
+      'yopmail.com', 'throwawaymail.com', 'dispostable.com', 'fldubai.com'
+    ];
+    if (BLOCKED_DOMAINS.includes(emailDomain)) {
+      throw new Error('Disposable and temporary email addresses are strictly prohibited.');
+    }
     const otpVerify = await emailService.verifyOtp(cleanEmail, otp, 'forgot_password');
     if (!otpVerify.success) {
       throw new Error(otpVerify.error || 'Invalid or expired OTP code');

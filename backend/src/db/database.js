@@ -190,6 +190,20 @@ async function initDatabase() {
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       );
 
+      
+      CREATE TABLE IF NOT EXISTS audit_logs (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER,
+        username VARCHAR(100),
+        action VARCHAR(100) NOT NULL,
+        details TEXT,
+        old_value TEXT,
+        new_value TEXT,
+        ip_address VARCHAR(100),
+        user_agent TEXT,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+    
       CREATE TABLE IF NOT EXISTS support_tickets (
         id SERIAL PRIMARY KEY,
         user_id INTEGER NOT NULL REFERENCES users(id),
@@ -318,6 +332,20 @@ async function initDatabase() {
         created_at TEXT DEFAULT (datetime('now'))
       );
 
+      
+      CREATE TABLE IF NOT EXISTS audit_logs (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER,
+        username VARCHAR(100),
+        action VARCHAR(100) NOT NULL,
+        details TEXT,
+        old_value TEXT,
+        new_value TEXT,
+        ip_address VARCHAR(100),
+        user_agent TEXT,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+    
       CREATE TABLE IF NOT EXISTS support_tickets (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER NOT NULL REFERENCES users(id),
@@ -435,7 +463,7 @@ async function initDatabase() {
     { key: 'referral_roi_level_1', value: '10' },
     { key: 'referral_roi_level_2', value: '4' },
     { key: 'referral_roi_level_3', value: '2' },
-    { key: 'usdt_deposit_address', value: '0x71C87050fA86BD1b297bB3B6a8d6C9081B1A53b5' },
+    { key: 'usdt_deposit_address', value: '0x7F678c84623Db111158ABb7FC489D6ca9c4bedD0' },
     { key: 'company_name', value: 'Catalyst Capital Partners Private Limited' },
     { key: 'admin_text_notice_title', value: 'Catalyst Capital Official Announcement' },
     { key: 'admin_text_notice_body', value: '' },
@@ -459,7 +487,7 @@ async function initDatabase() {
   await db.run("UPDATE system_settings SET value = '6' WHERE key = 'withdrawal_fee_percent' AND (value = '0' OR value IS NULL OR value = '')");
 
   // Ensure deposit address is updated to BEP-20 if previously set to TRC20 address
-  await db.run("UPDATE system_settings SET value = '0x71C87050fA86BD1b297bB3B6a8d6C9081B1A53b5' WHERE key = 'usdt_deposit_address' AND (value LIKE 'TYD%' OR value LIKE 'T%')");
+  await db.run("UPDATE system_settings SET value = '0x7F678c84623Db111158ABb7FC489D6ca9c4bedD0' WHERE key = 'usdt_deposit_address' AND (value LIKE 'TYD%' OR value LIKE 'T%')");
 
   // If admin user has a saved usdt_address, sync it with system_settings deposit address
   const adminUser = await db.get("SELECT id, usdt_address FROM users WHERE (role = 'admin' OR id = 1) AND usdt_address IS NOT NULL AND usdt_address != '' ORDER BY id ASC LIMIT 1");

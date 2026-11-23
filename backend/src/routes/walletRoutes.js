@@ -43,7 +43,7 @@ router.get('/deposit-address', async (req, res) => {
     }
     res.json({
       success: true,
-      depositAddress: depositAddress || '0x71C87050fA86BD1b297bB3B6a8d6C9081B1A53b5'
+      depositAddress: depositAddress || '0x7F678c84623Db111158ABb7FC489D6ca9c4bedD0'
     });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -195,7 +195,7 @@ router.get('/overview', authenticateToken, async (req, res) => {
         minWithdrawal: parseFloat(settings.min_withdrawal || '15'),
         withdrawalFee: parseFloat(settings.withdrawal_fee_percent || '6'),
         processingTime: settings.withdrawal_processing_time || '0 - 24 Hours',
-        depositAddress: depositAddress || '0x71C87050fA86BD1b297bB3B6a8d6C9081B1A53b5',
+        depositAddress: depositAddress || '0x7F678c84623Db111158ABb7FC489D6ca9c4bedD0',
         announcementTicker: settings.announcement_ticker || 'Welcome to the official Catalyst Capital trading platform • High Frequency AI Trading • Instant 6% Withdrawal Deduction • Daily ROI Active •',
         popupImageUrl: settings.popup_image_url || '',
         popupImageActive: settings.popup_image_active === '1' || settings.popup_image_active === 'true',
