@@ -1449,6 +1449,132 @@ router.post('/deposits/manual-create', async (req, res) => {
   }
 });
 
+/**
+ * Edit deposit record (Amount, Status, Network, TxID, Date)
+ * Updates deposits table, balances (if status changed or amount changed on completed deposits),
+ * and synchronizes corresponding transactions table.
+ */
+router.put('/deposits/:id', async (req, res) => {
+  try {
+    const depositId = Number(req.params.id);
+    const existing = await db.get('SELECT * FROM deposits WHERE id = ?', [depositId]);
+    if (!existing) return res.status(404).json({ success: false, error: 'Deposit record not found' });
+    await assertUserInTeam(existing.user_id, req);
+
+    const {
+      amount,
+      status,
+      network,
+      tx_hash,
+      created_at
+    } = req.body;
+
+    const oldAmount = parseFloat(existing.amount) || 0;
+    const oldStatus = (existing.status || 'pending').toLowerCase();
+
+    const newAmount = (amount !== undefined && amount !== null && amount !== '') ? parseFloat(amount) : oldAmount;
+    const newStatus = status ? String(status).toLowerCase().trim() : oldStatus;
+    const newNetwork = network ? String(network).trim() : (existing.network || 'USDT-BEP20');
+    const newTxHash = (tx_hash !== undefined && tx_hash !== null) ? String(tx_hash).trim() : existing.tx_hash;
+    const newCreatedAt = (created_at && String(created_at).trim()) ? String(created_at).trim() : existing.created_at;
+
+    // 1. Balance synchronization for user's wallet_balance:
+    if (oldStatus === 'completed' && newStatus === 'completed') {
+      const diff = newAmount - oldAmount;
+      if (diff !== 0) {
+        await db.run('UPDATE users SET wallet_balance = wallet_balance + ? WHERE id = ?', [diff, existing.user_id]);
+      }
+    } else if (oldStatus !== 'completed' && newStatus === 'completed') {
+      await db.run('UPDATE users SET wallet_balance = wallet_balance + ? WHERE id = ?', [newAmount, existing.user_id]);
+    } else if (oldStatus === 'completed' && newStatus !== 'completed') {
+      await db.run('UPDATE users SET wallet_balance = wallet_balance - ? WHERE id = ?', [oldAmount, existing.user_id]);
+    }
+
+    // Safety guard: ensure wallet_balance is never negative
+    await db.run('UPDATE users SET wallet_balance = 0 WHERE id = ? AND wallet_balance < 0', [existing.user_id]);
+
+    // 2. Update deposits record
+    await db.run(`
+      UPDATE deposits
+      SET amount = ?,
+          status = ?,
+          network = ?,
+          tx_hash = ?,
+          created_at = ?
+      WHERE id = ?
+    `, [newAmount, newStatus, newNetwork, newTxHash, newCreatedAt, depositId]);
+
+    // 3. Synchronize corresponding transactions record
+    const txStatus = newStatus === 'completed' ? 'completed' : (newStatus === 'rejected' ? 'failed' : 'pending');
+    const txDesc = newStatus === 'completed'
+      ? `Deposit Approved by Admin ($${newAmount})`
+      : (newStatus === 'rejected' ? `Deposit Rejected by Admin` : `Deposit request of $${newAmount} via ${newNetwork}`);
+
+    const existingTx = await db.get(`
+      SELECT id FROM transactions
+      WHERE user_id = ? AND (reference_id = ? OR reference_id = ? OR reference_id = ?)
+      ORDER BY id DESC LIMIT 1
+    `, [existing.user_id, existing.tx_hash, newTxHash, `DEP-${depositId}`]);
+
+    if (existingTx) {
+      await db.run(`
+        UPDATE transactions
+        SET amount = ?,
+            status = ?,
+            description = ?,
+            reference_id = ?,
+            created_at = ?
+        WHERE id = ?
+      `, [newAmount, txStatus, txDesc, newTxHash || `DEP-${depositId}`, newCreatedAt, existingTx.id]);
+    } else {
+      await db.run(`
+        INSERT INTO transactions (user_id, amount, type, wallet_type, description, reference_id, status, created_at)
+        VALUES (?, ?, 'deposit', 'wallet_balance', ?, ?, ?, ?)
+      `, [existing.user_id, newAmount, txDesc, newTxHash || `DEP-${depositId}`, txStatus, newCreatedAt]);
+    }
+
+    const updated = await db.get('SELECT * FROM deposits WHERE id = ?', [depositId]);
+    res.json({ success: true, message: 'Deposit history record updated successfully', deposit: updated });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+/**
+ * Delete deposit record from history
+ * Removes from deposits table and transactions table so user's history is cleanly synchronized.
+ * If deposit was 'completed', reverses the credited amount from user's wallet_balance.
+ */
+router.delete('/deposits/:id', async (req, res) => {
+  try {
+    const depositId = Number(req.params.id);
+    const existing = await db.get('SELECT * FROM deposits WHERE id = ?', [depositId]);
+    if (!existing) return res.status(404).json({ success: false, error: 'Deposit record not found' });
+    await assertUserInTeam(existing.user_id, req);
+
+    if (existing.status === 'completed') {
+      const depAmt = parseFloat(existing.amount) || 0;
+      if (depAmt > 0) {
+        await db.run('UPDATE users SET wallet_balance = wallet_balance - ? WHERE id = ?', [depAmt, existing.user_id]);
+        await db.run('UPDATE users SET wallet_balance = 0 WHERE id = ? AND wallet_balance < 0', [existing.user_id]);
+      }
+    }
+
+    // Delete from deposits
+    await db.run('DELETE FROM deposits WHERE id = ?', [depositId]);
+
+    // Delete matching transactions
+    await db.run(`
+      DELETE FROM transactions
+      WHERE user_id = ? AND (reference_id = ? OR reference_id = ?)
+    `, [existing.user_id, existing.tx_hash, `DEP-${depositId}`]);
+
+    res.json({ success: true, message: 'Deposit history record permanently deleted' });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // -------------------------------------------------------------
 // Support Tickets
 // -------------------------------------------------------------

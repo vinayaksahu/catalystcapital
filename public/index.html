@@ -3846,6 +3846,66 @@
     </div>
   </div>
 
+  <!-- ADMIN: EDIT DEPOSIT RECORD MODAL -->
+  <div id="editDepositModal" class="modal fixed inset-0 z-50 bg-black/90 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="theme-card max-w-md w-full p-5 shadow-2xl relative text-white bg-[#0e121a] border border-slate-800 space-y-4">
+      <button onclick="closeModal('editDepositModal')" class="absolute right-4 top-4 text-slate-400 hover:text-white transition">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+
+      <div class="flex items-center gap-2 pb-2 border-b border-slate-800">
+        <i data-lucide="edit-3" class="w-5 h-5 text-amber-400"></i>
+        <div>
+          <h3 class="font-bold text-sm text-white">Edit Deposit Record #<span id="edm-id"></span></h3>
+          <p class="text-[10px] text-slate-400">Updates will sync with user transaction history and balances</p>
+        </div>
+      </div>
+
+      <form onsubmit="handleSaveDepositEdit(event)" class="space-y-3 text-xs">
+        <input type="hidden" id="edm-deposit-id">
+
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-slate-400 font-semibold mb-1">Amount ($ USDT)</label>
+            <input type="number" step="any" min="0" id="edm-amount" required class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-emerald-400 font-bold font-mono text-xs focus:border-emerald-400">
+          </div>
+          <div>
+            <label class="block text-slate-400 font-semibold mb-1">Status</label>
+            <select id="edm-status" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs">
+              <option value="completed">Completed</option>
+              <option value="pending">Pending</option>
+              <option value="rejected">Rejected</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-slate-400 font-semibold mb-1">Network</label>
+          <input type="text" id="edm-network" placeholder="USDT-BEP20" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-cyan-300 font-mono text-xs focus:border-cyan-400">
+        </div>
+
+        <div>
+          <label class="block text-slate-400 font-semibold mb-1">Tx Hash / Verification (TXID)</label>
+          <input type="text" id="edm-txhash" placeholder="0x... or Internal Admin Credit" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-slate-300 font-mono text-xs focus:border-amber-400">
+        </div>
+
+        <div>
+          <label class="block text-slate-400 font-semibold mb-1">Deposit Date (YYYY-MM-DD HH:MM:SS)</label>
+          <input type="text" id="edm-date" placeholder="Leave empty to keep existing" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-slate-300 font-mono text-xs focus:border-amber-400">
+        </div>
+
+        <div class="flex items-center gap-2 pt-2">
+          <button type="submit" id="btn-save-edit-deposit" class="flex-1 py-2.5 rounded-xl font-bold bg-amber-500 hover:bg-amber-400 text-black text-xs transition cursor-pointer active:scale-95">
+            Save Changes
+          </button>
+          <button type="button" onclick="closeModal('editDepositModal')" class="py-2.5 px-4 rounded-xl font-bold bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs transition cursor-pointer">
+            Cancel
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- ADMIN: EDIT / CREATE INVESTMENT PLAN MODAL -->
   <div id="editPlanModal" class="modal fixed inset-0 z-50 bg-black/90 backdrop-blur-sm hidden items-center justify-center p-4">
     <div class="theme-card max-w-md w-full p-5 shadow-2xl relative text-white bg-[#0e121a] border border-slate-800 space-y-4">

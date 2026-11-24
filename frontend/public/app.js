@@ -4155,6 +4155,7 @@ window.handleAdminAdjustBalance = handleAdminAdjustBalance;
 // ==================== ADMIN DEPOSITS & WITHDRAWALS ====================
 
 let adminCachedWithdrawals = [];
+let adminCachedDeposits = [];
 let adminWithdrawalFilter = 'all';
 
 async function loadAdminWithdrawals() {
@@ -4623,6 +4624,7 @@ async function loadAdminDeposits() {
   if (!depContainer) return;
 
   if (depData.success && depData.deposits && depData.deposits.length > 0) {
+    adminCachedDeposits = depData.deposits;
     depContainer.innerHTML = depData.deposits.map(d => `
       <div class="p-3.5 sm:p-4 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-2.5 hover:border-slate-700 transition shadow-md overflow-hidden">
         <div class="flex items-start justify-between gap-2">
@@ -4663,25 +4665,36 @@ async function loadAdminDeposits() {
           `}
         </div>
 
-        ${d.status === 'pending' ? `
-          <div class="flex items-center gap-2 pt-1 border-t border-slate-800/80">
-            <button onclick="approveDeposit(${d.id}, this)" class="flex-1 py-2 px-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs transition flex items-center justify-center gap-1.5 cursor-pointer shadow-sm shadow-emerald-500/20 active:scale-95">
+        <!-- Action Buttons: Approve, Reject, Edit, Delete -->
+        <div class="flex items-center gap-2 pt-1 border-t border-slate-800/80 flex-wrap">
+          ${d.status === 'pending' ? `
+            <button onclick="approveDeposit(${d.id}, this)" class="flex-1 min-w-[120px] py-2 px-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs transition flex items-center justify-center gap-1.5 cursor-pointer shadow-sm shadow-emerald-500/20 active:scale-95">
               <i data-lucide="check-circle-2" class="w-3.5 h-3.5"></i>
               <span>Approve & Credit</span>
             </button>
-            <button onclick="rejectDeposit(${d.id}, this)" class="flex-1 py-2 px-3 rounded-xl bg-rose-500/20 border border-rose-500/40 hover:bg-rose-500/30 text-rose-400 font-bold text-xs transition flex items-center justify-center gap-1.5 cursor-pointer active:scale-95">
+            <button onclick="rejectDeposit(${d.id}, this)" class="py-2 px-3 rounded-xl bg-rose-500/20 border border-rose-500/40 hover:bg-rose-500/30 text-rose-400 font-bold text-xs transition flex items-center justify-center gap-1.5 cursor-pointer active:scale-95">
               <i data-lucide="x-circle" class="w-3.5 h-3.5"></i>
               <span>Reject</span>
             </button>
-          </div>
-        ` : ''}
+          ` : ''}
+          <button onclick="openEditDepositModal(${d.id})" class="py-2 px-3 rounded-xl bg-amber-500/15 border border-amber-500/30 hover:bg-amber-500/25 text-amber-300 font-bold text-xs transition flex items-center justify-center gap-1 cursor-pointer active:scale-95" title="Edit this deposit">
+            <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
+            <span>Edit</span>
+          </button>
+          <button onclick="handleDeleteDeposit(${d.id})" class="py-2 px-2.5 rounded-xl bg-slate-800 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 border border-slate-700 hover:border-rose-500/40 text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer active:scale-95" title="Delete from history">
+            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+            <span>Delete</span>
+          </button>
+        </div>
       </div>
     `).join('');
     if (window.lucide) lucide.createIcons({ root: depContainer });
   } else {
+    adminCachedDeposits = [];
     depContainer.innerHTML = `<div class="text-center py-8 text-slate-500 bg-slate-900/50 rounded-2xl border border-slate-800">No deposit records found</div>`;
   }
 }
+window.loadAdminDeposits = loadAdminDeposits;
 
 async function approveDeposit(id, btnElement) {
   const btn = btnElement || (typeof event !== 'undefined' ? (event?.currentTarget || event?.target) : null);
@@ -4747,6 +4760,100 @@ async function rejectDeposit(id, btnElement) {
   }
 }
 window.rejectDeposit = rejectDeposit;
+
+function openEditDepositModal(id) {
+  const d = adminCachedDeposits.find(item => item.id === id);
+  if (!d) {
+    showToast('Deposit record not found', 'error');
+    return;
+  }
+  const amt = parseFloat(d.amount) || 0;
+
+  document.getElementById('edm-id').textContent = d.id;
+  document.getElementById('edm-deposit-id').value = d.id;
+  document.getElementById('edm-amount').value = amt;
+  document.getElementById('edm-status').value = (d.status || 'pending').toLowerCase();
+  document.getElementById('edm-network').value = d.network || 'USDT-BEP20';
+  document.getElementById('edm-txhash').value = d.tx_hash || '';
+  document.getElementById('edm-date').value = d.created_at || '';
+
+  openModal('editDepositModal');
+}
+window.openEditDepositModal = openEditDepositModal;
+
+async function handleSaveDepositEdit(e) {
+  e.preventDefault();
+  const id = document.getElementById('edm-deposit-id').value;
+  const amount = parseFloat(document.getElementById('edm-amount').value);
+  const status = document.getElementById('edm-status').value;
+  const network = document.getElementById('edm-network').value.trim();
+  const tx_hash = document.getElementById('edm-txhash').value.trim();
+  const created_at = document.getElementById('edm-date').value.trim();
+
+  const btn = document.getElementById('btn-save-edit-deposit');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Saving...';
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}/admin/deposits/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        amount,
+        status,
+        network: network || 'USDT-BEP20',
+        tx_hash,
+        created_at: created_at || undefined
+      })
+    });
+    const data = await res.json();
+    if (data.success) {
+      closeModal('editDepositModal');
+      showToast('Deposit record and user history updated successfully!', 'success');
+      await loadAdminDeposits();
+    } else {
+      showToast(data.error || 'Failed to update deposit', 'error');
+    }
+  } catch (err) {
+    showToast(err.message, 'error');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = 'Save Changes';
+    }
+  }
+}
+window.handleSaveDepositEdit = handleSaveDepositEdit;
+
+async function handleDeleteDeposit(id) {
+  if (!confirm(`Are you sure you want to permanently delete deposit record #${id}? It will be removed from deposits and user history.`)) {
+    return;
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}/admin/deposits/${id}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast(`Deposit #${id} permanently deleted from history`, 'success');
+      await loadAdminDeposits();
+    } else {
+      showToast(data.error || 'Failed to delete deposit', 'error');
+    }
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+window.handleDeleteDeposit = handleDeleteDeposit;
 
 function populateManualDepositUserSelect(users) {
   const select = document.getElementById('amd-user-select');
